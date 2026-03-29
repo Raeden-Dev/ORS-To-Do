@@ -83,3 +83,40 @@ Archive:
 - Whenever I archive any entry, it says no date.
 - Color for prefix of entry for work should be blue and quick-to-do is green
 - Newly archived tasks should have a dark green background, after 3 days of being archived it should be orange and then finally after 1 week it should be the default button color
+
+5: By ai
+===================================================================================
+Here are 10 feature and Quality of Life (QoL) suggestions tailored to a heavy development, asset creation, and daily tracking workflow. They range from simple UI tweaks to powerful backend upgrades that can be implemented naturally in JavaFX.
+
+Productivity & Workflow Features
+1. Pomodoro Task Linking (Focus Hub Upgrade)
+Instead of just running a generic timer, add a dropdown in the Focus Hub that pulls active tasks from your Work List. When the Pomodoro session finishes, the app automatically logs the time spent directly onto that specific task's metadata, giving you a precise breakdown of how long certain features or assets take to build.
+
+2. Automated Daily Templates
+Right now, the Daily To-Do list resets to zero. Implement a "Base Dailies" setting where you can define persistent tasks (e.g., [GYM] Push Day, [CODE] 1 Commit). When the midnight rollover triggers, the app automatically populates the fresh day with your foundational tasks so you don't have to re-type them every morning.
+
+3. Collapsible Sub-Tasks (Work List)
+For complex project features or multi-stage art assets, a single task line isn't always enough. Allow users to right-click a task and "Add Sub-task." This would create a nested, indented checklist under the main task that can be expanded or collapsed, keeping the main UI clean while tracking granular progress.
+
+4. Markdown & Code Formatting in Scratchpad
+Upgrade the Brain Dump text area from a standard TextArea to a Markdown-rendered view. This allows you to quickly paste properly formatted code snippets, use bolding for urgent notes, or format quick API JSON responses right in your scratchpad while in a focus session.
+
+Quality of Life (QoL) & UI Improvements
+5. Global Quick-Capture Hotkey
+Implement a system-wide keyboard shortcut (e.g., Ctrl+Shift+Space). Pressing this instantly pops up a tiny, borderless JavaFX text input over whatever other application you are currently using. Type your thought, hit Enter, and it silently drops it into your Quick To-Do list without breaking your focus or requiring you to tab over to the main app.
+
+6. Drag-and-Drop Reordering
+Currently, tasks sit in the order they were created. Implement native JavaFX drag-and-drop on the HBox rows so you can manually drag tasks up or down the list to visually structure your exact execution order for the day.
+
+7. Tagging & Quick Filters
+As your Work List grows with different modular projects and studio tasks, scrolling becomes tedious. Add a row of toggleable "Filter Pills" at the very top of the list based on the workType or prefixes. Clicking a pill instantly filters the view to only show tasks relevant to the exact project you are working on at that moment.
+
+System & Backend
+8. System Tray & Background Notifications
+A Pomodoro timer and daily tracker shouldn't need to sit on your taskbar all day. Hook into the java.awt.SystemTray so that clicking the 'X' minimizes the app to the system tray. When a focus timer finishes, it can push a native Windows OS notification to your desktop.
+
+9. Rolling Automated Backups (Danger Prevention)
+Because the app relies on Java Serialization (.dat files), a hard computer crash exactly as the StorageManager is writing could corrupt the file and wipe your lists. Upgrade the save logic to keep a rolling cache of the last 3 days (e.g., tasks_backup_1.bak). If the main file fails to load, it silently recovers from the backup.
+
+10. Expanded HTML Analytics Dashboard
+Bring the beautiful Chart.js HTML export engine to the Work List. Generate graphs that show how many tasks were completed categorized by priority color or workType. Seeing a visual pie chart of where your development time actually went over the course of a week provides massive insight into your pacing and bottlenecks.

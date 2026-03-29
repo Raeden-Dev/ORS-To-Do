@@ -10,16 +10,31 @@ import java.util.Map;
 public class AppStats implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static class DailyTemplate implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String prefix;
+        private String text;
+
+        public DailyTemplate(String prefix, String text) {
+            this.prefix = prefix;
+            this.text = text;
+        }
+        public String getPrefix() { return prefix; }
+        public String getText() { return text; }
+    }
+
     private int currentStreak = 0;
     private LocalDate lastOpenedDate = LocalDate.now();
     private Map<LocalDate, Double> historyLog = new LinkedHashMap<>();
 
-    // --- Settings: Menu Texts ---
     private String editMenuText = "Edit Task";
     private String archiveMenuText = "Archive Task";
     private String deleteMenuText = "Delete";
+    private int taskFontSize = 14;
 
-    // --- Settings: Sidebar Texts ---
+    // --- NEW: Background Running Setting ---
+    private Boolean runInBackground = null; // Null check protects older save files
+
     private String navQuickText = "Quick To-Do";
     private String navDailyText = "Daily To-Do";
     private String navWorkText = "Work List";
@@ -33,11 +48,15 @@ public class AppStats implements Serializable {
             new TaskItem.CustomPriority("HIGH", "#FF6666")
     ));
 
+    private List<DailyTemplate> baseDailies = new ArrayList<>();
     private Map<LocalDate, int[]> advancedHistoryLog = new LinkedHashMap<>();
     private String brainDumpText = "";
     private Map<TaskItem.OriginModule, String> pendingDrafts = new java.util.HashMap<>();
 
-    // --- Getters & Setters ---
+    // --- NEW: Background Toggle Getters/Setters ---
+    public boolean isRunInBackground() { return runInBackground == null ? true : runInBackground; }
+    public void setRunInBackground(boolean runInBackground) { this.runInBackground = runInBackground; }
+
     public int getCurrentStreak() { return currentStreak; }
     public void setCurrentStreak(int currentStreak) { this.currentStreak = currentStreak; }
 
@@ -53,6 +72,19 @@ public class AppStats implements Serializable {
             historyLog.remove(oldestDate);
         }
     }
+
+    public List<DailyTemplate> getBaseDailies() {
+        if (baseDailies == null) baseDailies = new ArrayList<>();
+        return baseDailies;
+    }
+
+    public List<TaskItem.CustomPriority> getCustomPriorities() {
+        if (customPriorities == null) customPriorities = new ArrayList<>();
+        return customPriorities;
+    }
+
+    public int getTaskFontSize() { return taskFontSize == 0 ? 14 : taskFontSize; }
+    public void setTaskFontSize(int taskFontSize) { this.taskFontSize = taskFontSize; }
 
     public String getEditMenuText() { return editMenuText; }
     public void setEditMenuText(String editMenuText) { this.editMenuText = editMenuText; }
@@ -74,7 +106,6 @@ public class AppStats implements Serializable {
     public String getNavSettingsText() { return navSettingsText; }
     public void setNavSettingsText(String navSettingsText) { this.navSettingsText = navSettingsText; }
 
-    public List<TaskItem.CustomPriority> getCustomPriorities() { return customPriorities; }
     public Map<LocalDate, int[]> getAdvancedHistoryLog() { return advancedHistoryLog; }
 
     public String getBrainDumpText() { return brainDumpText; }
@@ -82,7 +113,7 @@ public class AppStats implements Serializable {
 
     public Map<TaskItem.OriginModule, String> getPendingDrafts() { return pendingDrafts; }
     public void saveDraft(TaskItem.OriginModule module, String text) {
-        if (text != null && !text.trim().isEmpty()) pendingDrafts.put(module, text.trim());
-        else pendingDrafts.remove(module);
+        if (text != null && !text.trim().isEmpty()) { pendingDrafts.put(module, text.trim()); }
+        else { pendingDrafts.remove(module); }
     }
 }

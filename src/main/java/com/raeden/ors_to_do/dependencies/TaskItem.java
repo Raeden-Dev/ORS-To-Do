@@ -1,13 +1,14 @@
-package com.raeden.ors_to_do.dependencies; // Adjust this if your actual package is com.raeden.ors_to_do
+package com.raeden.ors_to_do.dependencies;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class TaskItem implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // --- The New Custom Priority Class ---
     public static class CustomPriority implements Serializable {
         private static final long serialVersionUID = 1L;
         private String name;
@@ -33,12 +34,28 @@ public class TaskItem implements Serializable {
         }
     }
 
+    // --- NEW: SubTask Data Model ---
+    public static class SubTask implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String textContent;
+        private boolean isFinished;
+
+        public SubTask(String textContent) {
+            this.textContent = textContent;
+            this.isFinished = false;
+        }
+
+        public String getTextContent() { return textContent; }
+        public void setTextContent(String textContent) { this.textContent = textContent; }
+        public boolean isFinished() { return isFinished; }
+        public void setFinished(boolean finished) { isFinished = finished; }
+    }
+
     public enum OriginModule { QUICK, DAILY, WORK }
 
-    // --- Fields ---
     private String id;
     private String textContent;
-    private CustomPriority priority; // Fixed: Now uses CustomPriority exclusively
+    private CustomPriority priority;
     private boolean isFinished;
     private LocalDateTime dateCreated;
     private LocalDateTime dateCompleted;
@@ -51,9 +68,13 @@ public class TaskItem implements Serializable {
     private boolean isArchived = false;
     private boolean isFavorite = false;
     private String workType = "";
+    private int timeSpentSeconds = 0;
 
-    // --- Constructor ---
-    public TaskItem(String textContent, CustomPriority priority, OriginModule originModule) { // Fixed parameter
+    // --- NEW: Sub-Task Variables ---
+    private List<SubTask> subTasks = new ArrayList<>();
+    private boolean isExpanded = false;
+
+    public TaskItem(String textContent, CustomPriority priority, OriginModule originModule) {
         this.id = UUID.randomUUID().toString();
         this.textContent = textContent;
         this.priority = priority;
@@ -62,9 +83,19 @@ public class TaskItem implements Serializable {
         this.dateCreated = LocalDateTime.now();
     }
 
-    // --- Getters and Setters ---
+    // --- NEW: Sub-Task Getters/Setters ---
+    public List<SubTask> getSubTasks() {
+        if (subTasks == null) subTasks = new ArrayList<>(); // Failsafe for old save files
+        return subTasks;
+    }
+    public boolean isExpanded() { return isExpanded; }
+    public void setExpanded(boolean expanded) { isExpanded = expanded; }
+
+    public int getTimeSpentSeconds() { return timeSpentSeconds; }
+    public void addTimeSpent(int seconds) { this.timeSpentSeconds += seconds; }
+
     public boolean isFavorite() { return isFavorite; }
-    public void setFavorite(boolean favorite) { isFavorite = favorite; }
+    public void setFavorite(boolean favorite) { this.isFavorite = favorite; }
     public String getWorkType() { return workType; }
     public void setWorkType(String workType) { this.workType = workType; }
 
@@ -73,8 +104,8 @@ public class TaskItem implements Serializable {
     public String getTextContent() { return textContent; }
     public void setTextContent(String textContent) { this.textContent = textContent; }
 
-    public CustomPriority getPriority() { return priority; } // Fixed return type
-    public void setPriority(CustomPriority priority) { this.priority = priority; } // Fixed parameter type
+    public CustomPriority getPriority() { return priority; }
+    public void setPriority(CustomPriority priority) { this.priority = priority; }
 
     public boolean isFinished() { return isFinished; }
     public void setFinished(boolean finished) {

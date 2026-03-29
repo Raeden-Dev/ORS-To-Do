@@ -105,10 +105,22 @@ public class DailyModuleFX extends BorderPane {
 
     public void refreshList() {
         listContainer.getChildren().clear();
+        boolean hasTasks = false;
+
         for (TaskItem task : globalDatabase) {
             if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
                 listContainer.getChildren().add(createTaskRow(task));
+                hasTasks = true;
             }
+        }
+
+        // --- FIXED: Empty State UI ---
+        if (!hasTasks) {
+            Label emptyLabel = new Label("Add a task to get started!");
+            emptyLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
+            emptyLabel.setMaxWidth(Double.MAX_VALUE);
+            emptyLabel.setAlignment(Pos.CENTER);
+            listContainer.getChildren().add(emptyLabel);
         }
     }
 
@@ -120,27 +132,36 @@ public class DailyModuleFX extends BorderPane {
 
         if (task.getColorHex() != null) row.setStyle("-fx-background-color: " + task.getColorHex() + ";");
 
+        // --- NEW: White Aesthetic Rectangle to match other list heights ---
+        Rectangle prioRect = new Rectangle(5, 25);
+        prioRect.setArcWidth(3); prioRect.setArcHeight(3);
+        prioRect.setFill(Color.WHITE); // Strictly white for Daily tasks
+
         Label starLabel = new Label("[⭐]");
         starLabel.getStyleClass().add("task-star");
         starLabel.setVisible(task.isFavorite());
         starLabel.setManaged(task.isFavorite());
 
-        HBox metaBox = new HBox(5, starLabel);
+        // Added prioRect to the metaBox with standard spacing
+        HBox metaBox = new HBox(7, prioRect, starLabel);
         metaBox.setAlignment(Pos.CENTER_LEFT);
 
         if (task.getPrefix() != null && !task.getPrefix().isEmpty()) {
             Label prefixLabel = new Label(task.getPrefix());
             prefixLabel.getStyleClass().add("task-prefix");
+            prefixLabel.setStyle("-fx-font-size: " + appStats.getTaskFontSize() + "px;");
             metaBox.getChildren().add(prefixLabel);
         }
 
-        // Exact Strikethrough Logic
         Label textLabel = new Label(task.getTextContent());
         textLabel.setWrapText(true);
+
+        String fontStyle = "-fx-font-size: " + appStats.getTaskFontSize() + "px; ";
+
         if (task.isFinished()) {
-            textLabel.setStyle("-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
+            textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
         } else {
-            textLabel.setStyle("-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
+            textLabel.setStyle(fontStyle + "-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
         }
 
         HBox textContainer = new HBox(textLabel);
@@ -169,7 +190,6 @@ public class DailyModuleFX extends BorderPane {
         MenuItem editItem = new MenuItem(appStats.getEditMenuText());
         editItem.setOnAction(e -> showEditDialog(task));
 
-        // --- Restored Background Color Menu ---
         Menu colorMenu = new Menu("Set Background Color");
         for (String hex : DARK_PASTELS) {
             MenuItem colorItem = new MenuItem("");
@@ -252,7 +272,6 @@ public class DailyModuleFX extends BorderPane {
                     .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #3E3E42; padding-bottom: 20px; }
                     h1 { color: #4EC9B0; margin: 0; font-size: 36px; }
                     .stats-container { display: flex; justify-content: space-around; margin-bottom: 40px; }
-                    /* FIXED: Changed 30% to 30%% to escape it for Java String formatting */
                     .stat-box { background-color: #2D2D30; padding: 20px; border-radius: 10px; width: 30%%; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #3E3E42; }
                     .stat-box h3 { margin: 0 0 10px 0; color: #AAAAAA; font-size: 16px; }
                     .stat-box p { margin: 0; font-size: 32px; font-weight: bold; color: #FF8C00; }
