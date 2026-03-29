@@ -62,6 +62,8 @@ public class FocusHubModuleFX extends HBox {
 
         Button resetBtn = new Button("Reset");
         resetBtn.getStyleClass().addAll("action-btn", "massive-btn");
+        // Force the soft red background inline
+        resetBtn.setStyle("-fx-background-color: #E06666; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
 
         btnPanel.getChildren().addAll(startPauseBtn, resetBtn);
 
@@ -79,11 +81,12 @@ public class FocusHubModuleFX extends HBox {
         VBox scratchpadContainer = new VBox(10);
         HBox.setHgrow(scratchpadContainer, Priority.ALWAYS);
 
-        Label scratchpadLabel = new Label("Scratchpad"); // Renamed
+        Label scratchpadLabel = new Label("Scratchpad");
         scratchpadLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
 
         brainDumpArea = new TextArea(appStats.getBrainDumpText());
-        brainDumpArea.getStyleClass().add("scratchpad"); // Dark gray applied via CSS
+        // Forcing Dark Mode inline to bypass JavaFX ScrollPane CSS conflicts
+        brainDumpArea.setStyle("-fx-control-inner-background: #1E1E1E; -fx-background-color: #1E1E1E; -fx-text-fill: #E0E0E0; -fx-font-family: 'Consolas', monospace; -fx-font-size: 15px; -fx-border-color: #3E3E42;");
         brainDumpArea.setWrapText(true);
         VBox.setVgrow(brainDumpArea, Priority.ALWAYS);
 
@@ -91,6 +94,7 @@ public class FocusHubModuleFX extends HBox {
 
         Button clearDumpBtn = new Button("Clear Scratchpad");
         clearDumpBtn.setMaxWidth(Double.MAX_VALUE);
+        clearDumpBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         clearDumpBtn.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Clear your notes?", ButtonType.YES, ButtonType.NO);
             alert.setHeaderText(null);

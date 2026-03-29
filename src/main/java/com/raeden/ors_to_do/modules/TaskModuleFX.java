@@ -7,6 +7,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -18,6 +20,14 @@ public class TaskModuleFX extends BorderPane {
     private AppStats appStats;
     private TextField inputField;
     private ComboBox<TaskItem.CustomPriority> priorityBox;
+    private Label availableTasksLabel;
+
+    private final String[] DARK_PASTELS = {
+            "#2C3E50", "#34495E", "#1A252C", "#2D3748", "#2A4365",
+            "#2C5282", "#2B6CB0", "#234E52", "#285E61", "#2C7A7B",
+            "#22543D", "#276749", "#2F855A", "#744210", "#975A16",
+            "#702459", "#97266D", "#44337A", "#553C9A", "#1A202C"
+    };
 
     public TaskModuleFX(TaskItem.OriginModule moduleType, List<TaskItem> globalDatabase, AppStats appStats) {
         this.moduleType = moduleType;
@@ -25,12 +35,31 @@ public class TaskModuleFX extends BorderPane {
         this.appStats = appStats;
         setPadding(new Insets(15));
 
+        // --- TOP: Tracking Header ---
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(0, 0, 15, 0));
+
+        availableTasksLabel = new Label();
+
+        if (moduleType == TaskItem.OriginModule.QUICK) {
+            availableTasksLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #4EC9B0;"); // Green
+            headerBox.getChildren().add(availableTasksLabel);
+            setTop(headerBox);
+        } else if (moduleType == TaskItem.OriginModule.WORK) {
+            availableTasksLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #569CD6;"); // Blue
+            headerBox.getChildren().add(availableTasksLabel);
+            setTop(headerBox);
+        }
+
+        // --- CENTER: Dynamic List ---
         listContainer = new VBox(8);
         ScrollPane scrollPane = new ScrollPane(listContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         scrollPane.setBorder(Border.EMPTY);
 
+        // --- BOTTOM: Input Area ---
         HBox inputPanel = new HBox(10);
         inputPanel.setAlignment(Pos.CENTER);
         inputPanel.setPadding(new Insets(15, 0, 0, 0));
@@ -42,7 +71,7 @@ public class TaskModuleFX extends BorderPane {
 
         priorityBox = new ComboBox<>();
         priorityBox.getItems().addAll(appStats.getCustomPriorities());
-        if (!appStats.getCustomPriorities().isEmpty()) priorityBox.setValue(appStats.getCustomPriorities().get(1)); // Default Med
+        if (!appStats.getCustomPriorities().isEmpty()) priorityBox.setValue(appStats.getCustomPriorities().get(1)); // Default to second tier
         setupPriorityBoxColors(priorityBox);
 
         Button addBtn = new Button("Add");
@@ -79,10 +108,17 @@ public class TaskModuleFX extends BorderPane {
 
     public void refreshList() {
         listContainer.getChildren().clear();
+        int availableCount = 0;
+
         for (TaskItem task : globalDatabase) {
             if (task.getOriginModule() == moduleType && !task.isArchived()) {
                 listContainer.getChildren().add(createTaskRow(task));
+                if (!task.isFinished()) availableCount++;
             }
+        }
+
+        if (moduleType == TaskItem.OriginModule.QUICK || moduleType == TaskItem.OriginModule.WORK) {
+            availableTasksLabel.setText("Current available tasks: " + availableCount);
         }
     }
 
@@ -94,6 +130,15 @@ public class TaskModuleFX extends BorderPane {
 
         if (task.getColorHex() != null) row.setStyle("-fx-background-color: " + task.getColorHex() + ";");
 
+        // --- Left: Priority Rectangle & Metadata ---
+        Rectangle prioRect = new Rectangle(5, 25);
+        prioRect.setArcWidth(3); prioRect.setArcHeight(3);
+        if (task.getPriority() != null && task.getPriority().getColorHex() != null) {
+            prioRect.setFill(Color.web(task.getPriority().getColorHex()));
+        } else {
+            prioRect.setFill(Color.GRAY);
+        }
+
         Label starLabel = new Label("[⭐]");
         starLabel.getStyleClass().add("task-star");
         starLabel.setVisible(task.isFavorite());
@@ -102,7 +147,7 @@ public class TaskModuleFX extends BorderPane {
         Label dateLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
         dateLabel.getStyleClass().add("task-metadata");
 
-        HBox metaBox = new HBox(5, starLabel, dateLabel);
+        HBox metaBox = new HBox(7, prioRect, starLabel, dateLabel);
         metaBox.setAlignment(Pos.CENTER_LEFT);
 
         if (moduleType == TaskItem.OriginModule.WORK) {
@@ -111,19 +156,32 @@ public class TaskModuleFX extends BorderPane {
             metaBox.getChildren().add(workTypeLabel);
         }
 
+        // --- Center: Strikethrough Text ---
         Label textLabel = new Label(task.getTextContent());
-        textLabel.getStyleClass().add(task.isFinished() ? "task-text-finished" : "task-text");
         textLabel.setWrapText(true);
+        // Explicitly applying standard color with conditional strikethrough, ignoring CSS darkening
+        if (task.isFinished()) {
+            textLabel.setStyle("-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
+        } else {
+            textLabel.setStyle("-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
+        }
 
         HBox textContainer = new HBox(textLabel);
         textContainer.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(textContainer, Priority.ALWAYS);
 
+        // --- Right: Controls ---
         ComboBox<TaskItem.CustomPriority> prioBox = new ComboBox<>();
         prioBox.getItems().addAll(appStats.getCustomPriorities());
         prioBox.setValue(task.getPriority());
         setupPriorityBoxColors(prioBox);
-        prioBox.setOnAction(e -> { task.setPriority(prioBox.getValue()); StorageManager.saveTasks(globalDatabase); });
+        prioBox.setOnAction(e -> {
+            task.setPriority(prioBox.getValue());
+            if (prioBox.getValue() != null && prioBox.getValue().getColorHex() != null) {
+                prioRect.setFill(Color.web(prioBox.getValue().getColorHex()));
+            }
+            StorageManager.saveTasks(globalDatabase);
+        });
 
         CheckBox checkBox = new CheckBox();
         checkBox.setSelected(task.isFinished());
@@ -147,9 +205,22 @@ public class TaskModuleFX extends BorderPane {
         MenuItem editItem = new MenuItem(appStats.getEditMenuText());
         editItem.setOnAction(e -> showEditDialog(task));
 
+        Menu colorMenu = new Menu("Set Background Color");
+        for (String hex : DARK_PASTELS) {
+            MenuItem colorItem = new MenuItem("");
+            Rectangle colorIcon = new Rectangle(14, 14, Color.web(hex));
+            colorIcon.setStroke(Color.BLACK);
+            colorItem.setGraphic(colorIcon);
+            colorItem.setOnAction(e -> { task.setColorHex(hex); StorageManager.saveTasks(globalDatabase); refreshList(); });
+            colorMenu.getItems().add(colorItem);
+        }
+        MenuItem resetColor = new MenuItem("Reset Background");
+        resetColor.setOnAction(e -> { task.setColorHex(null); StorageManager.saveTasks(globalDatabase); refreshList(); });
+        colorMenu.getItems().addAll(new SeparatorMenuItem(), resetColor);
+
         MenuItem archiveItem = new MenuItem(appStats.getArchiveMenuText());
         archiveItem.setOnAction(e -> {
-            if(!task.isFinished()) task.setFinished(true); // Ensure Date is set to fix "No Date" error
+            if(!task.isFinished()) task.setFinished(true);
             task.setArchived(true);
             StorageManager.saveTasks(globalDatabase); refreshList();
         });
@@ -158,7 +229,7 @@ public class TaskModuleFX extends BorderPane {
         deleteItem.setStyle("-fx-text-fill: #FF6666;");
         deleteItem.setOnAction(e -> { globalDatabase.remove(task); StorageManager.saveTasks(globalDatabase); refreshList(); });
 
-        contextMenu.getItems().addAll(toggleFav, editItem, new SeparatorMenuItem(), archiveItem, deleteItem);
+        contextMenu.getItems().addAll(toggleFav, editItem, colorMenu, new SeparatorMenuItem(), archiveItem, deleteItem);
         row.setOnContextMenuRequested(e -> contextMenu.show(row, e.getScreenX(), e.getScreenY()));
     }
 

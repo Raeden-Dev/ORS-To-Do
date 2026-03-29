@@ -5,7 +5,7 @@ import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
 import com.raeden.ors_to_do.modules.*;
 import javafx.application.Application;
-import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -28,6 +28,8 @@ public class TaskTrackerFXApp extends Application {
     private FocusHubModuleFX focusHubPanel;
     private ArchivedModuleFX archivedPanel;
     private SettingsModuleFX settingsPanel;
+
+    private String currentActiveModule = "QUICK"; // Tracks internal ID
 
     @Override
     public void init() throws Exception {
@@ -60,7 +62,6 @@ public class TaskTrackerFXApp extends Application {
                 else appStats.setCurrentStreak(0);
             }
 
-            // Reset Daily Tasks
             for (TaskItem task : taskDatabase) {
                 if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
                     task.setFinished(false);
@@ -75,11 +76,15 @@ public class TaskTrackerFXApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         rootLayout = new BorderPane();
+        sidebar = new VBox();
+        sidebar.getStyleClass().add("sidebar");
+        sidebar.setPrefWidth(220);
 
         Runnable syncUI = () -> {
             if (quickToDoPanel != null) quickToDoPanel.refreshList();
             if (workListPanel != null) workListPanel.refreshList();
             if (dailyToDoPanel != null) dailyToDoPanel.refreshList();
+            setupSidebar(); // Rebuilds sidebar to reflect name changes instantly
         };
 
         quickToDoPanel = new TaskModuleFX(TaskItem.OriginModule.QUICK, taskDatabase, appStats);
@@ -90,8 +95,9 @@ public class TaskTrackerFXApp extends Application {
         settingsPanel = new SettingsModuleFX(appStats, taskDatabase, syncUI);
 
         setupSidebar();
+        rootLayout.setLeft(sidebar);
 
-        Scene scene = new Scene(rootLayout, 1200, 800);
+        Scene scene = new Scene(rootLayout, 1000, 700);
         String css = getClass().getResource("/styles.css").toExternalForm();
         scene.getStylesheets().add(css);
 
@@ -99,49 +105,41 @@ public class TaskTrackerFXApp extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        if (!sidebar.getChildren().isEmpty() && sidebar.getChildren().get(0) instanceof Button) {
-            Button firstBtn = (Button) sidebar.getChildren().get(0);
-            setActiveButton(firstBtn);
-            switchModule("Quick To-Do");
-        }
+        switchModule("QUICK"); // Load default
     }
 
     private void setupSidebar() {
-        sidebar = new VBox();
-        sidebar.getStyleClass().add("sidebar");
-        sidebar.setPrefWidth(220);
+        sidebar.getChildren().clear();
 
-        String[] modules = {"Quick To-Do", "Daily To-Do", "Work List", "Focus Hub", "Archived"};
+        addSidebarButton(appStats.getNavQuickText(), "QUICK");
+        addSidebarButton(appStats.getNavDailyText(), "DAILY");
+        addSidebarButton(appStats.getNavWorkText(), "WORK");
+        addSidebarButton(appStats.getNavFocusText(), "FOCUS");
+        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE");
 
-        for (String moduleName : modules) {
-            Button navBtn = new Button(moduleName);
-            navBtn.getStyleClass().add("nav-button");
-            navBtn.setMaxWidth(Double.MAX_VALUE);
-
-            navBtn.setOnAction(e -> {
-                setActiveButton(navBtn);
-                switchModule(moduleName);
-                if (moduleName.equals("Archived")) archivedPanel.refreshList();
-            });
-
-            sidebar.getChildren().add(navBtn);
-        }
-
-        // --- Push Settings to Bottom ---
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().add(spacer);
 
-        Button settingsBtn = new Button("Settings");
-        settingsBtn.getStyleClass().add("nav-button");
-        settingsBtn.setMaxWidth(Double.MAX_VALUE);
-        settingsBtn.setOnAction(e -> {
-            setActiveButton(settingsBtn);
-            switchModule("Settings");
-        });
-        sidebar.getChildren().add(settingsBtn);
+        addSidebarButton(appStats.getNavSettingsText(), "SETTINGS");
+    }
 
-        rootLayout.setLeft(sidebar);
+    private void addSidebarButton(String displayText, String internalId) {
+        Button btn = new Button(displayText);
+        btn.getStyleClass().add("nav-button");
+        btn.setMaxWidth(Double.MAX_VALUE);
+
+        if (currentActiveModule.equals(internalId)) {
+            btn.getStyleClass().add("active");
+        }
+
+        btn.setOnAction(e -> {
+            currentActiveModule = internalId;
+            setActiveButton(btn);
+            switchModule(internalId);
+            if (internalId.equals("ARCHIVE")) archivedPanel.refreshList();
+        });
+        sidebar.getChildren().add(btn);
     }
 
     private void setActiveButton(Button activeBtn) {
@@ -151,21 +149,38 @@ public class TaskTrackerFXApp extends Application {
         activeBtn.getStyleClass().add("active");
     }
 
-    private void switchModule(String moduleName) {
-        Pane activePane;
-        if (moduleName.equals("Quick To-Do")) activePane = quickToDoPanel;
-        else if (moduleName.equals("Daily To-Do")) activePane = dailyToDoPanel;
-        else if (moduleName.equals("Work List")) activePane = workListPanel;
-        else if (moduleName.equals("Focus Hub")) activePane = focusHubPanel;
-        else if (moduleName.equals("Archived")) activePane = archivedPanel;
-        else if (moduleName.equals("Settings")) activePane = settingsPanel;
+    private void switchModule(String internalId) {
+        Node activePane;
+        if (internalId.equals("QUICK")) activePane = quickToDoPanel;
+        else if (internalId.equals("DAILY")) activePane = dailyToDoPanel;
+        else if (internalId.equals("WORK")) activePane = workListPanel;
+        else if (internalId.equals("FOCUS")) activePane = focusHubPanel;
+        else if (internalId.equals("ARCHIVE")) activePane = archivedPanel;
+        else if (internalId.equals("SETTINGS")) activePane = settingsPanel;
         else activePane = new VBox(new Label("Error: Module not found"));
 
         rootLayout.setCenter(activePane);
     }
 
+    private void autoArchiveTasks() {
+        for (TaskItem task : taskDatabase) {
+            // Target BOTH Quick and Work tasks that are finished and not yet archived
+            if ((task.getOriginModule() == TaskItem.OriginModule.QUICK || task.getOriginModule() == TaskItem.OriginModule.WORK)
+                && task.isFinished() && !task.isArchived()) {
+
+                task.setArchived(true);
+
+                // Failsafe: Ensure Date Completed is populated
+                if (task.getDateCompleted() == null) {
+                    task.setFinished(true);
+                }
+            }
+        }
+    }
+
     @Override
     public void stop() throws Exception {
+        autoArchiveTasks();
         StorageManager.saveTasks(taskDatabase);
         StorageManager.saveStats(appStats);
     }

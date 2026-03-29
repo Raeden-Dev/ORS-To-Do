@@ -48,3 +48,38 @@ Archive:
 
 4:
 ===================================================================================
+Changes/Updates:
+
+Settings (new):
+- Add text edit for the buttons in the left panel
+- Add Wipe for Work List and Daily To-Do
+- All button sizes should be same for consistency
+- Add a save button below and make it blue color
+
+Quick To-Do:
+- Add a rectangle before the entry according to the color of the corresponding priority of the task
+- Similar to "Daily Streaks" text in daily to-do, add a "Current available tasks: (count)" at top [Make text green color]
+- Auto archive completed tasks when I close the program
+- Add back changing background color of buttons
+- Completed task text should have a strike through instead of a darker color
+
+Daily To-Do:
+- Add a "Time left" counter to the left of "Export history" button which shows time until the tasks are reset
+- Add back changing background color of buttons
+- Export History shouldn't just export CSV of data, it should have visual graph of my completed tasks and whatever. Make it professional!
+- Completed task text should have a strike through instead of a darker color
+
+Work List:
+- Add a rectangle before the entry according to the color of the corresponding priority of the task
+- Similar to "Daily Streaks" text in daily to-do, add a "Current available tasks: (count)" at top [Make text blue color]
+- Auto archive completed tasks when I close the program
+- Completed task text should have a strike through instead of a darker color
+
+Focus Hub:
+- The scratchpad background is still white! I want a dark color
+- Reset button to red color (soft red)
+
+Archive:
+- Whenever I archive any entry, it says no date.
+- Color for prefix of entry for work should be blue and quick-to-do is green
+- Newly archived tasks should have a dark green background, after 3 days of being archived it should be orange and then finally after 1 week it should be the default button color

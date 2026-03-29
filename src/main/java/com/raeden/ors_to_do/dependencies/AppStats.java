@@ -14,19 +14,26 @@ public class AppStats implements Serializable {
     private LocalDate lastOpenedDate = LocalDate.now();
     private Map<LocalDate, Double> historyLog = new LinkedHashMap<>();
 
-    // Settings
+    // --- Settings: Menu Texts ---
     private String editMenuText = "Edit Task";
     private String archiveMenuText = "Archive Task";
     private String deleteMenuText = "Delete";
+
+    // --- Settings: Sidebar Texts ---
+    private String navQuickText = "Quick To-Do";
+    private String navDailyText = "Daily To-Do";
+    private String navWorkText = "Work List";
+    private String navFocusText = "Focus Hub";
+    private String navArchiveText = "Archived";
+    private String navSettingsText = "Settings";
+
     private List<TaskItem.CustomPriority> customPriorities = new ArrayList<>(List.of(
-            new TaskItem.CustomPriority("LOW", "#4EC9B0"), // Green
-            new TaskItem.CustomPriority("MED", "#FF8C00"), // Orange
-            new TaskItem.CustomPriority("HIGH", "#FF6666") // Red
+            new TaskItem.CustomPriority("LOW", "#4EC9B0"),
+            new TaskItem.CustomPriority("MED", "#FF8C00"),
+            new TaskItem.CustomPriority("HIGH", "#FF6666")
     ));
 
-    // Advanced Daily History: Map of Date -> int[]{Total Tasks, Completed Tasks}
     private Map<LocalDate, int[]> advancedHistoryLog = new LinkedHashMap<>();
-
     private String brainDumpText = "";
     private Map<TaskItem.OriginModule, String> pendingDrafts = new java.util.HashMap<>();
 
@@ -53,6 +60,20 @@ public class AppStats implements Serializable {
     public void setArchiveMenuText(String archiveMenuText) { this.archiveMenuText = archiveMenuText; }
     public String getDeleteMenuText() { return deleteMenuText; }
     public void setDeleteMenuText(String deleteMenuText) { this.deleteMenuText = deleteMenuText; }
+
+    public String getNavQuickText() { return navQuickText; }
+    public void setNavQuickText(String navQuickText) { this.navQuickText = navQuickText; }
+    public String getNavDailyText() { return navDailyText; }
+    public void setNavDailyText(String navDailyText) { this.navDailyText = navDailyText; }
+    public String getNavWorkText() { return navWorkText; }
+    public void setNavWorkText(String navWorkText) { this.navWorkText = navWorkText; }
+    public String getNavFocusText() { return navFocusText; }
+    public void setNavFocusText(String navFocusText) { this.navFocusText = navFocusText; }
+    public String getNavArchiveText() { return navArchiveText; }
+    public void setNavArchiveText(String navArchiveText) { this.navArchiveText = navArchiveText; }
+    public String getNavSettingsText() { return navSettingsText; }
+    public void setNavSettingsText(String navSettingsText) { this.navSettingsText = navSettingsText; }
+
     public List<TaskItem.CustomPriority> getCustomPriorities() { return customPriorities; }
     public Map<LocalDate, int[]> getAdvancedHistoryLog() { return advancedHistoryLog; }
 
