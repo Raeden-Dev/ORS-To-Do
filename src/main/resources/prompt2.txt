@@ -1,0 +1,50 @@
+===================================================================================
+FIRST prompt.txt was a success but Java Swing had limitations, switched to JavaFX
+===================================================================================
+
+1:
+===================================================================================
+The glitch still happens and it is worse now. How about we remake everything using javafx?
+
+2:
+===================================================================================
+Implemented each module step by step by asking in chat.
+
+3:
+===================================================================================
+Changes/Updates:
+
+Settings (new):
+- Add a settings button at the very bottom in the context panel in left
+- I should be able to edit the Button texts in context menu
+- I should be able to add new priorities (text and color)
+- Should be able to wipe a certain To-Do list (delete all entries) or straight up clear all entries
+
+Quick To-Do:
+- Should be able to edit any entry in the list (missing edit)
+
+Daily To-Do:
+- Remove the Priority options
+- Should be able to edit any entry in the list (missing edit)
+- Daily To-Do should reset the tasks daily
+- Implement "View History"
+	> History to track each of the items in daily to-do. It'll show how many times I've did it and how many times I've missed it.
+	> Additionally track how many daily to-do I did per day in a week. (X tasks done out of Y tasks)
+	> I should be able to export history in a excel file with dates and tasks and if it was completed or not
+
+Work List:
+- Should be able to edit any entry in the list (missing edit)
+- For priority dropdown, each priority should have the text with a corresponding color (like green for low, orange for med, red for high etc.)
+-
+
+Focus Hub:
+- Move the "Focus Session" text to very top and make it a bit larger.
+- Name "Brain Dump / Scratchpad" to just "Scratchpad", background should be gray instead of white (dark theme)
+
+Archive:
+- Whenever I archive any entry, it says no date.
+- Color for prefix of entry for work should be blue and quick-to-do is green
+- Newly archived tasks should have a dark green background, after 3 days of being archived it should be orange and then finally after 1 week it should be the default button color
+
+4:
+===================================================================================
