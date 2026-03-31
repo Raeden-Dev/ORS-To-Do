@@ -10,11 +10,11 @@ import java.util.Map;
 public class AppStats implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // --- NEW: Dynamic Section Configuration ---
     public static class SectionConfig implements Serializable {
         private static final long serialVersionUID = 1L;
         private String id;
         private String name;
+        private String sidebarColor = "#569CD6";
 
         // Modular Toggles
         private boolean hasStreak = false;
@@ -28,6 +28,9 @@ public class AppStats implements Serializable {
         private boolean allowArchive = false;
         private boolean showTags = false;
 
+        // --- NEW: Favorite System Toggle ---
+        private boolean allowFavorite = false;
+
         public SectionConfig(String id, String name) {
             this.id = id;
             this.name = name;
@@ -36,6 +39,9 @@ public class AppStats implements Serializable {
         public String getId() { return id; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
+
+        public String getSidebarColor() { return sidebarColor != null ? sidebarColor : "#569CD6"; }
+        public void setSidebarColor(String sidebarColor) { this.sidebarColor = sidebarColor; }
 
         public boolean isHasStreak() { return hasStreak; }
         public void setHasStreak(boolean hasStreak) { this.hasStreak = hasStreak; }
@@ -57,6 +63,8 @@ public class AppStats implements Serializable {
         public void setAllowArchive(boolean allowArchive) { this.allowArchive = allowArchive; }
         public boolean isShowTags() { return showTags; }
         public void setShowTags(boolean showTags) { this.showTags = showTags; }
+        public boolean isAllowFavorite() { return allowFavorite; }
+        public void setAllowFavorite(boolean allowFavorite) { this.allowFavorite = allowFavorite; }
     }
 
     public static class DailyTemplate implements Serializable {
@@ -103,7 +111,10 @@ public class AppStats implements Serializable {
     private String navArchiveText = "Archived";
     private String navSettingsText = "Settings";
 
-    // --- NEW: Section List ---
+    private String navFocusColor = "#E06666";
+    private String navArchiveColor = "#C586C0";
+    private String navSettingsColor = "#858585";
+
     private List<SectionConfig> sections = new ArrayList<>();
 
     private List<TaskItem.CustomPriority> customPriorities = new ArrayList<>(List.of(
@@ -117,7 +128,6 @@ public class AppStats implements Serializable {
     private String brainDumpText = "";
     private Map<TaskItem.OriginModule, String> pendingDrafts = new java.util.HashMap<>();
 
-    // --- NEW: Section Getters ---
     public List<SectionConfig> getSections() {
         if (sections == null) sections = new ArrayList<>();
         return sections;
@@ -161,6 +171,8 @@ public class AppStats implements Serializable {
     public void setArchiveMenuText(String archiveMenuText) { this.archiveMenuText = archiveMenuText; }
     public String getDeleteMenuText() { return deleteMenuText; }
     public void setDeleteMenuText(String deleteMenuText) { this.deleteMenuText = deleteMenuText; }
+
+    // Texts
     public String getNavQuickText() { return navQuickText; }
     public void setNavQuickText(String navQuickText) { this.navQuickText = navQuickText; }
     public String getNavDailyText() { return navDailyText; }
@@ -173,6 +185,15 @@ public class AppStats implements Serializable {
     public void setNavArchiveText(String navArchiveText) { this.navArchiveText = navArchiveText; }
     public String getNavSettingsText() { return navSettingsText; }
     public void setNavSettingsText(String navSettingsText) { this.navSettingsText = navSettingsText; }
+
+    // Colors
+    public String getNavFocusColor() { return navFocusColor != null ? navFocusColor : "#E06666"; }
+    public void setNavFocusColor(String navFocusColor) { this.navFocusColor = navFocusColor; }
+    public String getNavArchiveColor() { return navArchiveColor != null ? navArchiveColor : "#C586C0"; }
+    public void setNavArchiveColor(String navArchiveColor) { this.navArchiveColor = navArchiveColor; }
+    public String getNavSettingsColor() { return navSettingsColor != null ? navSettingsColor : "#858585"; }
+    public void setNavSettingsColor(String navSettingsColor) { this.navSettingsColor = navSettingsColor; }
+
     public Map<LocalDate, int[]> getAdvancedHistoryLog() { return advancedHistoryLog; }
     public String getBrainDumpText() { return brainDumpText; }
     public void setBrainDumpText(String brainDumpText) { this.brainDumpText = brainDumpText; }

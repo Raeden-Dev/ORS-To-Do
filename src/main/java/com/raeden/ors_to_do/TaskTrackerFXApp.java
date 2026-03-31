@@ -28,6 +28,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public class TaskTrackerFXApp extends Application implements NativeKeyListener {
 
@@ -36,12 +37,13 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
     private BorderPane rootLayout;
     private VBox sidebar;
 
-    private TaskModuleFX quickToDoPanel;
-    private DailyModuleFX dailyToDoPanel;
-    private TaskModuleFX workListPanel;
+    // --- Static Core Panels ---
     private FocusHubModuleFX focusHubPanel;
     private ArchivedModuleFX archivedPanel;
     private SettingsModuleFX settingsPanel;
+
+    // --- NEW: The currently loaded dynamic list ---
+    private DynamicModuleFX currentDynamicPanel;
 
     private String currentActiveModule = "QUICK";
 
@@ -56,9 +58,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         taskDatabase = StorageManager.loadTasks();
         appStats = StorageManager.loadStats();
 
-        // --- NEW: PHASE 1 MIGRATION SCRIPT ---
-        runSilentDataMigration();
-
+        runSilentDataMigration(); // From Phase 1
         processDailyRollover();
 
         try {
@@ -69,11 +69,9 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         }
     }
 
-    // --- NEW: Safe Migration Engine ---
     private void runSilentDataMigration() {
         boolean needsSave = false;
 
-        // 1. Build the Dynamic Sections if they don't exist yet
         if (appStats.getSections().isEmpty()) {
             AppStats.SectionConfig quick = new AppStats.SectionConfig("QUICK", appStats.getNavQuickText());
             quick.setShowPriority(true);
@@ -101,7 +99,6 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             System.out.println("Migrated AppStats: Generated default Section Configs.");
         }
 
-        // 2. Map old legacy tasks to the new String IDs
         for (TaskItem task : taskDatabase) {
             if (task.getSectionId() == null && task.getLegacyOriginModule() != null) {
                 task.setSectionId(task.getLegacyOriginModule().name());
@@ -112,7 +109,6 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         if (needsSave) {
             StorageManager.saveStats(appStats);
             StorageManager.saveTasks(taskDatabase);
-            System.out.println("Phase 1 Migration Complete: Database successfully upgraded to Modular format.");
         }
     }
 
@@ -154,16 +150,11 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         sidebar.setPrefWidth(220);
 
         Runnable syncUI = () -> {
-            if (quickToDoPanel != null) quickToDoPanel.refreshList();
-            if (workListPanel != null) workListPanel.refreshList();
-            if (dailyToDoPanel != null) dailyToDoPanel.refreshList();
+            if (currentDynamicPanel != null) currentDynamicPanel.refreshList();
             if (focusHubPanel != null) focusHubPanel.refreshTasks();
             setupSidebar();
         };
 
-        quickToDoPanel = new TaskModuleFX(TaskItem.OriginModule.QUICK, taskDatabase, appStats);
-        dailyToDoPanel = new DailyModuleFX(taskDatabase, appStats);
-        workListPanel = new TaskModuleFX(TaskItem.OriginModule.WORK, taskDatabase, appStats);
         focusHubPanel = new FocusHubModuleFX(appStats, taskDatabase, syncUI);
         archivedPanel = new ArchivedModuleFX(taskDatabase, appStats, syncUI);
         settingsPanel = new SettingsModuleFX(appStats, taskDatabase, syncUI);
@@ -173,13 +164,18 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
 
         Scene scene = new Scene(rootLayout, 1000, 700);
         String css = getClass().getResource("/styles.css").toExternalForm();
-        scene.getStylesheets().add(css);
+        if (css != null) scene.getStylesheets().add(css);
 
         primaryStage.setTitle("Task-Tracker (JavaFX)");
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        switchModule("QUICK");
+        // Boot into the first available section
+        if (!appStats.getSections().isEmpty()) {
+            switchModule(appStats.getSections().get(0).getId());
+        } else {
+            switchModule("SETTINGS");
+        }
     }
 
     private void startSingleInstanceServer() {
@@ -262,16 +258,10 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         catch (java.awt.AWTException e) { System.err.println("TrayIcon could not be added."); }
     }
 
-    // --- UPGRADED: Smart OS Notification Method ---
     public static void pushNotification(String title, String message) {
-        // If the app is hidden/running in the background System Tray
         if (mainStage != null && !mainStage.isShowing()) {
-            if (trayIcon != null) {
-                // Push native Windows Toast Notification
-                trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
-            }
+            if (trayIcon != null) trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
         } else {
-            // If the app is actively open on your screen, show an in-app popup instead
             Platform.runLater(() -> {
                 javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
                 alert.setTitle(title);
@@ -304,11 +294,15 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         captureField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER && !captureField.getText().trim().isEmpty()) {
                 TaskItem.CustomPriority defaultPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
-                TaskItem newTask = new TaskItem(captureField.getText().trim(), defaultPrio, TaskItem.OriginModule.QUICK);
+
+                // Automatically route to the very first section configured in your app
+                String fallbackId = appStats.getSections().isEmpty() ? "QUICK" : appStats.getSections().get(0).getId();
+
+                TaskItem newTask = new TaskItem(captureField.getText().trim(), defaultPrio, fallbackId);
                 taskDatabase.add(newTask);
                 StorageManager.saveTasks(taskDatabase);
 
-                if (quickToDoPanel != null) quickToDoPanel.refreshList();
+                if (currentDynamicPanel != null) currentDynamicPanel.refreshList();
                 captureStage.close();
             } else if (event.getCode() == KeyCode.ESCAPE) {
                 captureStage.close();
@@ -338,7 +332,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             int completedDaily = 0;
 
             for (TaskItem task : taskDatabase) {
-                if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
+                if ("DAILY".equals(task.getSectionId()) && !task.isArchived()) {
                     totalDaily++;
                     if (task.isFinished()) completedDaily++;
                 }
@@ -349,10 +343,8 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
                 appStats.addHistoryRecord(lastOpened, percentComplete);
                 appStats.getAdvancedHistoryLog().put(lastOpened, new int[]{totalDaily, completedDaily});
 
-                // --- NEW: Leniency Logic ---
                 double requiredFraction = appStats.getMinDailyCompletionPercent() / 100.0;
 
-                // Subtracting 0.001 protects against weird Java floating point math errors
                 if (percentComplete >= (requiredFraction - 0.001)) {
                     appStats.setCurrentStreak(appStats.getCurrentStreak() + 1);
                 } else {
@@ -361,7 +353,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             }
 
             for (TaskItem task : taskDatabase) {
-                if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
+                if ("DAILY".equals(task.getSectionId()) && !task.isArchived()) {
                     task.setArchived(true);
                     if (task.getDateCompleted() == null) task.setFinished(true);
                 }
@@ -369,7 +361,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
 
             TaskItem.CustomPriority defaultPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
             for (AppStats.DailyTemplate template : appStats.getBaseDailies()) {
-                TaskItem newTask = new TaskItem(template.getText(), defaultPrio, TaskItem.OriginModule.DAILY);
+                TaskItem newTask = new TaskItem(template.getText(), defaultPrio, "DAILY");
                 if (template.getPrefix() != null && !template.getPrefix().isEmpty()) newTask.setPrefix(template.getPrefix());
 
                 newTask.setPrefixColor(template.getPrefixColor());
@@ -387,23 +379,40 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
     private void setupSidebar() {
         sidebar.getChildren().clear();
 
-        addSidebarButton(appStats.getNavQuickText(), "QUICK");
-        addSidebarButton(appStats.getNavDailyText(), "DAILY");
-        addSidebarButton(appStats.getNavWorkText(), "WORK");
-        addSidebarButton(appStats.getNavFocusText(), "FOCUS");
+        // 1. Dynamic Section Buttons
+        for (AppStats.SectionConfig config : appStats.getSections()) {
+            addSidebarButton(config.getName(), config.getId(), config.getSidebarColor());
+        }
 
+        // 2. Flexible Spacer pushes the rest to the bottom
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().add(spacer);
 
-        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE");
-        addSidebarButton(appStats.getNavSettingsText(), "SETTINGS");
+        // 3. Separator Line
+        javafx.scene.control.Separator sep = new javafx.scene.control.Separator();
+        sep.setPadding(new javafx.geometry.Insets(10, 0, 10, 0));
+        sidebar.getChildren().add(sep);
+
+        // 4. Static Bottom Buttons
+        addSidebarButton(appStats.getNavFocusText(), "FOCUS", appStats.getNavFocusColor());
+        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE", appStats.getNavArchiveColor());
+        addSidebarButton(appStats.getNavSettingsText(), "SETTINGS", appStats.getNavSettingsColor());
     }
 
-    private void addSidebarButton(String displayText, String internalId) {
+    private void addSidebarButton(String displayText, String internalId, String hexColor) {
         Button btn = new Button(displayText);
         btn.getStyleClass().add("nav-button");
         btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setAlignment(javafx.geometry.Pos.CENTER_LEFT); // Ensure text sits next to the rectangle
+
+        // --- NEW: Custom Side Rectangle Graphic ---
+        javafx.scene.shape.Rectangle rect = new javafx.scene.shape.Rectangle(5, 20);
+        rect.setArcWidth(3); rect.setArcHeight(3);
+        rect.setFill(javafx.scene.paint.Color.web(hexColor != null ? hexColor : "#FFFFFF"));
+
+        btn.setGraphic(rect);
+        btn.setGraphicTextGap(10); // Space between rectangle and text
 
         if (currentActiveModule.equals(internalId)) btn.getStyleClass().add("active");
 
@@ -423,28 +432,60 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         activeBtn.getStyleClass().add("active");
     }
 
+    // --- NEW: Dynamic Routing Engine ---
     private void switchModule(String internalId) {
-        Node activePane;
-        if (internalId.equals("QUICK")) activePane = quickToDoPanel;
-        else if (internalId.equals("DAILY")) activePane = dailyToDoPanel;
-        else if (internalId.equals("WORK")) activePane = workListPanel;
-        else if (internalId.equals("FOCUS")) {
+        Node activePane = null;
+
+        if (internalId.equals("FOCUS")) {
             activePane = focusHubPanel;
             focusHubPanel.refreshTasks();
-        }
-        else if (internalId.equals("ARCHIVE")) activePane = archivedPanel;
-        else if (internalId.equals("SETTINGS")) activePane = settingsPanel;
-        else activePane = new VBox(new Label("Error: Module not found"));
+            currentDynamicPanel = null;
+        } else if (internalId.equals("ARCHIVE")) {
+            activePane = archivedPanel;
+            currentDynamicPanel = null;
+        } else if (internalId.equals("SETTINGS")) {
+            activePane = settingsPanel;
+            currentDynamicPanel = null;
+        } else {
+            // It's a dynamic user-created section! Find it and build it.
+            Optional<AppStats.SectionConfig> matchedConfig = appStats.getSections().stream()
+                    .filter(c -> c.getId().equals(internalId))
+                    .findFirst();
 
-        rootLayout.setCenter(activePane);
+            if (matchedConfig.isPresent()) {
+                Runnable syncUI = () -> {
+                    if (currentDynamicPanel != null) currentDynamicPanel.refreshList();
+                    if (focusHubPanel != null) focusHubPanel.refreshTasks();
+                    setupSidebar();
+                };
+
+                // Instantiate the chameleon UI layout with this specific configuration
+                currentDynamicPanel = new DynamicModuleFX(matchedConfig.get(), taskDatabase, appStats, syncUI);
+                activePane = currentDynamicPanel;
+            } else {
+                activePane = new VBox(new Label("Error: Section Configuration Not Found for " + internalId));
+                currentDynamicPanel = null;
+            }
+        }
+
+        if (activePane != null) {
+            rootLayout.setCenter(activePane);
+        }
     }
 
     private void autoArchiveTasks() {
         for (TaskItem task : taskDatabase) {
-            if ((task.getOriginModule() == TaskItem.OriginModule.QUICK || task.getOriginModule() == TaskItem.OriginModule.WORK)
-                    && task.isFinished() && !task.isArchived()) {
-                task.setArchived(true);
-                if (task.getDateCompleted() == null) task.setFinished(true);
+            // Find the config for this specific task's section
+            Optional<AppStats.SectionConfig> matchedConfig = appStats.getSections().stream()
+                    .filter(c -> c.getId().equals(task.getSectionId()))
+                    .findFirst();
+
+            // If the section allows auto-archive, archive it!
+            if (matchedConfig.isPresent() && matchedConfig.get().isAllowArchive()) {
+                if (task.isFinished() && !task.isArchived()) {
+                    task.setArchived(true);
+                    if (task.getDateCompleted() == null) task.setFinished(true);
+                }
             }
         }
     }

@@ -48,7 +48,7 @@ public class FocusHubModuleFX extends HBox {
         VBox timerContainer = new VBox(15);
         timerContainer.setAlignment(Pos.TOP_CENTER);
         HBox.setHgrow(timerContainer, Priority.ALWAYS);
-        timerContainer.setMinWidth(450); // FIXED: Forces the timer to maintain its layout space
+        timerContainer.setMinWidth(450);
 
         statusLabel = new Label("FOCUS SESSION");
         statusLabel.setStyle("-fx-font-size: 32px; -fx-font-weight: bold;");
@@ -57,21 +57,27 @@ public class FocusHubModuleFX extends HBox {
 
         VBox linkBox = new VBox(5);
         linkBox.setAlignment(Pos.CENTER);
-        Label linkLabel = new Label("Link Focus to Work Task:");
+        Label linkLabel = new Label("Link Focus to Task:");
         linkLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 14px; -fx-font-weight: bold;");
 
         taskSelector = new ComboBox<>();
         taskSelector.setPrefWidth(300);
-        taskSelector.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white;");
+        taskSelector.setStyle("-fx-background-color: #3E3E42; -fx-cursor: hand;");
 
+        // --- FIXED: Dynamic Section Name Resolution for Dropdown ---
         taskSelector.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(TaskItem item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText("None (Free Focus)");
                 } else {
-                    String prefix = item.getOriginModule() == TaskItem.OriginModule.WORK ? "[WORK] " : "[QUICK] ";
-                    setText(prefix + item.getTextContent());
+                    String secName = "Task";
+                    if (item.getSectionId() != null) {
+                        for(AppStats.SectionConfig c : appStats.getSections()){
+                            if(c.getId().equals(item.getSectionId())){ secName = c.getName(); break; }
+                        }
+                    }
+                    setText("[" + secName + "] " + item.getTextContent());
                 }
                 setStyle("-fx-text-fill: black;");
             }
@@ -82,8 +88,13 @@ public class FocusHubModuleFX extends HBox {
                 if (empty || item == null) {
                     setText("None (Free Focus)");
                 } else {
-                    String prefix = item.getOriginModule() == TaskItem.OriginModule.WORK ? "[WORK] " : "[QUICK] ";
-                    setText(prefix + item.getTextContent());
+                    String secName = "Task";
+                    if (item.getSectionId() != null) {
+                        for(AppStats.SectionConfig c : appStats.getSections()){
+                            if(c.getId().equals(item.getSectionId())){ secName = c.getName(); break; }
+                        }
+                    }
+                    setText("[" + secName + "] " + item.getTextContent());
                 }
                 setStyle("-fx-text-fill: white;");
             }
@@ -133,7 +144,7 @@ public class FocusHubModuleFX extends HBox {
         // --- RIGHT: Markdown Scratchpad ---
         VBox scratchpadContainer = new VBox(10);
         HBox.setHgrow(scratchpadContainer, Priority.SOMETIMES);
-        scratchpadContainer.setPrefWidth(350); // FIXED: Constrains the scratchpad footprint
+        scratchpadContainer.setPrefWidth(350);
         scratchpadContainer.setMaxWidth(400);
 
         HBox scratchHeader = new HBox();
@@ -250,15 +261,28 @@ public class FocusHubModuleFX extends HBox {
         webEngine.executeScript("updateContent('" + base64 + "');");
     }
 
+    // --- FIXED: Now pulls any task from any section where "Track Time" is enabled ---
     public void refreshTasks() {
         TaskItem selected = taskSelector.getValue();
         taskSelector.getItems().clear();
         taskSelector.getItems().add(null);
 
         for (TaskItem task : globalDatabase) {
-            if ((task.getOriginModule() == TaskItem.OriginModule.WORK || task.getOriginModule() == TaskItem.OriginModule.QUICK)
-                    && !task.isFinished() && !task.isArchived()) {
-                taskSelector.getItems().add(task);
+            if (!task.isFinished() && !task.isArchived()) {
+                boolean canFocus = false;
+
+                if (task.getSectionId() != null) {
+                    for (AppStats.SectionConfig config : appStats.getSections()) {
+                        if (config.getId().equals(task.getSectionId()) && config.isTrackTime()) {
+                            canFocus = true;
+                            break;
+                        }
+                    }
+                } else if (task.getOriginModule() == TaskItem.OriginModule.WORK || task.getOriginModule() == TaskItem.OriginModule.QUICK) {
+                    canFocus = true; // Safety fallback for legacy non-migrated tasks
+                }
+
+                if (canFocus) taskSelector.getItems().add(task);
             }
         }
 
@@ -285,11 +309,9 @@ public class FocusHubModuleFX extends HBox {
                 isFocusMode = !isFocusMode;
                 resetTimer(isFocusMode);
 
-                // --- CHANGED: Native OS Notification instead of invasive popup ---
                 String title = isFocusMode ? "Pomodoro Break Over" : "Pomodoro Session Complete";
                 String message = isFocusMode ? "Back to work!" : "Great job! Take a short break.";
 
-                // Calls the native Windows notification system
                 com.raeden.ors_to_do.TaskTrackerFXApp.pushNotification(title, message);
             }
         }));

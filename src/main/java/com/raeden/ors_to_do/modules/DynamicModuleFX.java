@@ -119,7 +119,25 @@ public class DynamicModuleFX extends BorderPane {
             sortComboBox.getItems().addAll("Priority: Low to High", "Priority: High to Low");
         }
         sortComboBox.setValue("Custom Order");
-        sortComboBox.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+
+        sortComboBox.setStyle("-fx-background-color: #E0E0E0; -fx-cursor: hand;");
+
+        sortComboBox.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); }
+                else { setText(item); setStyle("-fx-text-fill: black; -fx-font-weight: bold;"); }
+            }
+        });
+
+        sortComboBox.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); }
+                else { setText(item); setStyle("-fx-text-fill: black;"); }
+            }
+        });
+
         sortComboBox.setOnAction(e -> refreshList());
 
         filterSortRow.getChildren().addAll(filterSpacer, sortComboBox);
@@ -307,7 +325,11 @@ public class DynamicModuleFX extends BorderPane {
     private VBox createTaskRow(TaskItem task) {
         VBox completeRow = new VBox();
         completeRow.getStyleClass().add("task-row");
-        String originalStyle = task.getColorHex() != null ? "-fx-background-color: " + task.getColorHex() + ";" : "";
+
+        // --- FIXED: Apply Custom Background Color & Golden Highlight Border ---
+        String bgStyle = task.getColorHex() != null ? "-fx-background-color: " + task.getColorHex() + "; " : "";
+        String borderStyle = (config.isAllowFavorite() && task.isFavorite()) ? "-fx-border-color: #FFD700; -fx-border-width: 2; -fx-border-radius: 4; " : "";
+        String originalStyle = bgStyle + borderStyle;
         completeRow.setStyle(originalStyle);
 
         // Native Drag & Drop Logic
@@ -323,7 +345,9 @@ public class DynamicModuleFX extends BorderPane {
             event.consume();
         });
         completeRow.setOnDragEntered(event -> {
-            if (event.getGestureSource() != completeRow && event.getDragboard().hasString()) completeRow.setStyle(originalStyle + " -fx-border-color: #569CD6; -fx-border-width: 2;");
+            if (event.getGestureSource() != completeRow && event.getDragboard().hasString()) {
+                completeRow.setStyle(originalStyle + " -fx-border-color: #569CD6; -fx-border-width: 2;");
+            }
         });
         completeRow.setOnDragExited(event -> completeRow.setStyle(originalStyle));
         completeRow.setOnDragDropped(event -> {
@@ -360,6 +384,13 @@ public class DynamicModuleFX extends BorderPane {
 
         HBox metaBox = new HBox(7, expandBtn, sideRect);
         metaBox.setAlignment(Pos.CENTER_LEFT);
+
+        // --- NEW: Inject Golden Star if favorited ---
+        if (config.isAllowFavorite() && task.isFavorite()) {
+            Label starLabel = new Label("[⭐]");
+            starLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
+            metaBox.getChildren().add(starLabel);
+        }
 
         if (config.isShowDate()) {
             Label dateLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
@@ -404,12 +435,15 @@ public class DynamicModuleFX extends BorderPane {
         // Priority Box
         ComboBox<TaskItem.CustomPriority> prioBox = null;
         if (config.isShowPriority()) {
-            prioBox = new ComboBox<>();
-            prioBox.getItems().addAll(appStats.getCustomPriorities());
-            prioBox.setValue(task.getPriority());
-            setupPriorityBoxColors(prioBox);
-            prioBox.setOnAction(e -> {
-                task.setPriority(prioBox.getValue());
+            ComboBox<TaskItem.CustomPriority> localPrioBox = new ComboBox<>();
+            prioBox = localPrioBox;
+
+            localPrioBox.getItems().addAll(appStats.getCustomPriorities());
+            localPrioBox.setValue(task.getPriority());
+            setupPriorityBoxColors(localPrioBox);
+
+            localPrioBox.setOnAction(e -> {
+                task.setPriority(localPrioBox.getValue());
                 StorageManager.saveTasks(globalDatabase);
                 if (sortComboBox.getValue().contains("Priority")) refreshList();
             });
@@ -492,6 +526,17 @@ public class DynamicModuleFX extends BorderPane {
 
     private void attachContextMenu(HBox row, TaskItem task) {
         ContextMenu contextMenu = new ContextMenu();
+
+        // --- NEW: Dynamic Context Menu Favorite Option ---
+        if (config.isAllowFavorite()) {
+            MenuItem favItem = new MenuItem(task.isFavorite() ? "Remove Favorite" : "Mark as Favorite");
+            favItem.setOnAction(e -> {
+                task.setFavorite(!task.isFavorite());
+                StorageManager.saveTasks(globalDatabase);
+                refreshList();
+            });
+            contextMenu.getItems().addAll(favItem, new SeparatorMenuItem());
+        }
 
         MenuItem editItem = new MenuItem(appStats.getEditMenuText());
         editItem.setOnAction(e -> showEditDialog(task));
