@@ -3,10 +3,15 @@ package com.raeden.ors_to_do.modules;
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
+import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.util.Duration;
+
+import java.util.Collections;
 import java.util.List;
 
 public class SettingsModuleFX extends ScrollPane {
@@ -26,32 +31,75 @@ public class SettingsModuleFX extends ScrollPane {
         Label header = new Label("Settings");
         header.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
 
-        // --- Text & General Settings ---
+        // ==========================================
+        // --- 1. General Customization Section ---
+        // ==========================================
         VBox textSettings = new VBox(15);
         textSettings.setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
-        Label textHeader = new Label("General Customization");
-        textHeader.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #CCCCCC;");
 
-        GridPane textGrid = new GridPane();
-        textGrid.setHgap(15); textGrid.setVgap(10);
+        Label textHeader = new Label("General Customization");
+        textHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+
+        // --- Sub-section: Appearance & Behavior ---
+        Label behaviorHeader = new Label("Appearance & Behavior");
+        behaviorHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
+        GridPane behaviorGrid = new GridPane();
+        behaviorGrid.setHgap(15); behaviorGrid.setVgap(10);
+
+        Spinner<Integer> fontSizeSpinner = new Spinner<>(10, 36, appStats.getTaskFontSize());
+        fontSizeSpinner.setEditable(true);
+
+        // --- NEW: Leniency Slider UI ---
+        Label sliderLabel = new Label("Minimum Daily tasks to complete:");
+        sliderLabel.setStyle("-fx-text-fill: white;");
+        Slider streakSlider = new Slider(10, 100, appStats.getMinDailyCompletionPercent());
+        streakSlider.setMajorTickUnit(10);
+        streakSlider.setMinorTickCount(0);
+        streakSlider.setSnapToTicks(true);
+        streakSlider.setShowTickLabels(true);
+        streakSlider.setShowTickMarks(true);
+        streakSlider.setPrefWidth(200);
+
+        Label sliderValueLabel = new Label((int)streakSlider.getValue() + "%");
+        sliderValueLabel.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
+        streakSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            sliderValueLabel.setText(newVal.intValue() + "%");
+        });
+        HBox sliderBox = new HBox(10, streakSlider, sliderValueLabel);
+        sliderBox.setAlignment(Pos.CENTER_LEFT);
+
+        CheckBox runInBackgroundCheck = new CheckBox("Run app in background (System Tray) when closed");
+        runInBackgroundCheck.setSelected(appStats.isRunInBackground());
+        runInBackgroundCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+
+        CheckBox matchRectCheck = new CheckBox("Match Daily prefix color to the white side rectangle");
+        matchRectCheck.setSelected(appStats.isMatchDailyRectColor());
+        matchRectCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+
+        behaviorGrid.add(new Label("Task Font Size:"), 0, 0); behaviorGrid.add(fontSizeSpinner, 1, 0);
+        behaviorGrid.add(sliderLabel, 0, 1); behaviorGrid.add(sliderBox, 1, 1);
+        behaviorGrid.add(runInBackgroundCheck, 0, 2, 2, 1);
+        behaviorGrid.add(matchRectCheck, 0, 3, 2, 1);
+
+        // --- Sub-section: Context Menu Texts ---
+        Label contextHeader = new Label("Right-Click Menu Texts");
+        contextHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
+        GridPane contextGrid = new GridPane();
+        contextGrid.setHgap(15); contextGrid.setVgap(10);
 
         TextField editMenuField = new TextField(appStats.getEditMenuText()); editMenuField.setPromptText("Default: Edit Task");
         TextField archiveMenuField = new TextField(appStats.getArchiveMenuText()); archiveMenuField.setPromptText("Default: Archive Task");
         TextField deleteMenuField = new TextField(appStats.getDeleteMenuText()); deleteMenuField.setPromptText("Default: Delete");
 
-        Spinner<Integer> fontSizeSpinner = new Spinner<>(10, 36, appStats.getTaskFontSize());
-        fontSizeSpinner.setEditable(true);
+        contextGrid.add(new Label("Edit Menu Text:"), 0, 0); contextGrid.add(editMenuField, 1, 0);
+        contextGrid.add(new Label("Archive Menu Text:"), 0, 1); contextGrid.add(archiveMenuField, 1, 1);
+        contextGrid.add(new Label("Delete Menu Text:"), 0, 2); contextGrid.add(deleteMenuField, 1, 2);
 
-        textGrid.add(new Label("Edit Menu Text:"), 0, 0); textGrid.add(editMenuField, 1, 0);
-        textGrid.add(new Label("Archive Menu Text:"), 0, 1); textGrid.add(archiveMenuField, 1, 1);
-        textGrid.add(new Label("Delete Menu Text:"), 0, 2); textGrid.add(deleteMenuField, 1, 2);
-        textGrid.add(new Label("Task Font Size:"), 0, 3); textGrid.add(fontSizeSpinner, 1, 3);
-
-        // --- NEW: Background Checkbox ---
-        CheckBox runInBackgroundCheck = new CheckBox("Run app in background (System Tray) when closed");
-        runInBackgroundCheck.setSelected(appStats.isRunInBackground());
-        runInBackgroundCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
-        textGrid.add(runInBackgroundCheck, 0, 4, 2, 1); // Spans across 2 columns
+        // --- Sub-section: Navigation Texts ---
+        Label navHeader = new Label("Sidebar Navigation Texts");
+        navHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
+        GridPane navGrid = new GridPane();
+        navGrid.setHgap(15); navGrid.setVgap(10);
 
         TextField quickNavField = new TextField(appStats.getNavQuickText()); quickNavField.setPromptText("Default: Quick To-Do");
         TextField dailyNavField = new TextField(appStats.getNavDailyText()); dailyNavField.setPromptText("Default: Daily To-Do");
@@ -60,22 +108,33 @@ public class SettingsModuleFX extends ScrollPane {
         TextField archiveNavField = new TextField(appStats.getNavArchiveText()); archiveNavField.setPromptText("Default: Archived");
         TextField settingsNavField = new TextField(appStats.getNavSettingsText()); settingsNavField.setPromptText("Default: Settings");
 
-        textGrid.add(new Label("Quick To-Do Nav:"), 2, 0); textGrid.add(quickNavField, 3, 0);
-        textGrid.add(new Label("Daily To-Do Nav:"), 2, 1); textGrid.add(dailyNavField, 3, 1);
-        textGrid.add(new Label("Work List Nav:"), 2, 2); textGrid.add(workNavField, 3, 2);
-        textGrid.add(new Label("Focus Hub Nav:"), 2, 3); textGrid.add(focusNavField, 3, 3);
-        textGrid.add(new Label("Archived Nav:"), 2, 4); textGrid.add(archiveNavField, 3, 4);
-        textGrid.add(new Label("Settings Nav:"), 2, 5); textGrid.add(settingsNavField, 3, 5);
+        navGrid.add(new Label("Quick To-Do Nav:"), 0, 0); navGrid.add(quickNavField, 1, 0);
+        navGrid.add(new Label("Daily To-Do Nav:"), 0, 1); navGrid.add(dailyNavField, 1, 1);
+        navGrid.add(new Label("Work List Nav:"), 0, 2); navGrid.add(workNavField, 1, 2);
+        navGrid.add(new Label("Focus Hub Nav:"), 2, 0); navGrid.add(focusNavField, 3, 0);
+        navGrid.add(new Label("Archived Nav:"), 2, 1); navGrid.add(archiveNavField, 3, 1);
+        navGrid.add(new Label("Settings Nav:"), 2, 2); navGrid.add(settingsNavField, 3, 2);
+
+        // --- Save Button & 3-Second Notification ---
+        HBox saveActionBox = new HBox(15);
+        saveActionBox.setAlignment(Pos.CENTER_LEFT);
 
         Button saveTextBtn = new Button("Save Changes");
         saveTextBtn.setPrefWidth(BUTTON_WIDTH);
         saveTextBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+
+        Label savedNotification = new Label("Saved Changes!");
+        savedNotification.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold; -fx-font-size: 14px;");
+        savedNotification.setVisible(false);
+
         saveTextBtn.setOnAction(e -> {
             appStats.setEditMenuText(editMenuField.getText().trim().isEmpty() ? "Edit Task" : editMenuField.getText().trim());
             appStats.setArchiveMenuText(archiveMenuField.getText().trim().isEmpty() ? "Archive Task" : archiveMenuField.getText().trim());
             appStats.setDeleteMenuText(deleteMenuField.getText().trim().isEmpty() ? "Delete" : deleteMenuField.getText().trim());
             appStats.setTaskFontSize(fontSizeSpinner.getValue());
-            appStats.setRunInBackground(runInBackgroundCheck.isSelected()); // Save Background Preference
+            appStats.setMinDailyCompletionPercent((int) streakSlider.getValue()); // Saves to Data
+            appStats.setRunInBackground(runInBackgroundCheck.isSelected());
+            appStats.setMatchDailyRectColor(matchRectCheck.isSelected());
 
             appStats.setNavQuickText(quickNavField.getText().trim().isEmpty() ? "Quick To-Do" : quickNavField.getText().trim());
             appStats.setNavDailyText(dailyNavField.getText().trim().isEmpty() ? "Daily To-Do" : dailyNavField.getText().trim());
@@ -86,12 +145,26 @@ public class SettingsModuleFX extends ScrollPane {
 
             StorageManager.saveStats(appStats);
             refreshCallback.run();
+
+            savedNotification.setVisible(true);
+            PauseTransition pause = new PauseTransition(Duration.seconds(3));
+            pause.setOnFinished(event -> savedNotification.setVisible(false));
+            pause.play();
         });
 
-        textSettings.getChildren().addAll(textHeader, textGrid, saveTextBtn);
+        saveActionBox.getChildren().addAll(saveTextBtn, savedNotification);
 
+        textSettings.getChildren().addAll(
+                textHeader,
+                behaviorHeader, behaviorGrid, new Separator(),
+                contextHeader, contextGrid, new Separator(),
+                navHeader, navGrid, new Separator(),
+                saveActionBox
+        );
 
-        // --- CHANGED: Renamed Section ---
+        // ==========================================
+        // --- 2. Template Settings Section ---
+        // ==========================================
         VBox templateSettings = new VBox(15);
         templateSettings.setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
         Label templateHeader = new Label("Daily Tasks to Add");
@@ -101,12 +174,18 @@ public class SettingsModuleFX extends ScrollPane {
         renderExistingTemplates(appStats, refreshCallback);
 
         HBox templateInput = new HBox(10);
+        templateInput.setAlignment(Pos.CENTER_LEFT);
         TextField tempPrefix = new TextField(); tempPrefix.setPromptText("[Prefix]"); tempPrefix.setPrefWidth(80);
-        TextField tempText = new TextField(); tempText.setPromptText("Task Content (e.g. Push Day)");
+        ColorPicker prefixColorPicker = new ColorPicker(Color.web("#4EC9B0"));
+        prefixColorPicker.setStyle("-fx-color-label-visible: false;");
+
+        TextField tempText = new TextField(); tempText.setPromptText("Task Content");
         HBox.setHgrow(tempText, Priority.ALWAYS);
+        ColorPicker bgColorPicker = new ColorPicker(Color.TRANSPARENT);
+        bgColorPicker.setStyle("-fx-color-label-visible: false;");
 
         Button addTempBtn = new Button("Add Task");
-        addTempBtn.setPrefWidth(BUTTON_WIDTH);
+        addTempBtn.setPrefWidth(120);
         addTempBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-border-color: #555555; -fx-cursor: hand;");
         addTempBtn.setOnAction(e -> {
             if(!tempText.getText().isEmpty()) {
@@ -115,17 +194,24 @@ public class SettingsModuleFX extends ScrollPane {
                     if (!cleanPrefix.startsWith("[")) cleanPrefix = "[" + cleanPrefix;
                     if (!cleanPrefix.endsWith("]")) cleanPrefix = cleanPrefix + "]";
                 }
-                appStats.getBaseDailies().add(new AppStats.DailyTemplate(cleanPrefix, tempText.getText().trim()));
+
+                String pColor = toHexString(prefixColorPicker.getValue());
+                String bColor = bgColorPicker.getValue().getOpacity() == 0.0 ? null : toHexString(bgColorPicker.getValue());
+
+                appStats.getBaseDailies().add(new AppStats.DailyTemplate(cleanPrefix, tempText.getText().trim(), pColor, bColor));
                 StorageManager.saveStats(appStats);
                 renderExistingTemplates(appStats, refreshCallback);
                 tempPrefix.clear(); tempText.clear();
             }
         });
-        templateInput.getChildren().addAll(tempPrefix, tempText);
-        templateSettings.getChildren().addAll(templateHeader, existingTemplatesBox, new Separator(), templateInput, addTempBtn);
+
+        templateInput.getChildren().addAll(tempPrefix, prefixColorPicker, tempText, new Label("Bg:"), bgColorPicker, addTempBtn);
+        templateSettings.getChildren().addAll(templateHeader, existingTemplatesBox, new Separator(), templateInput);
 
 
-        // --- Custom Priorities Section ---
+        // ==========================================
+        // --- 3. Custom Priorities Section ---
+        // ==========================================
         VBox prioSettings = new VBox(15);
         prioSettings.setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
         Label prioHeader = new Label("Manage Priorities");
@@ -143,11 +229,7 @@ public class SettingsModuleFX extends ScrollPane {
         addPrioBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-border-color: #555555; -fx-cursor: hand;");
         addPrioBtn.setOnAction(e -> {
             if(!prioName.getText().isEmpty()) {
-                String hex = String.format("#%02X%02X%02X",
-                        (int)(colorPicker.getValue().getRed()*255),
-                        (int)(colorPicker.getValue().getGreen()*255),
-                        (int)(colorPicker.getValue().getBlue()*255));
-                appStats.getCustomPriorities().add(new TaskItem.CustomPriority(prioName.getText(), hex));
+                appStats.getCustomPriorities().add(new TaskItem.CustomPriority(prioName.getText(), toHexString(colorPicker.getValue())));
                 StorageManager.saveStats(appStats);
                 renderExistingPriorities(appStats, refreshCallback);
                 refreshCallback.run();
@@ -158,7 +240,9 @@ public class SettingsModuleFX extends ScrollPane {
         prioSettings.getChildren().addAll(prioHeader, existingPriosBox, new Separator(), prioInput, addPrioBtn);
 
 
-        // --- Danger Zone Section ---
+        // ==========================================
+        // --- 4. Danger Zone Section ---
+        // ==========================================
         VBox dangerZone = new VBox(15);
         dangerZone.setStyle("-fx-border-color: #FF6666; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
         Label dangerLabel = new Label("Danger Zone");
@@ -191,7 +275,6 @@ public class SettingsModuleFX extends ScrollPane {
             });
         });
 
-        // --- NEW: Reset Streak Button ---
         Button resetStreakBtn = createDangerButton("Reset Daily Streak");
         resetStreakBtn.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to reset your daily streak to 0?", ButtonType.YES, ButtonType.NO);
@@ -209,7 +292,7 @@ public class SettingsModuleFX extends ScrollPane {
         wipeGrid.add(wipeDailyBtn, 1, 0);
         wipeGrid.add(wipeWorkBtn, 0, 1);
         wipeGrid.add(wipeAllBtn, 1, 1);
-        wipeGrid.add(resetStreakBtn, 0, 2); // Added below wipes
+        wipeGrid.add(resetStreakBtn, 0, 2);
 
         dangerZone.getChildren().addAll(dangerLabel, wipeGrid);
 
@@ -220,17 +303,80 @@ public class SettingsModuleFX extends ScrollPane {
     private void renderExistingTemplates(AppStats appStats, Runnable refreshCallback) {
         existingTemplatesBox.getChildren().clear();
 
-        for (AppStats.DailyTemplate temp : appStats.getBaseDailies()) {
+        for (int i = 0; i < appStats.getBaseDailies().size(); i++) {
+            AppStats.DailyTemplate temp = appStats.getBaseDailies().get(i);
+            int index = i;
+
             HBox row = new HBox(15);
             row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(5));
+            if (temp.getBgColor() != null) row.setStyle("-fx-background-color: " + temp.getBgColor() + "; -fx-background-radius: 3;");
 
             Label prefixLabel = new Label(temp.getPrefix() != null ? temp.getPrefix() : "");
-            prefixLabel.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold; -fx-font-size: 14px;");
+            prefixLabel.setStyle("-fx-text-fill: " + temp.getPrefixColor() + "; -fx-font-weight: bold; -fx-font-size: 14px;");
             prefixLabel.setPrefWidth(80);
 
             Label textLabel = new Label(temp.getText());
             textLabel.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px;");
-            HBox.setHgrow(textLabel, Priority.ALWAYS);
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            HBox btnBox = new HBox(5);
+
+            Button upBtn = new Button("▲");
+            upBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-cursor: hand;");
+            upBtn.setDisable(index == 0);
+            upBtn.setOnAction(e -> {
+                Collections.swap(appStats.getBaseDailies(), index, index - 1);
+                StorageManager.saveStats(appStats);
+                renderExistingTemplates(appStats, refreshCallback);
+            });
+
+            Button downBtn = new Button("▼");
+            downBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-cursor: hand;");
+            downBtn.setDisable(index == appStats.getBaseDailies().size() - 1);
+            downBtn.setOnAction(e -> {
+                Collections.swap(appStats.getBaseDailies(), index, index + 1);
+                StorageManager.saveStats(appStats);
+                renderExistingTemplates(appStats, refreshCallback);
+            });
+
+            Button editBtn = new Button("Edit");
+            editBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand;");
+            editBtn.setOnAction(e -> {
+                Dialog<ButtonType> dialog = new Dialog<>();
+                dialog.setTitle("Edit Template");
+                GridPane grid = new GridPane();
+                grid.setHgap(10); grid.setVgap(10);
+
+                TextField preF = new TextField(temp.getPrefix());
+                ColorPicker preC = new ColorPicker(Color.web(temp.getPrefixColor()));
+                TextField txtF = new TextField(temp.getText());
+                ColorPicker bgC = new ColorPicker(temp.getBgColor() != null ? Color.web(temp.getBgColor()) : Color.TRANSPARENT);
+
+                Button clearBgBtn = new Button("Clear");
+                clearBgBtn.setOnAction(ev -> bgC.setValue(Color.TRANSPARENT));
+                HBox bgBox = new HBox(5, bgC, clearBgBtn);
+
+                grid.add(new Label("Prefix:"), 0, 0); grid.add(preF, 1, 0);
+                grid.add(new Label("Prefix Color:"), 0, 1); grid.add(preC, 1, 1);
+                grid.add(new Label("Content:"), 0, 2); grid.add(txtF, 1, 2);
+                grid.add(new Label("BG Color:"), 0, 3); grid.add(bgBox, 1, 3);
+
+                dialog.getDialogPane().setContent(grid);
+                dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+                dialog.showAndWait().ifPresent(res -> {
+                    if (res == ButtonType.OK) {
+                        temp.setPrefix(preF.getText().trim());
+                        temp.setText(txtF.getText().trim());
+                        temp.setPrefixColor(toHexString(preC.getValue()));
+                        temp.setBgColor(bgC.getValue().getOpacity() == 0.0 ? null : toHexString(bgC.getValue()));
+                        StorageManager.saveStats(appStats);
+                        renderExistingTemplates(appStats, refreshCallback);
+                    }
+                });
+            });
 
             Button removeBtn = new Button("Remove");
             removeBtn.setStyle("-fx-background-color: #552222; -fx-text-fill: white; -fx-cursor: hand;");
@@ -240,7 +386,8 @@ public class SettingsModuleFX extends ScrollPane {
                 renderExistingTemplates(appStats, refreshCallback);
             });
 
-            row.getChildren().addAll(prefixLabel, textLabel, removeBtn);
+            btnBox.getChildren().addAll(upBtn, downBtn, editBtn, removeBtn);
+            row.getChildren().addAll(prefixLabel, textLabel, spacer, btnBox);
             existingTemplatesBox.getChildren().add(row);
         }
     }
@@ -293,5 +440,13 @@ public class SettingsModuleFX extends ScrollPane {
                 refresh.run();
             }
         });
+    }
+
+    private String toHexString(Color color) {
+        if (color == null) return null;
+        return String.format("#%02X%02X%02X",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
     }
 }

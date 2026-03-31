@@ -51,7 +51,6 @@ public class DailyModuleFX extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Live Reset Countdown Timer
         Label countdownLabel = new Label();
         countdownLabel.setStyle("-fx-text-fill: #858585; -fx-font-family: 'Consolas', monospace; -fx-font-size: 14px; -fx-padding: 0 15 0 0;");
         Timeline clock = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
@@ -114,7 +113,6 @@ public class DailyModuleFX extends BorderPane {
             }
         }
 
-        // --- FIXED: Empty State UI ---
         if (!hasTasks) {
             Label emptyLabel = new Label("Add a task to get started!");
             emptyLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
@@ -132,24 +130,24 @@ public class DailyModuleFX extends BorderPane {
 
         if (task.getColorHex() != null) row.setStyle("-fx-background-color: " + task.getColorHex() + ";");
 
-        // --- NEW: White Aesthetic Rectangle to match other list heights ---
         Rectangle prioRect = new Rectangle(5, 25);
         prioRect.setArcWidth(3); prioRect.setArcHeight(3);
-        prioRect.setFill(Color.WHITE); // Strictly white for Daily tasks
 
-        Label starLabel = new Label("[⭐]");
-        starLabel.getStyleClass().add("task-star");
-        starLabel.setVisible(task.isFavorite());
-        starLabel.setManaged(task.isFavorite());
+        String pColorStr = task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0";
 
-        // Added prioRect to the metaBox with standard spacing
-        HBox metaBox = new HBox(7, prioRect, starLabel);
+        if (appStats.isMatchDailyRectColor() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
+            prioRect.setFill(Color.web(pColorStr));
+        } else {
+            prioRect.setFill(Color.WHITE);
+        }
+
+        HBox metaBox = new HBox(7, prioRect);
         metaBox.setAlignment(Pos.CENTER_LEFT);
 
         if (task.getPrefix() != null && !task.getPrefix().isEmpty()) {
             Label prefixLabel = new Label(task.getPrefix());
             prefixLabel.getStyleClass().add("task-prefix");
-            prefixLabel.setStyle("-fx-font-size: " + appStats.getTaskFontSize() + "px;");
+            prefixLabel.setStyle("-fx-text-fill: " + pColorStr + "; -fx-font-size: " + appStats.getTaskFontSize() + "px;");
             metaBox.getChildren().add(prefixLabel);
         }
 
@@ -157,7 +155,6 @@ public class DailyModuleFX extends BorderPane {
         textLabel.setWrapText(true);
 
         String fontStyle = "-fx-font-size: " + appStats.getTaskFontSize() + "px; ";
-
         if (task.isFinished()) {
             textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
         } else {
@@ -184,9 +181,6 @@ public class DailyModuleFX extends BorderPane {
     private void attachContextMenu(HBox row, TaskItem task) {
         ContextMenu contextMenu = new ContextMenu();
 
-        MenuItem toggleFav = new MenuItem(task.isFavorite() ? "Remove Favorite" : "Add Favorite");
-        toggleFav.setOnAction(e -> { task.setFavorite(!task.isFavorite()); StorageManager.saveTasks(globalDatabase); refreshList(); });
-
         MenuItem editItem = new MenuItem(appStats.getEditMenuText());
         editItem.setOnAction(e -> showEditDialog(task));
 
@@ -207,7 +201,7 @@ public class DailyModuleFX extends BorderPane {
         deleteItem.setStyle("-fx-text-fill: #FF6666;");
         deleteItem.setOnAction(e -> { globalDatabase.remove(task); StorageManager.saveTasks(globalDatabase); refreshList(); });
 
-        contextMenu.getItems().addAll(toggleFav, editItem, colorMenu, new SeparatorMenuItem(), deleteItem);
+        contextMenu.getItems().addAll(editItem, colorMenu, new SeparatorMenuItem(), deleteItem);
         row.setOnContextMenuRequested(e -> contextMenu.show(row, e.getScreenX(), e.getScreenY()));
     }
 
@@ -219,9 +213,18 @@ public class DailyModuleFX extends BorderPane {
 
         TextField contentField = new TextField(task.getTextContent());
         TextField prefixEditField = new TextField(task.getPrefix());
+        ColorPicker preC = new ColorPicker(Color.web(task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0"));
+        ColorPicker bgC = new ColorPicker(task.getColorHex() != null ? Color.web(task.getColorHex()) : Color.TRANSPARENT);
+
+        // --- NEW: Dedicated Clear Button ---
+        Button clearBgBtn = new Button("Clear");
+        clearBgBtn.setOnAction(e -> bgC.setValue(Color.TRANSPARENT));
+        HBox bgBox = new HBox(5, bgC, clearBgBtn);
 
         grid.add(new Label("Prefix:"), 0, 0); grid.add(prefixEditField, 1, 0);
-        grid.add(new Label("Content:"), 0, 1); grid.add(contentField, 1, 1);
+        grid.add(new Label("Prefix Color:"), 0, 1); grid.add(preC, 1, 1);
+        grid.add(new Label("Content:"), 0, 2); grid.add(contentField, 1, 2);
+        grid.add(new Label("BG Color:"), 0, 3); grid.add(bgBox, 1, 3);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -230,6 +233,11 @@ public class DailyModuleFX extends BorderPane {
             if (response == ButtonType.OK) {
                 task.setTextContent(contentField.getText().trim());
                 task.setPrefix(prefixEditField.getText().trim());
+                task.setPrefixColor(toHexString(preC.getValue()));
+
+                // --- FIXED: Explicit check for 0.0 Opacity ---
+                task.setColorHex(bgC.getValue().getOpacity() == 0.0 ? null : toHexString(bgC.getValue()));
+
                 StorageManager.saveTasks(globalDatabase);
                 refreshList();
             }
@@ -309,7 +317,6 @@ public class DailyModuleFX extends BorderPane {
 
                     const dates = [%s];
 
-                    // Completion Percentage Line Chart
                     new Chart(document.getElementById('completionChart').getContext('2d'), {
                         type: 'line',
                         data: {
@@ -333,7 +340,6 @@ public class DailyModuleFX extends BorderPane {
                         }
                     });
 
-                    // Task Volume Bar Chart
                     new Chart(document.getElementById('volumeChart').getContext('2d'), {
                         type: 'bar',
                         data: {
@@ -390,11 +396,20 @@ public class DailyModuleFX extends BorderPane {
             if (!cleanPrefix.startsWith("[")) cleanPrefix = "[" + cleanPrefix;
             if (!cleanPrefix.endsWith("]")) cleanPrefix = cleanPrefix + "]";
             newTask.setPrefix(cleanPrefix);
+            newTask.setPrefixColor("#4EC9B0"); // Default color for quick adds
         }
 
         globalDatabase.add(newTask);
         refreshList();
         inputField.clear();
         StorageManager.saveTasks(globalDatabase);
+    }
+
+    private String toHexString(Color color) {
+        if (color == null) return null;
+        return String.format("#%02X%02X%02X",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
     }
 }

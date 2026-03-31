@@ -20,6 +20,12 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,14 +45,20 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
 
     private String currentActiveModule = "QUICK";
 
-    // --- NEW: System Tray Variables ---
     private static java.awt.TrayIcon trayIcon;
     private boolean isFirstMinimize = true;
+
+    private static Stage mainStage;
+    private static final int INSTANCE_PORT = 44444;
 
     @Override
     public void init() throws Exception {
         taskDatabase = StorageManager.loadTasks();
         appStats = StorageManager.loadStats();
+
+        // --- NEW: PHASE 1 MIGRATION SCRIPT ---
+        runSilentDataMigration();
+
         processDailyRollover();
 
         try {
@@ -57,8 +69,58 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         }
     }
 
+    // --- NEW: Safe Migration Engine ---
+    private void runSilentDataMigration() {
+        boolean needsSave = false;
+
+        // 1. Build the Dynamic Sections if they don't exist yet
+        if (appStats.getSections().isEmpty()) {
+            AppStats.SectionConfig quick = new AppStats.SectionConfig("QUICK", appStats.getNavQuickText());
+            quick.setShowPriority(true);
+            quick.setEnableSubTasks(true);
+            quick.setAllowArchive(true);
+            quick.setShowDate(true);
+
+            AppStats.SectionConfig daily = new AppStats.SectionConfig("DAILY", appStats.getNavDailyText());
+            daily.setHasStreak(true);
+            daily.setShowPrefix(true);
+            daily.setAllowArchive(true);
+
+            AppStats.SectionConfig work = new AppStats.SectionConfig("WORK", appStats.getNavWorkText());
+            work.setShowAnalytics(true);
+            work.setEnableSubTasks(true);
+            work.setShowPriority(true);
+            work.setShowWorkType(true);
+            work.setTrackTime(true);
+            work.setAllowArchive(true);
+            work.setShowTags(true);
+            work.setShowDate(true);
+
+            appStats.getSections().addAll(List.of(quick, daily, work));
+            needsSave = true;
+            System.out.println("Migrated AppStats: Generated default Section Configs.");
+        }
+
+        // 2. Map old legacy tasks to the new String IDs
+        for (TaskItem task : taskDatabase) {
+            if (task.getSectionId() == null && task.getLegacyOriginModule() != null) {
+                task.setSectionId(task.getLegacyOriginModule().name());
+                needsSave = true;
+            }
+        }
+
+        if (needsSave) {
+            StorageManager.saveStats(appStats);
+            StorageManager.saveTasks(taskDatabase);
+            System.out.println("Phase 1 Migration Complete: Database successfully upgraded to Modular format.");
+        }
+    }
+
     @Override
     public void start(Stage primaryStage) {
+        mainStage = primaryStage;
+        startSingleInstanceServer();
+
         Platform.setImplicitExit(false);
         setupSystemTray(primaryStage);
 
@@ -67,7 +129,6 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             StorageManager.saveTasks(taskDatabase);
             StorageManager.saveStats(appStats);
 
-            // --- FIXED: Respect Background Setting ---
             if (appStats.isRunInBackground() && java.awt.SystemTray.isSupported()) {
                 event.consume();
                 primaryStage.hide();
@@ -121,16 +182,39 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         switchModule("QUICK");
     }
 
-    // --- NEW: System Tray Integration ---
+    private void startSingleInstanceServer() {
+        Thread serverThread = new Thread(() -> {
+            try {
+                ServerSocket serverSocket = new ServerSocket(INSTANCE_PORT, 1, InetAddress.getByName("127.0.0.1"));
+                while (true) {
+                    Socket client = serverSocket.accept();
+                    BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                    String msg = in.readLine();
+                    if ("WAKE_UP".equals(msg)) {
+                        Platform.runLater(() -> {
+                            if (mainStage != null) {
+                                mainStage.show();
+                                mainStage.setIconified(false);
+                                mainStage.toFront();
+                            }
+                        });
+                    }
+                    client.close();
+                }
+            } catch (Exception e) {}
+        });
+        serverThread.setDaemon(true);
+        serverThread.start();
+    }
+
     private void setupSystemTray(Stage primaryStage) {
         if (!java.awt.SystemTray.isSupported()) return;
 
         java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
 
-        // Dynamically draws a Blue icon so we don't have to load external images
         java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
         java.awt.Graphics2D g2d = image.createGraphics();
-        g2d.setColor(new java.awt.Color(86, 156, 214)); // Studio Blue
+        g2d.setColor(new java.awt.Color(86, 156, 214));
         g2d.fillOval(0, 0, 16, 16);
         g2d.dispose();
 
@@ -143,6 +227,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
                 if (e.getButton() == java.awt.event.MouseEvent.BUTTON1 && e.getClickCount() == 2) {
                     Platform.runLater(() -> {
                         primaryStage.show();
+                        primaryStage.setIconified(false);
                         primaryStage.toFront();
                     });
                 }
@@ -153,6 +238,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         java.awt.MenuItem openItem = new java.awt.MenuItem("Open Task Tracker");
         openItem.addActionListener(e -> Platform.runLater(() -> {
             primaryStage.show();
+            primaryStage.setIconified(false);
             primaryStage.toFront();
         }));
 
@@ -176,10 +262,23 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         catch (java.awt.AWTException e) { System.err.println("TrayIcon could not be added."); }
     }
 
-    // --- NEW: Global OS Notification Method ---
+    // --- UPGRADED: Smart OS Notification Method ---
     public static void pushNotification(String title, String message) {
-        if (trayIcon != null) {
-            trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
+        // If the app is hidden/running in the background System Tray
+        if (mainStage != null && !mainStage.isShowing()) {
+            if (trayIcon != null) {
+                // Push native Windows Toast Notification
+                trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
+            }
+        } else {
+            // If the app is actively open on your screen, show an in-app popup instead
+            Platform.runLater(() -> {
+                javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+                alert.setTitle(title);
+                alert.setHeaderText(null);
+                alert.setContentText(message);
+                alert.show();
+            });
         }
     }
 
@@ -250,8 +349,15 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
                 appStats.addHistoryRecord(lastOpened, percentComplete);
                 appStats.getAdvancedHistoryLog().put(lastOpened, new int[]{totalDaily, completedDaily});
 
-                if (percentComplete >= 1.0) appStats.setCurrentStreak(appStats.getCurrentStreak() + 1);
-                else appStats.setCurrentStreak(0);
+                // --- NEW: Leniency Logic ---
+                double requiredFraction = appStats.getMinDailyCompletionPercent() / 100.0;
+
+                // Subtracting 0.001 protects against weird Java floating point math errors
+                if (percentComplete >= (requiredFraction - 0.001)) {
+                    appStats.setCurrentStreak(appStats.getCurrentStreak() + 1);
+                } else {
+                    appStats.setCurrentStreak(0);
+                }
             }
 
             for (TaskItem task : taskDatabase) {
@@ -265,6 +371,10 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             for (AppStats.DailyTemplate template : appStats.getBaseDailies()) {
                 TaskItem newTask = new TaskItem(template.getText(), defaultPrio, TaskItem.OriginModule.DAILY);
                 if (template.getPrefix() != null && !template.getPrefix().isEmpty()) newTask.setPrefix(template.getPrefix());
+
+                newTask.setPrefixColor(template.getPrefixColor());
+                if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+
                 taskDatabase.add(newTask);
             }
 
@@ -281,12 +391,12 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         addSidebarButton(appStats.getNavDailyText(), "DAILY");
         addSidebarButton(appStats.getNavWorkText(), "WORK");
         addSidebarButton(appStats.getNavFocusText(), "FOCUS");
-        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE");
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().add(spacer);
 
+        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE");
         addSidebarButton(appStats.getNavSettingsText(), "SETTINGS");
     }
 
@@ -349,5 +459,18 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         catch (NativeHookException e) { e.printStackTrace(); }
     }
 
-    public static void main(String[] args) { launch(args); }
+    public static void main(String[] args) {
+        try {
+            Socket socket = new Socket(InetAddress.getByName("127.0.0.1"), INSTANCE_PORT);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            out.println("WAKE_UP");
+            socket.close();
+
+            System.out.println("App is already running in background. Waking up existing instance and closing this one.");
+            System.exit(0);
+            return;
+        } catch (Exception e) {}
+
+        launch(args);
+    }
 }
