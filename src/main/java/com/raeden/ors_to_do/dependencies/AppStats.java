@@ -34,11 +34,20 @@ public class AppStats implements Serializable {
         private boolean showTags = false;
         private boolean allowFavorite = false;
         private boolean enableScore = false;
-        // --- NEW: Links Toggle ---
         private boolean enableLinks = false;
+
         private boolean enableIcons;
         public boolean isEnableIcons() { return enableIcons; }
         public void setEnableIcons(boolean enableIcons) { this.enableIcons = enableIcons; }
+
+        private boolean isRewardsPage = false;
+        public boolean isRewardsPage() { return isRewardsPage; }
+        public void setRewardsPage(boolean isRewardsPage) { this.isRewardsPage = isRewardsPage; }
+
+        // --- NEW: Zen Mode Toggle ---
+        private boolean enableZenMode = false;
+        public boolean isEnableZenMode() { return enableZenMode; }
+        public void setEnableZenMode(boolean enableZenMode) { this.enableZenMode = enableZenMode; }
 
         public SectionConfig(String id, String name) {
             this.id = id;
@@ -106,7 +115,6 @@ public class AppStats implements Serializable {
         public String getIconColor() { return iconColor; }
         public void setIconColor(String iconColor) { this.iconColor = iconColor; }
 
-        // --- NEW: Dynamic Feature Storage ---
         private String priorityName;
         private int rewardPoints;
         private int penaltyPoints;
@@ -160,6 +168,14 @@ public class AppStats implements Serializable {
     private int lifetimeDeletedTasks = 0;
     private boolean matchPriorityOutline = true;
 
+    private int lifetimePointsSpent = 0;
+    private int rewardsClaimed = 0;
+
+    public int getLifetimePointsSpent() { return lifetimePointsSpent; }
+    public void setLifetimePointsSpent(int lifetimePointsSpent) { this.lifetimePointsSpent = lifetimePointsSpent; }
+    public int getRewardsClaimed() { return rewardsClaimed; }
+    public void setRewardsClaimed(int rewardsClaimed) { this.rewardsClaimed = rewardsClaimed; }
+
     private LocalDate lastOpenedDate = LocalDate.now();
     private Map<LocalDate, Double> historyLog = new LinkedHashMap<>();
 
@@ -172,7 +188,15 @@ public class AppStats implements Serializable {
     private Boolean matchDailyRectColor = null;
     private int minDailyCompletionPercent = 100;
     private boolean matchTitleColor = false;
+    private boolean alwaysOnTop = false;
 
+    // --- UPDATED: Protects against 0-threshold in old saves ---
+    private int zenModeThreshold = 20;
+    public int getZenModeThreshold() { return zenModeThreshold <= 0 ? 20 : zenModeThreshold; }
+    public void setZenModeThreshold(int zenModeThreshold) { this.zenModeThreshold = zenModeThreshold; }
+
+    public boolean isAlwaysOnTop() { return alwaysOnTop; }
+    public void setAlwaysOnTop(boolean alwaysOnTop) { this.alwaysOnTop = alwaysOnTop; }
     public boolean isMatchTitleColor() { return matchTitleColor; }
     public void setMatchTitleColor(boolean matchTitleColor) { this.matchTitleColor = matchTitleColor; }
 
@@ -300,7 +324,7 @@ public class AppStats implements Serializable {
         if (text != null && !text.trim().isEmpty()) { pendingDrafts.put(module, text.trim()); }
         else { pendingDrafts.remove(module); }
     }
-    // --- NEW: Safe Copy Method for Data Restoration ---
+
     public void copyFrom(AppStats other) {
         this.globalScore = other.globalScore;
         this.currentStreak = other.currentStreak;
@@ -335,5 +359,9 @@ public class AppStats implements Serializable {
         this.pendingDrafts = new java.util.HashMap<>(other.pendingDrafts);
         this.analyticsResetTimestamp = other.analyticsResetTimestamp;
         this.matchTitleColor = other.matchTitleColor;
+        this.alwaysOnTop = other.alwaysOnTop;
+        this.zenModeThreshold = other.zenModeThreshold;
+        this.lifetimePointsSpent = other.lifetimePointsSpent;
+        this.rewardsClaimed = other.rewardsClaimed;
     }
 }

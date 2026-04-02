@@ -113,7 +113,7 @@ public class SectionManagerPanel extends VBox {
                         StorageManager.saveTasks(globalDatabase);
 
                         renderExistingSections();
-                        onSectionChanged.run(); // Updates danger zone & templates
+                        onSectionChanged.run();
                     }
                 });
             });
@@ -202,10 +202,19 @@ public class SectionManagerPanel extends VBox {
         chkLinks.setSelected(!isNew && config.isEnableLinks());
         grid.add(createToggleBox(chkLinks, "Allows attaching clickable URLs to tasks."), 0, 8);
 
-        // --- FIXED: Safe Icon Checkbox ---
         CheckBox chkIcons = new CheckBox("Enable Task Icons");
         chkIcons.setSelected(!isNew && config.isEnableIcons());
         grid.add(createToggleBox(chkIcons, "Allows attaching custom color-coded symbols to tasks."), 1, 8);
+
+        CheckBox chkRewards = new CheckBox("Enable Rewards Shop Mode");
+        chkRewards.setSelected(!isNew && config.isRewardsPage());
+        chkRewards.setStyle("-fx-text-fill: #9CDCFE; -fx-font-weight: bold;");
+        grid.add(createToggleBox(chkRewards, "Turns this list into a shop where items cost points instead of giving them."), 0, 9);
+
+        // --- NEW: Zen Mode Toggle Checkbox ---
+        CheckBox chkZen = new CheckBox("Enable Zen Mode");
+        chkZen.setSelected(!isNew && config.isEnableZenMode());
+        grid.add(createToggleBox(chkZen, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 1, 9);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -231,9 +240,11 @@ public class SectionManagerPanel extends VBox {
                 target.setEnableLinks(chkLinks.isSelected());
                 target.setAllowFavorite(chkFavorite.isSelected());
                 target.setShowAnalytics(chkAnalytics.isSelected());
-
-                // --- FIXED: Save Icon State ---
                 target.setEnableIcons(chkIcons.isSelected());
+                target.setRewardsPage(chkRewards.isSelected());
+
+                // --- Save Zen Mode State ---
+                target.setEnableZenMode(chkZen.isSelected());
 
                 if (isNew) {
                     appStats.getSections().add(target);

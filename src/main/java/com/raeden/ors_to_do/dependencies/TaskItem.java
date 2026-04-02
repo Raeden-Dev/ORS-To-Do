@@ -103,6 +103,10 @@ public class TaskItem implements Serializable {
     private List<String> links = new ArrayList<>();
     private List<TaskLink> taskLinks = new ArrayList<>();
 
+    private int costPoints = 0;
+    public int getCostPoints() { return costPoints; }
+    public void setCostPoints(int costPoints) { this.costPoints = costPoints; }
+
     private String iconSymbol;
     private String iconColor;
 
@@ -142,6 +146,14 @@ public class TaskItem implements Serializable {
         }
         return taskLinks;
     }
+
+    private List<String> dependsOnTaskIds = new ArrayList<>();
+
+    public List<String> getDependsOnTaskIds() {
+        if (dependsOnTaskIds == null) dependsOnTaskIds = new ArrayList<>();
+        return dependsOnTaskIds;
+    }
+    public void setDependsOnTaskIds(List<String> dependsOnTaskIds) { this.dependsOnTaskIds = dependsOnTaskIds; }
 
     public boolean isCounterMode() { return isCounterMode; }
     public void setCounterMode(boolean counterMode) { isCounterMode = counterMode; }

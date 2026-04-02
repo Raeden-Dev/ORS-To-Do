@@ -3,6 +3,7 @@ package com.raeden.ors_to_do.modules.dependencies.settings;
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.TaskDialogs; // --- ADDED IMPORT ---
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -92,6 +93,10 @@ public class PriorityManagerPanel extends VBox {
             editBtn.setOnAction(e -> {
                 Dialog<ButtonType> dialog = new Dialog<>();
                 dialog.setTitle("Edit Priority");
+
+                // --- ADDED FIX: Apply universal dark theme & always-on-top ---
+                TaskDialogs.styleDialog(dialog);
+
                 GridPane grid = new GridPane();
                 grid.setHgap(10); grid.setVgap(10);
 
@@ -118,6 +123,7 @@ public class PriorityManagerPanel extends VBox {
             removeBtn.setOnAction(e -> {
                 if (appStats.getCustomPriorities().size() <= 1) {
                     Alert alert = new Alert(Alert.AlertType.WARNING, "You must have at least one priority left in the system.");
+                    TaskDialogs.styleDialog(alert);
                     alert.setHeaderText(null); alert.show();
                     return;
                 }

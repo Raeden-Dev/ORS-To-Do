@@ -17,7 +17,6 @@ public class GeneralSettingsPanel extends VBox {
         super(15);
         setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
 
-        // Inject Dark Theme CSS for Sliders
         String sliderCss = ".slider .track { -fx-background-color: #3E3E42; -fx-background-radius: 5; } " +
                 ".slider .thumb { -fx-background-color: #569CD6; } " +
                 ".slider .thumb:hover { -fx-background-color: #4EC9B0; }";
@@ -27,7 +26,6 @@ public class GeneralSettingsPanel extends VBox {
         Label textHeader = new Label("General Configuration");
         textHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
 
-        // Appearance & Behavior
         Label behaviorHeader = new Label("Appearance & Behavior");
         behaviorHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
         GridPane behaviorGrid = new GridPane();
@@ -64,28 +62,23 @@ public class GeneralSettingsPanel extends VBox {
         matchTitleColorCheck.setSelected(appStats.isMatchTitleColor());
         matchTitleColorCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
 
+        CheckBox alwaysOnTopCheck = new CheckBox("Always keep app on top of other windows");
+        alwaysOnTopCheck.setSelected(appStats.isAlwaysOnTop());
+        alwaysOnTopCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+
+        // --- NEW: Zen Mode Threshold Spinner ---
+        Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
+        zenSpinner.setEditable(true);
+
         behaviorGrid.add(new Label("Task Font Size:"), 0, 0); behaviorGrid.add(fontSizeSpinner, 1, 0);
         behaviorGrid.add(sliderLabel, 0, 1); behaviorGrid.add(sliderBox, 1, 1);
         behaviorGrid.add(runInBackgroundCheck, 0, 2, 2, 1);
         behaviorGrid.add(matchRectCheck, 0, 3, 2, 1);
         behaviorGrid.add(matchOutlineCheck, 0, 4, 2, 1);
         behaviorGrid.add(matchTitleColorCheck, 0, 5, 2, 1);
+        behaviorGrid.add(alwaysOnTopCheck, 0, 6, 2, 1);
+        behaviorGrid.add(new Label("Zen Mode Task Paralysis Threshold:"), 0, 7); behaviorGrid.add(zenSpinner, 1, 7);
 
-        // Context Menu Texts
-        Label contextHeader = new Label("Right-Click Menu Texts");
-        contextHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
-        GridPane contextGrid = new GridPane();
-        contextGrid.setHgap(15); contextGrid.setVgap(10);
-
-        TextField editMenuField = new TextField(appStats.getEditMenuText());
-        TextField archiveMenuField = new TextField(appStats.getArchiveMenuText());
-        TextField deleteMenuField = new TextField(appStats.getDeleteMenuText());
-
-        contextGrid.add(new Label("Edit Menu Text:"), 0, 0); contextGrid.add(editMenuField, 1, 0);
-        contextGrid.add(new Label("Archive Menu Text:"), 0, 1); contextGrid.add(archiveMenuField, 1, 1);
-        contextGrid.add(new Label("Delete Menu Text:"), 0, 2); contextGrid.add(deleteMenuField, 1, 2);
-
-        // Static Navigation Config
         Label navHeader = new Label("Static Sidebar Texts & Colors");
         navHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
         GridPane navGrid = new GridPane();
@@ -111,19 +104,15 @@ public class GeneralSettingsPanel extends VBox {
         navGrid.add(new Label("Archived:"), 0, 2); navGrid.add(archiveNavField, 1, 2); navGrid.add(archiveColorPicker, 2, 2);
         navGrid.add(new Label("Settings:"), 0, 3); navGrid.add(settingsNavField, 1, 3); navGrid.add(settingsColorPicker, 2, 3);
 
-        // ========================================================
-        // --- AUTO-SAVE LOGIC ---
-        // ========================================================
         Runnable autoSaveTrigger = () -> {
-            appStats.setEditMenuText(editMenuField.getText().trim().isEmpty() ? "Edit Task" : editMenuField.getText().trim());
-            appStats.setArchiveMenuText(archiveMenuField.getText().trim().isEmpty() ? "Archive Task" : archiveMenuField.getText().trim());
-            appStats.setDeleteMenuText(deleteMenuField.getText().trim().isEmpty() ? "Delete" : deleteMenuField.getText().trim());
             appStats.setTaskFontSize(fontSizeSpinner.getValue());
             appStats.setMinDailyCompletionPercent((int) streakSlider.getValue());
             appStats.setRunInBackground(runInBackgroundCheck.isSelected());
             appStats.setMatchDailyRectColor(matchRectCheck.isSelected());
             appStats.setMatchPriorityOutline(matchOutlineCheck.isSelected());
             appStats.setMatchTitleColor(matchTitleColorCheck.isSelected());
+            appStats.setAlwaysOnTop(alwaysOnTopCheck.isSelected());
+            appStats.setZenModeThreshold(zenSpinner.getValue()); // Save Zen Threshold
 
             appStats.setNavFocusText(focusNavField.getText().trim().isEmpty() ? "Focus Hub" : focusNavField.getText().trim());
             appStats.setNavArchiveText(archiveNavField.getText().trim().isEmpty() ? "Archived" : archiveNavField.getText().trim());
@@ -138,11 +127,9 @@ public class GeneralSettingsPanel extends VBox {
             refreshCallback.run();
         };
 
-        // --- ATTACH LISTENERS TO ALL INPUTS ---
-
         fontSizeSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
+        zenSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run()); // Hook Listener
 
-        // Sliders can fire hundreds of times while dragging. We only save when dragging stops.
         streakSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
             if (!isChanging) autoSaveTrigger.run();
         });
@@ -153,8 +140,14 @@ public class GeneralSettingsPanel extends VBox {
         matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
 
-        // TextFields save when you press Enter, OR when you click away (lose focus)
-        for (TextField tf : Arrays.asList(editMenuField, archiveMenuField, deleteMenuField, focusNavField, analyticsNavField, archiveNavField, settingsNavField)) {
+        alwaysOnTopCheck.setOnAction(e -> {
+            autoSaveTrigger.run();
+            if (getScene() != null && getScene().getWindow() instanceof javafx.stage.Stage) {
+                ((javafx.stage.Stage) getScene().getWindow()).setAlwaysOnTop(alwaysOnTopCheck.isSelected());
+            }
+        });
+
+        for (TextField tf : Arrays.asList(focusNavField, analyticsNavField, archiveNavField, settingsNavField)) {
             tf.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
                 if (!isNowFocused) autoSaveTrigger.run();
             });
@@ -168,7 +161,6 @@ public class GeneralSettingsPanel extends VBox {
 
         getChildren().addAll(
                 textHeader, behaviorHeader, behaviorGrid, new Separator(),
-                contextHeader, contextGrid, new Separator(),
                 navHeader, navGrid
         );
     }

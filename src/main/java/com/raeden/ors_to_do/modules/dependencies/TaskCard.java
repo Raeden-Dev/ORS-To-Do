@@ -22,6 +22,7 @@ import javafx.util.Duration;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -54,13 +55,25 @@ public class TaskCard extends VBox {
 
         getStyleClass().add("task-row");
 
+        List<String> blockingTaskNames = new ArrayList<>();
+        if (task.getDependsOnTaskIds() != null && !task.getDependsOnTaskIds().isEmpty()) {
+            for (TaskItem t : globalDatabase) {
+                if (task.getDependsOnTaskIds().contains(t.getId()) && !t.isFinished()) {
+                    blockingTaskNames.add(t.getTextContent());
+                }
+            }
+        }
+        boolean isLocked = !blockingTaskNames.isEmpty();
+
         String bgStyle = task.getColorHex() != null ? "-fx-background-color: " + task.getColorHex() + "; " : "";
         String borderStyle = "";
 
-        if (config.isAllowFavorite() && task.isFavorite()) {
-            borderStyle = "-fx-border-color: #FFD700; -fx-border-width: 2; -fx-border-radius: 4; ";
-        } else if (appStats.isMatchPriorityOutline() && config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
-            borderStyle = "-fx-border-color: " + task.getPriority().getColorHex() + "; -fx-border-width: 1; -fx-border-radius: 4; ";
+        if (!isLocked) {
+            if (config.isAllowFavorite() && task.isFavorite()) {
+                borderStyle = "-fx-border-color: #FFD700; -fx-border-width: 2; -fx-border-radius: 4; ";
+            } else if (appStats.isMatchPriorityOutline() && config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
+                borderStyle = "-fx-border-color: " + task.getPriority().getColorHex() + "; -fx-border-width: 1; -fx-border-radius: 4; ";
+            }
         }
 
         String originalStyle = bgStyle + borderStyle;
@@ -104,80 +117,82 @@ public class TaskCard extends VBox {
         if (!hasSubTasks && !hasLinks) { expandBtn.setVisible(false); expandBtn.setManaged(false); }
         expandBtn.setOnAction(e -> { task.setExpanded(!task.isExpanded()); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
 
-        Rectangle sideRect = new Rectangle(5, 25);
-        sideRect.setArcWidth(3); sideRect.setArcHeight(3);
-        if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
-            sideRect.setFill(Color.web(task.getPriority().getColorHex()));
-        } else if (config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) {
-            sideRect.setFill(Color.web(task.getPrefixColor()));
-        } else {
-            sideRect.setFill(Color.WHITE);
-        }
-
-        // Create an empty box first
         HBox metaBox = new HBox(7);
         metaBox.setAlignment(Pos.CENTER_LEFT);
-
-        // 1. Add the Expand/Collapse arrow first
         metaBox.getChildren().add(expandBtn);
 
-        // 2. Add the Custom Icon BEFORE the rectangle
-        if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
-            Label customIcon = new Label(task.getIconSymbol());
-            String iconColor = task.getIconColor() != null ? task.getIconColor() : "#FFFFFF";
-            customIcon.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: " + (appStats.getTaskFontSize() + 2) + "px;");
-            metaBox.getChildren().add(customIcon);
+        if (!isLocked) {
+            Rectangle sideRect = new Rectangle(5, 25);
+            sideRect.setArcWidth(3); sideRect.setArcHeight(3);
+            if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
+                sideRect.setFill(Color.web(task.getPriority().getColorHex()));
+            } else if (config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) {
+                sideRect.setFill(Color.web(task.getPrefixColor()));
+            } else {
+                sideRect.setFill(Color.WHITE);
+            }
+
+            if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
+                Label customIcon = new Label(task.getIconSymbol());
+                String iconColor = task.getIconColor() != null ? task.getIconColor() : "#FFFFFF";
+                customIcon.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: " + (appStats.getTaskFontSize() + 2) + "px;");
+                metaBox.getChildren().add(customIcon);
+            }
+
+            metaBox.getChildren().add(sideRect);
+
+            if (config.isAllowFavorite() && task.isFavorite()) {
+                Label starLabel = new Label("[⭐]");
+                starLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
+                metaBox.getChildren().add(starLabel);
+            }
+
+            if (config.isShowDate()) {
+                Label dateLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
+                dateLabel.getStyleClass().add("task-metadata");
+                metaBox.getChildren().add(dateLabel);
+            }
+
+            if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
+                Label prefixLabel = new Label(task.getPrefix());
+                prefixLabel.getStyleClass().add("task-prefix");
+                String pColor = task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0";
+                prefixLabel.setStyle("-fx-text-fill: " + pColor + "; -fx-font-size: " + appStats.getTaskFontSize() + "px;");
+                metaBox.getChildren().add(prefixLabel);
+            }
+
+            if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty()) {
+                Label workTypeLabel = new Label("[" + task.getWorkType() + "]");
+                workTypeLabel.getStyleClass().add("task-metadata");
+                metaBox.getChildren().add(workTypeLabel);
+            }
         }
 
-        // 3. Add the side Rectangle last
-        metaBox.getChildren().add(sideRect);
-
-        if (config.isAllowFavorite() && task.isFavorite()) {
-            Label starLabel = new Label("[⭐]");
-            starLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
-            metaBox.getChildren().add(starLabel);
-        }
-
-        if (config.isShowDate()) {
-            Label dateLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
-            dateLabel.getStyleClass().add("task-metadata");
-            metaBox.getChildren().add(dateLabel);
-        }
-
-        if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
-            Label prefixLabel = new Label(task.getPrefix());
-            prefixLabel.getStyleClass().add("task-prefix");
-            String pColor = task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0";
-            prefixLabel.setStyle("-fx-text-fill: " + pColor + "; -fx-font-size: " + appStats.getTaskFontSize() + "px;");
-            metaBox.getChildren().add(prefixLabel);
-        }
-
-        if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty()) {
-            Label workTypeLabel = new Label("[" + task.getWorkType() + "]");
-            workTypeLabel.getStyleClass().add("task-metadata");
-            metaBox.getChildren().add(workTypeLabel);
-        }
-
-        Label textLabel = new Label(task.getTextContent());
-        textLabel.setWrapText(true);
+        HBox textContainer = new HBox(5);
         String fontStyle = "-fx-font-size: " + appStats.getTaskFontSize() + "px; ";
-        if (task.isFinished()) textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
-        else textLabel.setStyle(fontStyle + "-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
 
-        HBox textContainer = new HBox(textLabel);
-        textContainer.setAlignment(Pos.CENTER_LEFT);
+        if (isLocked) {
+            textContainer.setAlignment(Pos.CENTER);
+
+            Label lockIcon = new Label("🔒");
+            lockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + (appStats.getTaskFontSize() + 2) + "px;");
+
+            String lockedText = blockingTaskNames.size() == 1 ? blockingTaskNames.get(0) : blockingTaskNames.size() + " tasks";
+            Label lockMsg = new Label("Complete [" + lockedText + "] to unlock");
+            lockMsg.setStyle(fontStyle + "-fx-text-fill: #858585; -fx-font-style: italic;");
+
+            textContainer.getChildren().addAll(lockIcon, lockMsg);
+        } else {
+            textContainer.setAlignment(Pos.CENTER_LEFT);
+            Label textLabel = new Label(task.getTextContent());
+            textLabel.setWrapText(true);
+            if (task.isFinished()) textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
+            else textLabel.setStyle(fontStyle + "-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
+            textContainer.getChildren().add(textLabel);
+        }
         HBox.setHgrow(textContainer, Priority.ALWAYS);
 
-        if (config.isEnableScore() && (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0)) {
-            String badgeStr = "";
-            if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
-            if (task.getPenaltyPoints() > 0) badgeStr += "💀 -" + task.getPenaltyPoints();
-
-            Label ptsLabel = new Label(badgeStr.trim());
-            ptsLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold; -fx-font-size: 12px;");
-            ptsLabel.setPadding(new Insets(0, 10, 0, 0));
-            mainRow.getChildren().add(ptsLabel);
-        }
+        mainRow.getChildren().addAll(metaBox, textContainer);
 
         Label deadlineLabel = null;
         if (task.getDeadline() != null) {
@@ -220,91 +235,133 @@ public class TaskCard extends VBox {
             activeTimelines.add(deadlineTimer);
         }
 
-        Label timeLabel = null;
-        if (config.isTrackTime()) {
-            int mins = task.getTimeSpentSeconds() / 60;
-            timeLabel = new Label("⏱ " + mins + "m");
-            timeLabel.setPadding(new Insets(0, 10, 0, 0));
-            if (mins > 0) timeLabel.setStyle("-fx-text-fill: #E06666; -fx-font-weight: bold; -fx-font-size: 13px;");
-            else timeLabel.setStyle("-fx-text-fill: #858585; -fx-font-weight: bold; -fx-font-size: 13px;");
-        }
+        if (!isLocked) {
+            if (config.isRewardsPage()) {
+                if (task.getCostPoints() > 0) {
+                    Label ptsLabel = new Label("💎 -" + task.getCostPoints() + " Pts");
+                    ptsLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-weight: bold; -fx-font-size: 12px;");
+                    ptsLabel.setPadding(new Insets(0, 10, 0, 0));
+                    mainRow.getChildren().add(ptsLabel);
+                }
+            } else if (config.isEnableScore() && (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0)) {
+                String badgeStr = "";
+                if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
+                if (task.getPenaltyPoints() > 0) badgeStr += "💀 -" + task.getPenaltyPoints();
 
-        ComboBox<TaskItem.CustomPriority> prioBox = null;
-        if (config.isShowPriority()) {
-            ComboBox<TaskItem.CustomPriority> localPrioBox = new ComboBox<>();
-            prioBox = localPrioBox;
+                Label ptsLabel = new Label(badgeStr.trim());
+                ptsLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold; -fx-font-size: 12px;");
+                ptsLabel.setPadding(new Insets(0, 10, 0, 0));
+                mainRow.getChildren().add(ptsLabel);
+            }
 
-            localPrioBox.getItems().addAll(appStats.getCustomPriorities());
-            localPrioBox.setValue(task.getPriority());
-            setupPriorityBoxColors(localPrioBox);
+            if (deadlineLabel != null) mainRow.getChildren().add(deadlineLabel);
 
-            localPrioBox.setOnAction(e -> {
-                task.setPriority(localPrioBox.getValue());
-                StorageManager.saveTasks(globalDatabase);
-                onUpdate.run();
-            });
-        }
+            if (config.isTrackTime()) {
+                int mins = task.getTimeSpentSeconds() / 60;
+                Label timeLabel = new Label("⏱ " + mins + "m");
+                timeLabel.setPadding(new Insets(0, 10, 0, 0));
+                if (mins > 0) timeLabel.setStyle("-fx-text-fill: #E06666; -fx-font-weight: bold; -fx-font-size: 13px;");
+                else timeLabel.setStyle("-fx-text-fill: #858585; -fx-font-weight: bold; -fx-font-size: 13px;");
+                mainRow.getChildren().add(timeLabel);
+            }
 
-        HBox actionContainer = new HBox(5);
-        actionContainer.setAlignment(Pos.CENTER);
+            if (config.isShowPriority()) {
+                ComboBox<TaskItem.CustomPriority> localPrioBox = new ComboBox<>();
+                localPrioBox.getItems().addAll(appStats.getCustomPriorities());
+                localPrioBox.setValue(task.getPriority());
+                setupPriorityBoxColors(localPrioBox);
 
-        if (task.isCounterMode()) {
-            Button minusBtn = new Button("-");
-            minusBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
-            if (task.isPointsClaimed() || task.isFinished()) minusBtn.setDisable(true);
-
-            Label countLabel = new Label(task.getCurrentCount() + (task.getMaxCount() > 0 ? " / " + task.getMaxCount() : ""));
-            countLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 0 5 0 5;");
-
-            Button plusBtn = new Button("+");
-            plusBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
-            if (task.isPointsClaimed() || task.isFinished()) plusBtn.setDisable(true);
-
-            minusBtn.setOnAction(e -> {
-                if (task.getCurrentCount() > 0 && !task.isPointsClaimed()) {
-                    task.setCurrentCount(task.getCurrentCount() - 1);
-                    task.setFinished(false);
+                localPrioBox.setOnAction(e -> {
+                    task.setPriority(localPrioBox.getValue());
                     StorageManager.saveTasks(globalDatabase);
                     onUpdate.run();
-                }
-            });
+                });
+                mainRow.getChildren().add(localPrioBox);
+            }
 
-            plusBtn.setOnAction(e -> {
-                if (!task.isPointsClaimed()) {
-                    task.setCurrentCount(task.getCurrentCount() + 1);
-                    if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
-                        handleTaskCompletion(null);
-                    } else {
+            HBox actionContainer = new HBox(5);
+            actionContainer.setAlignment(Pos.CENTER);
+
+            if (config.isRewardsPage()) {
+                Button buyBtn = new Button(task.isCounterMode() ? "Buy (" + task.getCurrentCount() + "/" + task.getMaxCount() + ")" : "Buy");
+                buyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+                if (task.isFinished()) buyBtn.setDisable(true);
+                buyBtn.setOnAction(e -> handleRewardPurchase());
+                actionContainer.getChildren().add(buyBtn);
+            }
+            else if (task.isCounterMode()) {
+                Button minusBtn = new Button("-");
+                minusBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+                if (task.isPointsClaimed() || task.isFinished()) minusBtn.setDisable(true);
+
+                Label countLabel = new Label(task.getCurrentCount() + (task.getMaxCount() > 0 ? " / " + task.getMaxCount() : ""));
+                countLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 0 5 0 5;");
+
+                Button plusBtn = new Button("+");
+                plusBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+                if (task.isPointsClaimed() || task.isFinished()) plusBtn.setDisable(true);
+
+                minusBtn.setOnAction(e -> {
+                    if (task.getCurrentCount() > 0 && !task.isPointsClaimed()) {
+                        task.setCurrentCount(task.getCurrentCount() - 1);
+                        task.setFinished(false);
                         StorageManager.saveTasks(globalDatabase);
                         onUpdate.run();
                     }
+                });
+
+                plusBtn.setOnAction(e -> {
+                    if (!task.isPointsClaimed()) {
+                        task.setCurrentCount(task.getCurrentCount() + 1);
+                        if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
+                            handleTaskCompletion(null);
+                        } else {
+                            StorageManager.saveTasks(globalDatabase);
+                            onUpdate.run();
+                        }
+                    }
+                });
+
+                actionContainer.getChildren().addAll(minusBtn, countLabel, plusBtn);
+
+            } else {
+                CheckBox checkBox = new CheckBox();
+                checkBox.setSelected(task.isFinished());
+                if (task.isPointsClaimed()) checkBox.setDisable(true);
+
+                checkBox.setOnAction(e -> {
+                    if (checkBox.isSelected()) {
+                        handleTaskCompletion(checkBox);
+                    } else {
+                        task.setFinished(false);
+                        StorageManager.saveTasks(globalDatabase);
+                        onUpdate.run();
+                    }
+                });
+                actionContainer.getChildren().add(checkBox);
+            }
+
+            // --- NEW: Sub-Task Dependency Lock Logic ---
+            boolean hasUnfinishedSubTasks = !task.isFinished() && config.isEnableSubTasks() && !task.getSubTasks().isEmpty() && task.getSubTasks().stream().anyMatch(sub -> !sub.isFinished());
+
+            if (hasUnfinishedSubTasks) {
+                for (javafx.scene.Node n : actionContainer.getChildren()) {
+                    n.setDisable(true);
                 }
-            });
 
-            actionContainer.getChildren().addAll(minusBtn, countLabel, plusBtn);
+                Label subLockIcon = new Label("🔒");
+                subLockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 14px; -fx-cursor: hand;");
+                subLockIcon.setPadding(new Insets(0, 5, 0, 0));
 
-        } else {
-            CheckBox checkBox = new CheckBox();
-            checkBox.setSelected(task.isFinished());
-            if (task.isPointsClaimed()) checkBox.setDisable(true);
+                Tooltip t = new Tooltip("Complete all sub-tasks to unlock!");
+                t.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: #FF6666; -fx-border-color: #FF6666; -fx-font-size: 12px;");
+                Tooltip.install(subLockIcon, t);
 
-            checkBox.setOnAction(e -> {
-                if (checkBox.isSelected()) {
-                    handleTaskCompletion(checkBox);
-                } else {
-                    task.setFinished(false);
-                    StorageManager.saveTasks(globalDatabase);
-                    onUpdate.run();
-                }
-            });
-            actionContainer.getChildren().add(checkBox);
+                actionContainer.getChildren().add(0, subLockIcon);
+            }
+
+            mainRow.getChildren().add(actionContainer);
         }
-
-        mainRow.getChildren().addAll(metaBox, textContainer);
-        if (deadlineLabel != null) mainRow.getChildren().add(deadlineLabel);
-        if (timeLabel != null) mainRow.getChildren().add(timeLabel);
-        if (prioBox != null) mainRow.getChildren().add(prioBox);
-        mainRow.getChildren().add(actionContainer);
 
         VBox subTaskBox = new VBox(8);
         subTaskBox.setPadding(new Insets(0, 10, 15, 60));
@@ -391,6 +448,40 @@ public class TaskCard extends VBox {
 
         getChildren().addAll(mainRow, subTaskBox);
         attachContextMenu();
+    }
+
+    private void handleRewardPurchase() {
+        if (appStats.getGlobalScore() < task.getCostPoints()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Not enough points! You need " + task.getCostPoints() + " but only have " + appStats.getGlobalScore() + ".");
+            alert.setHeaderText("Cannot Buy Reward");
+            TaskDialogs.styleDialog(alert);
+            alert.show();
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Buy '" + task.getTextContent() + "' for " + task.getCostPoints() + " points?", ButtonType.YES, ButtonType.NO);
+        alert.setHeaderText("Confirm Purchase");
+        TaskDialogs.styleDialog(alert);
+
+        alert.showAndWait().ifPresent(res -> {
+            if (res == ButtonType.YES) {
+                appStats.setGlobalScore(appStats.getGlobalScore() - task.getCostPoints());
+                appStats.setLifetimePointsSpent(appStats.getLifetimePointsSpent() + task.getCostPoints());
+                appStats.setRewardsClaimed(appStats.getRewardsClaimed() + 1);
+
+                if (task.isCounterMode()) {
+                    task.setCurrentCount(task.getCurrentCount() + 1);
+                    if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
+                        task.setFinished(true);
+                    }
+                }
+
+                StorageManager.saveStats(appStats);
+                StorageManager.saveTasks(globalDatabase);
+                onUpdate.run();
+                pushNotification("Reward Claimed!", "You bought: " + task.getTextContent());
+            }
+        });
     }
 
     private void handleTaskCompletion(CheckBox optCheckBox) {

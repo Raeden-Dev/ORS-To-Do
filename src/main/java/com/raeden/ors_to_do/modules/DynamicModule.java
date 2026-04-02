@@ -11,6 +11,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
@@ -18,7 +19,14 @@ import javafx.util.Duration;
 import java.time.LocalTime;
 import java.util.*;
 
-public class DynamicModule extends BorderPane {
+public class DynamicModule extends StackPane {
+
+    private BorderPane mainContent;
+    private VBox zenOverlay;
+    private boolean isZenMode = false;
+    private TaskItem currentZenTask = null;
+    private Button zenModeBtn;
+
     private VBox listContainer;
     private AppStats.SectionConfig config;
     private List<TaskItem> globalDatabase;
@@ -42,40 +50,47 @@ public class DynamicModule extends BorderPane {
         this.globalDatabase = globalDatabase;
         this.appStats = appStats;
         this.syncCallback = syncCallback;
-        setPadding(new Insets(15));
 
-        // ==========================================
-        // --- TOP: Dynamic Header & Tracking ---
-        // ==========================================
+        mainContent = new BorderPane();
+        mainContent.setPadding(new Insets(15));
+
+        zenOverlay = new VBox(20);
+        zenOverlay.setAlignment(Pos.CENTER);
+        zenOverlay.setStyle("-fx-background-color: #1E1E1E;");
+        zenOverlay.setVisible(false);
+
+        getChildren().addAll(mainContent, zenOverlay);
+
         VBox topArea = new VBox(10);
 
         HBox dashboardStrip = new HBox(15);
         dashboardStrip.setAlignment(Pos.CENTER_LEFT);
-        dashboardStrip.setPadding(new Insets(12, 15, 12, 15));
+        dashboardStrip.setPadding(new Insets(15));
         dashboardStrip.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #3E3E42; -fx-border-radius: 8; -fx-background-radius: 8;");
-        dashboardStrip.setMinHeight(65);
 
         availableTasksLabel = new Label();
         String titleColor = appStats.isMatchTitleColor() ? config.getSidebarColor() : "#569CD6";
-        availableTasksLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + titleColor + ";");
+        availableTasksLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + titleColor + ";");
         dashboardStrip.getChildren().add(availableTasksLabel);
 
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
         dashboardStrip.getChildren().add(headerSpacer);
 
-        HBox badgesBox = new HBox(10);
-        badgesBox.setAlignment(Pos.CENTER_RIGHT);
+        // --- FIXED: Smart FlowPane wraps badges into a second line ONLY if they run out of room ---
+        FlowPane badgesFlow = new FlowPane(10, 10);
+        badgesFlow.setAlignment(Pos.CENTER_RIGHT);
+        badgesFlow.setPrefWrapLength(400); // Hint to start wrapping if it drops below this pixel width
 
-        if (config.isEnableScore()) {
+        if (config.isEnableScore() || config.isRewardsPage()) {
             scoreLabel = new Label();
-            scoreLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #FFD700; -fx-background-color: #332B00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FFD700; -fx-border-radius: 15;");
-            badgesBox.getChildren().add(scoreLabel);
+            scoreLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FFD700; -fx-background-color: #332B00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FFD700; -fx-border-radius: 15;");
+            badgesFlow.getChildren().add(scoreLabel);
         }
 
         if (config.isHasStreak()) {
             Label streakLabel = new Label("🔥 " + appStats.getCurrentStreak() + " Day Streak");
-            streakLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #FF8C00; -fx-background-color: #331A00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FF8C00; -fx-border-radius: 15;");
+            streakLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FF8C00; -fx-background-color: #331A00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FF8C00; -fx-border-radius: 15;");
 
             Label countdownLabel = new Label();
             countdownLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-background-color: #1E1E1E; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #555555; -fx-border-radius: 15;");
@@ -89,25 +104,30 @@ public class DynamicModule extends BorderPane {
             Timeline clock = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateClock.run()));
             clock.setCycleCount(Animation.INDEFINITE);
             clock.play();
-            activeTimelines.add(clock);
 
-            badgesBox.getChildren().addAll(streakLabel, countdownLabel);
+            sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene == null) clock.stop();
+            });
+
+            badgesFlow.getChildren().addAll(streakLabel, countdownLabel);
         }
 
-        dashboardStrip.getChildren().add(badgesBox);
+        if (config.isEnableZenMode()) {
+            zenModeBtn = new Button("☯ Zen Mode");
+            zenModeBtn.setOnAction(e -> toggleZenMode());
+            badgesFlow.getChildren().add(zenModeBtn);
+        }
 
         if (config.isShowAnalytics()) {
             Button exportBtn = new Button("📊 Export");
-            exportBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 5;");
+            exportBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 5 15; -fx-background-radius: 15; -fx-border-color: #569CD6; -fx-border-radius: 15; -fx-font-size: 13px;");
             exportBtn.setOnAction(e -> AnalyticsExporter.exportSectionAnalytics(config, globalDatabase));
-            dashboardStrip.getChildren().add(exportBtn);
+            badgesFlow.getChildren().add(exportBtn);
         }
 
+        dashboardStrip.getChildren().add(badgesFlow);
         topArea.getChildren().add(dashboardStrip);
 
-        // ==========================================
-        // --- REVERT: Filter & Sorting Row ---
-        // ==========================================
         HBox filterSortRow = new HBox(10);
         filterSortRow.setAlignment(Pos.CENTER_LEFT);
         filterSortRow.setPadding(new Insets(0, 0, 10, 0));
@@ -146,14 +166,14 @@ public class DynamicModule extends BorderPane {
         filterSortRow.getChildren().addAll(filterSpacer, sortComboBox);
         topArea.getChildren().add(filterSortRow);
 
-        setTop(topArea);
+        mainContent.setTop(topArea);
 
         listContainer = new VBox(8);
         ScrollPane scrollPane = new ScrollPane(listContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         scrollPane.setBorder(Border.EMPTY);
-        setCenter(scrollPane);
+        mainContent.setCenter(scrollPane);
 
         HBox inputPanel = new HBox(10);
         inputPanel.setAlignment(Pos.CENTER);
@@ -168,7 +188,7 @@ public class DynamicModule extends BorderPane {
         }
 
         inputField = new TextField();
-        inputField.setPromptText("Enter new task for " + config.getName() + "...");
+        inputField.setPromptText(config.isRewardsPage() ? "Enter new reward..." : "Enter new task for " + config.getName() + "...");
         inputField.getStyleClass().add("input-field");
         HBox.setHgrow(inputField, Priority.ALWAYS);
         inputPanel.getChildren().add(inputField);
@@ -194,8 +214,110 @@ public class DynamicModule extends BorderPane {
             if (prefixField != null) prefixField.clear();
         });
 
-        setBottom(inputPanel);
+        mainContent.setBottom(inputPanel);
         refreshList();
+    }
+
+    private void toggleZenMode() {
+        isZenMode = !isZenMode;
+
+        if (getScene() != null && getScene().getRoot() instanceof BorderPane) {
+            Node sidebar = ((BorderPane) getScene().getRoot()).getLeft();
+            if (sidebar != null) {
+                sidebar.setVisible(!isZenMode);
+                sidebar.setManaged(!isZenMode);
+            }
+        }
+
+        if (isZenMode) {
+            mainContent.setVisible(false);
+            zenOverlay.setVisible(true);
+            refreshZenMode(false);
+        } else {
+            mainContent.setVisible(true);
+            zenOverlay.setVisible(false);
+            refreshList();
+        }
+    }
+
+    private void refreshZenMode(boolean forceReroll) {
+        zenOverlay.getChildren().clear();
+
+        List<TaskItem> validTasks = new ArrayList<>();
+        for (TaskItem t : globalDatabase) {
+            if (t.getSectionId() != null && t.getSectionId().equals(config.getId()) && !t.isArchived() && !t.isFinished()) {
+                boolean isLocked = false;
+                if (t.getDependsOnTaskIds() != null && !t.getDependsOnTaskIds().isEmpty()) {
+                    isLocked = globalDatabase.stream().anyMatch(dep -> t.getDependsOnTaskIds().contains(dep.getId()) && !dep.isFinished());
+                }
+                if (!isLocked) validTasks.add(t);
+            }
+        }
+
+        if (validTasks.isEmpty()) {
+            Label msg = new Label("All caught up! No tasks available for Zen Mode.");
+            msg.setStyle("-fx-text-fill: #4EC9B0; -fx-font-size: 24px; -fx-font-weight: bold;");
+            Button exitBtn = new Button("Exit Zen Mode");
+            exitBtn.setStyle("-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-size: 16px; -fx-cursor: hand;");
+            exitBtn.setOnAction(e -> toggleZenMode());
+            zenOverlay.getChildren().addAll(msg, exitBtn);
+            return;
+        }
+
+        if (config.isShowPriority()) {
+            int minWeight = validTasks.stream().mapToInt(t -> getPriorityWeight(t.getPriority())).min().orElse(999);
+            validTasks.removeIf(t -> getPriorityWeight(t.getPriority()) > minWeight);
+        }
+
+        if (currentZenTask == null || currentZenTask.isFinished() || currentZenTask.isArchived() || forceReroll || !validTasks.contains(currentZenTask)) {
+            currentZenTask = validTasks.get(new Random().nextInt(validTasks.size()));
+        }
+
+        Label zenHeader = new Label("☯ ZEN MODE");
+        zenHeader.setStyle("-fx-font-size: 48px; -fx-font-weight: bold; -fx-text-fill: #FF6666; -fx-effect: dropshadow(three-pass-box, #FF6666, 15, 0, 0, 0);");
+
+        Label zenSub = new Label("Focus on this ONE task. Ignore everything else.");
+        zenSub.setStyle("-fx-font-size: 18px; -fx-text-fill: #AAAAAA; -fx-padding: 0 0 40 0;");
+
+        Runnable onZenUpdate = () -> {
+            if (currentZenTask != null && currentZenTask.isFinished()) {
+                // --- FIXED: Explicitly sets this alert as a child of the main window so it can NEVER hide behind it! ---
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Zen Mode");
+                alert.setHeaderText(null);
+                alert.setContentText("Task crushed! Great job.");
+                TaskDialogs.styleDialog(alert);
+
+                if (getScene() != null && getScene().getWindow() != null) {
+                    alert.initOwner(getScene().getWindow());
+                }
+
+                alert.show();
+                currentZenTask = null;
+            }
+            refreshZenMode(false);
+            if (syncCallback != null) syncCallback.run();
+        };
+
+        TaskCard zenCard = new TaskCard(currentZenTask, config, appStats, globalDatabase, onZenUpdate, activeTimelines, this::reorderTasks);
+        zenCard.setMaxWidth(800);
+
+        HBox cardContainer = new HBox(zenCard);
+        cardContainer.setAlignment(Pos.CENTER);
+        cardContainer.setPadding(new Insets(40, 0, 80, 0));
+
+        Button rerollBtn = new Button("🎲 Reroll Task");
+        rerollBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-font-size: 16px; -fx-cursor: hand;");
+        rerollBtn.setOnAction(e -> refreshZenMode(true));
+
+        Button exitBtn = new Button("❌ Exit Zen Mode");
+        exitBtn.setStyle("-fx-background-color: #FF6666; -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; -fx-cursor: hand;");
+        exitBtn.setOnAction(e -> toggleZenMode());
+
+        HBox btnBox = new HBox(20, rerollBtn, exitBtn);
+        btnBox.setAlignment(Pos.CENTER);
+
+        zenOverlay.getChildren().addAll(zenHeader, zenSub, cardContainer, btnBox);
     }
 
     private int getPriorityWeight(TaskItem.CustomPriority p) {
@@ -207,6 +329,11 @@ public class DynamicModule extends BorderPane {
     public void refreshList() {
         for (Timeline t : activeTimelines) t.stop();
         activeTimelines.clear();
+
+        if (isZenMode) {
+            refreshZenMode(false);
+            return;
+        }
 
         listContainer.getChildren().clear();
         int availableCount = 0;
@@ -248,8 +375,20 @@ public class DynamicModule extends BorderPane {
             });
         }
 
+        if (config.isEnableZenMode() && zenModeBtn != null) {
+            if (availableCount >= appStats.getZenModeThreshold()) {
+                zenModeBtn.setDisable(false);
+                zenModeBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FF6666; -fx-background-color: #331A1A; -fx-padding: 5 15; -fx-background-radius: 15; -fx-border-color: #FF6666; -fx-border-radius: 15; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, #FF4444, 10, 0, 0, 0);");
+                zenModeBtn.setText("☯ Zen Mode");
+            } else {
+                zenModeBtn.setDisable(true);
+                zenModeBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #555555; -fx-background-color: transparent; -fx-padding: 5 15; -fx-background-radius: 15; -fx-border-color: #3E3E42; -fx-border-radius: 15;");
+                zenModeBtn.setText("☯ Zen Mode (" + availableCount + "/" + appStats.getZenModeThreshold() + ")");
+            }
+        }
+
         if (tasksToDisplay.isEmpty()) {
-            Label emptyLabel = new Label("Add a task to get started!");
+            Label emptyLabel = new Label(config.isRewardsPage() ? "Add a reward to your shop!" : "Add a task to get started!");
             emptyLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
             emptyLabel.setMaxWidth(Double.MAX_VALUE);
             emptyLabel.setAlignment(Pos.CENTER);
@@ -268,7 +407,7 @@ public class DynamicModule extends BorderPane {
         }
 
         if (config.isHasStreak()) availableTasksLabel.setText(config.getName() + " (" + completedCount + "/" + (availableCount + completedCount) + ")");
-        else availableTasksLabel.setText("Active Tasks: " + availableCount);
+        else availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
 
         if (scoreLabel != null) scoreLabel.setText("🏆 Score: " + appStats.getGlobalScore());
 

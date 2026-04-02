@@ -80,6 +80,10 @@ public class SystemTrayManager {
                 alert.setTitle(title);
                 alert.setHeaderText(null);
                 alert.setContentText(message);
+
+                // --- FIXED: Use global Dark Theme & Always-On-Top settings ---
+                TaskDialogs.styleDialog(alert);
+
                 alert.show();
             });
         }

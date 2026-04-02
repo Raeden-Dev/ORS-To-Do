@@ -159,7 +159,8 @@ public class TaskTrackerApp extends Application implements NativeKeyListener {
             System.out.println("Warning: styles.css not found. App will run with default JavaFX styling.");
         }
 
-        primaryStage.setTitle("Task-Tracker (JavaFX)");
+        primaryStage.setTitle("Task-Tracker");
+        primaryStage.setAlwaysOnTop(appStats.isAlwaysOnTop());
 
         // --- FIX: Safe Icon Loading ---
         try {

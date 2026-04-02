@@ -51,12 +51,32 @@ public class AnalyticsModule extends BorderPane {
         int lifetimeCompletedTasks = 0;
         int lifetimeFocusSeconds = 0;
 
+        // --- NEW TRACKERS ---
+        int highPriorityCompleted = 0;
+        int penaltiesSuffered = 0;
+        int subTasksCrushed = 0;
+        int[] dayCounts = new int[7]; // Indexes 0-6 for Mon-Sun
+
+        // Identify the "Highest" priority currently set in the user's config
+        TaskItem.CustomPriority highestPrio = null;
+        if (!appStats.getCustomPriorities().isEmpty()) {
+            highestPrio = appStats.getCustomPriorities().get(appStats.getCustomPriorities().size() - 1);
+        }
+
         Map<String, Integer> sectionTasksMap = new HashMap<>();
         Map<String, Integer> sectionTimeMap = new HashMap<>();
 
         for (TaskItem task : globalDatabase) {
+
+            // Track Penalties (Missed Deadlines)
+            if (task.isPenaltyApplied()) penaltiesSuffered++;
+
+            // Track Sub-Tasks Completed
+            for (TaskItem.SubTask sub : task.getSubTasks()) {
+                if (sub.isFinished()) subTasksCrushed++;
+            }
+
             if (task.isFinished()) {
-                // --- NEW: Filter out tasks completed before the last Analytics Reset ---
                 if (appStats.getAnalyticsResetTimestamp() != null && task.getDateCompleted() != null) {
                     if (task.getDateCompleted().isBefore(appStats.getAnalyticsResetTimestamp())) {
                         continue;
@@ -66,16 +86,47 @@ public class AnalyticsModule extends BorderPane {
                 lifetimeCompletedTasks++;
                 String secId = task.getSectionId() != null ? task.getSectionId() : "Unknown";
                 sectionTasksMap.put(secId, sectionTasksMap.getOrDefault(secId, 0) + 1);
+
+                // Track High Priority Tasks
+                if (highestPrio != null && highestPrio.equals(task.getPriority())) {
+                    highPriorityCompleted++;
+                }
+
+                // Track Most Productive Day
+                if (task.getDateCompleted() != null) {
+                    int dayIdx = task.getDateCompleted().getDayOfWeek().getValue() - 1; // Monday = 1 -> 0
+                    dayCounts[dayIdx]++;
+                }
             }
+
             if (task.getTimeSpentSeconds() > 0) {
-                // (Time spent was wiped to 0 during the reset, so any remaining time was accumulated AFTER reset)
                 lifetimeFocusSeconds += task.getTimeSpentSeconds();
                 String secId = task.getSectionId() != null ? task.getSectionId() : "Unknown";
                 sectionTimeMap.put(secId, sectionTimeMap.getOrDefault(secId, 0) + task.getTimeSpentSeconds());
             }
         }
 
-        // --- NEW: Using FlowPane to dynamically wrap cards and fill horizontal space ---
+        // --- CALCULATE NEW METRICS ---
+        String[] dayNames = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+        int maxDayIdx = 0;
+        int maxDayCount = 0;
+        for (int i = 0; i < 7; i++) {
+            if (dayCounts[i] > maxDayCount) {
+                maxDayCount = dayCounts[i];
+                maxDayIdx = i;
+            }
+        }
+        String mostProductiveDay = maxDayCount > 0 ? dayNames[maxDayIdx] : "N/A";
+
+        String avgTimeStr = "0m";
+        if (lifetimeCompletedTasks > 0 && lifetimeFocusSeconds > 0) {
+            int avgSecs = lifetimeFocusSeconds / lifetimeCompletedTasks;
+            long avgH = avgSecs / 3600;
+            long avgM = (avgSecs % 3600) / 60;
+            if (avgH > 0) avgTimeStr = avgH + "h " + avgM + "m";
+            else avgTimeStr = avgM + "m";
+        }
+
         FlowPane heroFlow = new FlowPane(20, 20);
         heroFlow.setAlignment(Pos.CENTER_LEFT);
 
@@ -87,7 +138,14 @@ public class AnalyticsModule extends BorderPane {
                 createHeroCard("🔥 Highest Streak", String.valueOf(appStats.getHighestStreak()), "#FF8C00"),
                 createHeroCard("✅ Lifetime Tasks", String.valueOf(lifetimeCompletedTasks), "#4EC9B0"),
                 createHeroCard("⏱ Lifetime Focus", String.format("%dh %dm", hours, mins), "#569CD6"),
-                createHeroCard("🗑 Tasks Deleted", String.valueOf(appStats.getLifetimeDeletedTasks()), "#FF6666")
+                createHeroCard("🗑 Tasks Deleted", String.valueOf(appStats.getLifetimeDeletedTasks()), "#FF6666"),
+
+                // --- NEW CARDS ---
+                createHeroCard("🎯 High Prio Crushed", String.valueOf(highPriorityCompleted), "#C586C0"),
+                createHeroCard("💀 Missed Deadlines", String.valueOf(penaltiesSuffered), "#FF4444"),
+                createHeroCard("🧩 Sub-Tasks Done", String.valueOf(subTasksCrushed), "#9CDCFE"),
+                createHeroCard("📅 Best Day", mostProductiveDay, "#B5CEA8"),
+                createHeroCard("⚡ Avg Task Time", avgTimeStr, "#CE9178")
         );
 
         dashboardContent.getChildren().add(heroFlow);
