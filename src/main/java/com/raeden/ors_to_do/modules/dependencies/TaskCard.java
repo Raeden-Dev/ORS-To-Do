@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import static com.raeden.ors_to_do.modules.dependencies.TaskDialogs.*;
-import static com.raeden.ors_to_do.utils.SystemTrayManager.pushNotification;
+import static com.raeden.ors_to_do.modules.dependencies.SystemTrayManager.pushNotification;
 
 public class TaskCard extends VBox {
 
@@ -114,8 +114,23 @@ public class TaskCard extends VBox {
             sideRect.setFill(Color.WHITE);
         }
 
-        HBox metaBox = new HBox(7, expandBtn, sideRect);
+        // Create an empty box first
+        HBox metaBox = new HBox(7);
         metaBox.setAlignment(Pos.CENTER_LEFT);
+
+        // 1. Add the Expand/Collapse arrow first
+        metaBox.getChildren().add(expandBtn);
+
+        // 2. Add the Custom Icon BEFORE the rectangle
+        if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
+            Label customIcon = new Label(task.getIconSymbol());
+            String iconColor = task.getIconColor() != null ? task.getIconColor() : "#FFFFFF";
+            customIcon.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: " + (appStats.getTaskFontSize() + 2) + "px;");
+            metaBox.getChildren().add(customIcon);
+        }
+
+        // 3. Add the side Rectangle last
+        metaBox.getChildren().add(sideRect);
 
         if (config.isAllowFavorite() && task.isFavorite()) {
             Label starLabel = new Label("[⭐]");
@@ -291,7 +306,6 @@ public class TaskCard extends VBox {
         if (prioBox != null) mainRow.getChildren().add(prioBox);
         mainRow.getChildren().add(actionContainer);
 
-        // --- SUB-TASKS & LINKS RENDERING ---
         VBox subTaskBox = new VBox(8);
         subTaskBox.setPadding(new Insets(0, 10, 15, 60));
 
@@ -303,7 +317,6 @@ public class TaskCard extends VBox {
             subTaskBox.setManaged(false);
         }
 
-        // Render Links
         if (hasLinks) {
             for (TaskItem.TaskLink linkObj : task.getTaskLinks()) {
                 HBox linkRow = new HBox(10);
@@ -312,7 +325,6 @@ public class TaskCard extends VBox {
                 Label linkIcon = new Label("🔗");
                 linkIcon.setStyle("-fx-text-fill: #858585; -fx-font-size: " + Math.max(10, appStats.getTaskFontSize() - 2) + "px; -fx-font-weight: bold;");
 
-                // --- FIX: Safely fallback to the URL if the name was historically saved as "Link" or is empty ---
                 String displayName = linkObj.getName();
                 if (displayName == null || displayName.trim().isEmpty() || displayName.equalsIgnoreCase("Link")) {
                     displayName = linkObj.getUrl();
@@ -385,6 +397,7 @@ public class TaskCard extends VBox {
         if (task.getRewardPoints() > 0 && !task.isPointsClaimed()) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Claim " + task.getRewardPoints() + " points? This will permanently lock the task.", ButtonType.YES, ButtonType.NO);
             alert.setHeaderText("Complete Task & Claim Points");
+            TaskDialogs.styleDialog(alert);
             alert.showAndWait().ifPresent(res -> {
                 if (res == ButtonType.YES) {
                     task.setFinished(true);
@@ -426,7 +439,6 @@ public class TaskCard extends VBox {
             if (task.getTaskLinks() != null) {
                 for (TaskItem.TaskLink linkObj : task.getTaskLinks()) {
                     String dName = linkObj.getName();
-                    // --- FIX: Prevent redundant (URL) tags if name IS the URL ---
                     if (dName == null || dName.trim().isEmpty() || dName.equalsIgnoreCase("Link") || dName.equals(linkObj.getUrl())) {
                         sb.append("\n    🔗 ").append(linkObj.getUrl());
                     } else {

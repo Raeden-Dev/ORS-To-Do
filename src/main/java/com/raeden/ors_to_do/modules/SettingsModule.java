@@ -2,8 +2,8 @@ package com.raeden.ors_to_do.modules;
 
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.DataManagementPanel;
 import com.raeden.ors_to_do.modules.dependencies.settings.*;
-import com.raeden.ors_to_do.modules.dependencies.settings.DataManagementPanel;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -26,12 +26,14 @@ public class SettingsModule extends ScrollPane {
 
         // Instantiate the isolated UI Components
         GeneralSettingsPanel generalPanel = new GeneralSettingsPanel(appStats, refreshCallback);
-        TemplateManagerPanel templatePanel = new TemplateManagerPanel(appStats, refreshCallback);
+
+        // --- UPDATED: Passing globalDatabase into the Template Panel ---
+        TemplateManagerPanel templatePanel = new TemplateManagerPanel(appStats, globalDatabase, refreshCallback);
+
         PriorityManagerPanel priorityPanel = new PriorityManagerPanel(appStats, refreshCallback);
-        DataManagementPanel dataPanel = new DataManagementPanel(appStats, globalDatabase, refreshCallback); // --- NEW
+        DataManagementPanel dataPanel = new DataManagementPanel(appStats, globalDatabase, refreshCallback);
         DangerZonePanel dangerPanel = new DangerZonePanel(appStats, globalDatabase, refreshCallback);
 
-        // A callback to update Template Dropdowns and Danger Zone lists when a Section is created/deleted
         Runnable onSectionChanged = () -> {
             templatePanel.refreshSectionSelector();
             dangerPanel.refreshDangerZone();
@@ -40,7 +42,6 @@ public class SettingsModule extends ScrollPane {
 
         SectionManagerPanel sectionPanel = new SectionManagerPanel(appStats, globalDatabase, refreshCallback, onSectionChanged);
 
-        // Assemble them into the UI (Data panel sitting right above Danger Zone)
         contentBox.getChildren().addAll(
                 header,
                 sectionPanel,

@@ -3,7 +3,7 @@ package com.raeden.ors_to_do.modules.dependencies;
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
-import com.raeden.ors_to_do.utils.SystemTrayManager;
+import com.raeden.ors_to_do.modules.dependencies.SystemTrayManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;

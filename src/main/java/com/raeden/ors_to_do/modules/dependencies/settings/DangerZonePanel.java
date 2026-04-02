@@ -5,6 +5,8 @@ import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class DangerZonePanel extends VBox {
@@ -67,7 +69,7 @@ public class DangerZonePanel extends VBox {
         wipeGrid.add(resetStreakBtn, col, row);
         Button resetAnalyticsBtn = createDangerButton("Reset Global Analytics");
         resetAnalyticsBtn.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Reset all global analytics (Score, Streaks, Lifetime Focus, Deleted tasks)?", ButtonType.YES, ButtonType.NO);
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Reset all global analytics (Score, Streaks, Lifetime Focus, Lifetime Tasks, Section Progress)?", ButtonType.YES, ButtonType.NO);
             alert.setHeaderText(null);
             alert.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) {
@@ -77,7 +79,10 @@ public class DangerZonePanel extends VBox {
                     appStats.setLifetimeDeletedTasks(0);
                     appStats.getHistoryLog().clear();
                     appStats.getAdvancedHistoryLog().clear();
-                    for(TaskItem t : globalDatabase) t.setTimeSpentSeconds(0);
+                    appStats.setAnalyticsResetTimestamp(LocalDateTime.now());
+                    for(TaskItem t : globalDatabase) {
+                        t.setTimeSpentSeconds(0);
+                    }
 
                     StorageManager.saveStats(appStats);
                     StorageManager.saveTasks(globalDatabase);
@@ -85,7 +90,7 @@ public class DangerZonePanel extends VBox {
                 }
             });
         });
-        wipeGrid.add(resetAnalyticsBtn, col, row);
+        wipeGrid.add(resetAnalyticsBtn, 0, row);
     }
 
     private Button createDangerButton(String text) {

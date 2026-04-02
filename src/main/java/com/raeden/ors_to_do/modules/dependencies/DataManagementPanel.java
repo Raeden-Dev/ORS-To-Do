@@ -1,9 +1,8 @@
-package com.raeden.ors_to_do.modules.dependencies.settings;
+package com.raeden.ors_to_do.modules.dependencies;
 
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.TaskItem;
-import com.raeden.ors_to_do.utils.BackupManager;
-import javafx.geometry.Insets;
+import com.raeden.ors_to_do.modules.dependencies.BackupManager;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;

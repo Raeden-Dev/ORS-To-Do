@@ -1,9 +1,10 @@
-package com.raeden.ors_to_do.utils;
+package com.raeden.ors_to_do.modules.dependencies;
 
 import com.raeden.ors_to_do.dependencies.AppStats;
-import com.raeden.ors_to_do.dependencies.BackupBundle;
+import com.raeden.ors_to_do.modules.dependencies.BackupBundle;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.SystemTrayManager;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -26,7 +27,7 @@ public class BackupManager {
         if (file != null) {
             try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
                 oos.writeObject(new BackupBundle(appStats, taskDatabase));
-                com.raeden.ors_to_do.utils.SystemTrayManager.pushNotification("Export Successful", "All data safely exported to: " + file.getName());
+                SystemTrayManager.pushNotification("Export Successful", "All data safely exported to: " + file.getName());
             } catch (Exception e) {
                 e.printStackTrace();
                 showError("Export Failed", "Could not write to the selected file.");
@@ -69,7 +70,7 @@ public class BackupManager {
                     StorageManager.saveStats(currentStats);
                     StorageManager.saveTasks(currentTasks);
                     onComplete.run();
-                    com.raeden.ors_to_do.utils.SystemTrayManager.pushNotification("Import Successful", "Your data has been loaded.");
+                    SystemTrayManager.pushNotification("Import Successful", "Your data has been loaded.");
                 }
 
             } catch (Exception e) {

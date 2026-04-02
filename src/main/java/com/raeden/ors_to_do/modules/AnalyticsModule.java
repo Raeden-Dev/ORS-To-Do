@@ -56,11 +56,19 @@ public class AnalyticsModule extends BorderPane {
 
         for (TaskItem task : globalDatabase) {
             if (task.isFinished()) {
+                // --- NEW: Filter out tasks completed before the last Analytics Reset ---
+                if (appStats.getAnalyticsResetTimestamp() != null && task.getDateCompleted() != null) {
+                    if (task.getDateCompleted().isBefore(appStats.getAnalyticsResetTimestamp())) {
+                        continue;
+                    }
+                }
+
                 lifetimeCompletedTasks++;
                 String secId = task.getSectionId() != null ? task.getSectionId() : "Unknown";
                 sectionTasksMap.put(secId, sectionTasksMap.getOrDefault(secId, 0) + 1);
             }
             if (task.getTimeSpentSeconds() > 0) {
+                // (Time spent was wiped to 0 during the reset, so any remaining time was accumulated AFTER reset)
                 lifetimeFocusSeconds += task.getTimeSpentSeconds();
                 String secId = task.getSectionId() != null ? task.getSectionId() : "Unknown";
                 sectionTimeMap.put(secId, sectionTimeMap.getOrDefault(secId, 0) + task.getTimeSpentSeconds());

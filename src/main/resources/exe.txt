@@ -1,0 +1,2 @@
+run:
+jpackage --type app-image --name "TaskTracker" --input target/ --main-jar ORS-To-Do-1.0-SNAPSHOT-standalone.jar --main-class com.raeden.ors_to_do.Launcher --icon icon.ico

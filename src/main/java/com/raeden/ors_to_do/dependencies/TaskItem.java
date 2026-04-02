@@ -103,6 +103,14 @@ public class TaskItem implements Serializable {
     private List<String> links = new ArrayList<>();
     private List<TaskLink> taskLinks = new ArrayList<>();
 
+    private String iconSymbol;
+    private String iconColor;
+
+    public String getIconSymbol() { return iconSymbol; }
+    public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
+    public String getIconColor() { return iconColor; }
+    public void setIconColor(String iconColor) { this.iconColor = iconColor; }
+
     public TaskItem(String textContent, CustomPriority priority, OriginModule legacyModule) {
         this.id = UUID.randomUUID().toString();
         this.textContent = textContent;

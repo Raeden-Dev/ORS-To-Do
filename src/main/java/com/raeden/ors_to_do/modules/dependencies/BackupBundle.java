@@ -1,4 +1,7 @@
-package com.raeden.ors_to_do.dependencies;
+package com.raeden.ors_to_do.modules.dependencies;
+
+import com.raeden.ors_to_do.dependencies.AppStats;
+import com.raeden.ors_to_do.dependencies.TaskItem;
 
 import java.io.Serializable;
 import java.util.List;

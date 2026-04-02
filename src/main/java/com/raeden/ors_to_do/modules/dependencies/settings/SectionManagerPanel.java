@@ -3,6 +3,7 @@ package com.raeden.ors_to_do.modules.dependencies.settings;
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.TaskDialogs;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -103,6 +104,7 @@ public class SectionManagerPanel extends VBox {
             removeBtn.setOnAction(e -> {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure? This will permanently delete the section '" + section.getName() + "' AND ALL TASKS inside it!", ButtonType.YES, ButtonType.NO);
                 alert.setHeaderText("Delete Section?");
+                TaskDialogs.styleDialog(alert);
                 alert.showAndWait().ifPresent(res -> {
                     if (res == ButtonType.YES) {
                         appStats.getSections().remove(section);
@@ -125,7 +127,8 @@ public class SectionManagerPanel extends VBox {
     private void showSectionDialog(AppStats.SectionConfig config) {
         boolean isNew = (config == null);
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(isNew ? "Create New Section" : "Edit Section Config: " + config.getName());
+        dialog.setTitle(isNew ? "Create New Section" : "Edit Section: " + config.getName());
+        TaskDialogs.styleDialog(dialog);
 
         GridPane grid = new GridPane();
         grid.setHgap(30); grid.setVgap(15);
@@ -183,22 +186,26 @@ public class SectionManagerPanel extends VBox {
         chkTags.setSelected(!isNew && config.isShowTags());
         grid.add(createToggleBox(chkTags, "Auto-generates clickable sorting buttons at the top of the page."), 0, 6);
 
-        CheckBox chkScore = new CheckBox("Enable Point System (Reward/Penalty)");
-        chkScore.setSelected(!isNew && config.isEnableScore());
-        grid.add(createToggleBox(chkScore, "Allows adding and earning score points for tasks."), 0, 7);
-
-        // --- NEW: Links Toggle ---
-        CheckBox chkLinks = new CheckBox("Enable Task Links");
-        chkLinks.setSelected(!isNew && config.isEnableLinks());
-        grid.add(createToggleBox(chkLinks, "Allows attaching clickable URLs to tasks."), 0, 8);
-
         CheckBox chkFavorite = new CheckBox("Enable Favorite System");
         chkFavorite.setSelected(!isNew && config.isAllowFavorite());
         grid.add(createToggleBox(chkFavorite, "Allows starring tasks for a golden border override."), 1, 6);
 
+        CheckBox chkScore = new CheckBox("Enable Point System (Reward/Penalty)");
+        chkScore.setSelected(!isNew && config.isEnableScore());
+        grid.add(createToggleBox(chkScore, "Allows adding and earning score points for tasks."), 0, 7);
+
         CheckBox chkAnalytics = new CheckBox("Show Analytics Export");
         chkAnalytics.setSelected(!isNew && config.isShowAnalytics());
         grid.add(createToggleBox(chkAnalytics, "Displays a button to export an HTML graph of completed tasks."), 1, 7);
+
+        CheckBox chkLinks = new CheckBox("Enable Task Links");
+        chkLinks.setSelected(!isNew && config.isEnableLinks());
+        grid.add(createToggleBox(chkLinks, "Allows attaching clickable URLs to tasks."), 0, 8);
+
+        // --- FIXED: Safe Icon Checkbox ---
+        CheckBox chkIcons = new CheckBox("Enable Task Icons");
+        chkIcons.setSelected(!isNew && config.isEnableIcons());
+        grid.add(createToggleBox(chkIcons, "Allows attaching custom color-coded symbols to tasks."), 1, 8);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -221,9 +228,12 @@ public class SectionManagerPanel extends VBox {
                 target.setShowWorkType(chkWorkType.isSelected());
                 target.setShowTags(chkTags.isSelected());
                 target.setEnableScore(chkScore.isSelected());
-                target.setEnableLinks(chkLinks.isSelected()); // --- NEW
+                target.setEnableLinks(chkLinks.isSelected());
                 target.setAllowFavorite(chkFavorite.isSelected());
                 target.setShowAnalytics(chkAnalytics.isSelected());
+
+                // --- FIXED: Save Icon State ---
+                target.setEnableIcons(chkIcons.isSelected());
 
                 if (isNew) {
                     appStats.getSections().add(target);
@@ -231,7 +241,7 @@ public class SectionManagerPanel extends VBox {
 
                 StorageManager.saveStats(appStats);
                 renderExistingSections();
-                onSectionChanged.run(); // Updates danger zone & templates
+                onSectionChanged.run();
             }
         });
     }

@@ -1,4 +1,4 @@
-package com.raeden.ors_to_do.utils;
+package com.raeden.ors_to_do.modules.dependencies;
 
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -13,14 +13,29 @@ public class SystemTrayManager {
         if (!java.awt.SystemTray.isSupported()) return;
 
         java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
+        java.awt.Image trayImage = null;
 
-        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-        java.awt.Graphics2D g2d = image.createGraphics();
-        g2d.setColor(new java.awt.Color(86, 156, 214));
-        g2d.fillOval(0, 0, 16, 16);
-        g2d.dispose();
+        // --- SAFE ICON LOADING ---
+        try {
+            java.net.URL imageURL = SystemTrayManager.class.getResource("/icon.png");
+            if (imageURL != null) {
+                trayImage = java.awt.Toolkit.getDefaultToolkit().getImage(imageURL);
+            }
+        } catch (Exception e) {
+            System.out.println("Tray icon.png not found, falling back to default.");
+        }
 
-        trayIcon = new java.awt.TrayIcon(image, "ORS Task Tracker");
+        // --- FALLBACK (If image is null or missing) ---
+        if (trayImage == null) {
+            java.awt.image.BufferedImage fallback = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            java.awt.Graphics2D g2d = fallback.createGraphics();
+            g2d.setColor(new java.awt.Color(86, 156, 214));
+            g2d.fillOval(0, 0, 16, 16);
+            g2d.dispose();
+            trayImage = fallback;
+        }
+
+        trayIcon = new java.awt.TrayIcon(trayImage, "ORS Task Tracker");
         trayIcon.setImageAutoSize(true);
 
         trayIcon.addMouseListener(new java.awt.event.MouseAdapter() {

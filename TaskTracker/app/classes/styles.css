@@ -1,0 +1,156 @@
+/* src/main/resources/styles.css */
+.root {
+    -fx-background-color: #1E1E1E;
+    -fx-font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar {
+    -fx-background-color: #252526;
+    -fx-padding: 20;
+    -fx-spacing: 10;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #CCCCCC;
+    -fx-font-size: 14px;
+    -fx-alignment: center-left;
+    -fx-padding: 10 15 10 15;
+    -fx-cursor: hand;
+}
+
+.nav-button:hover {
+    -fx-background-color: #2A2D2E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.nav-button.active {
+    -fx-background-color: #37373D;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+}
+
+.header-text {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+/* Task Row Styling */
+.task-row {
+    -fx-background-color: #2D2D30;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: #3E3E42;
+    -fx-border-width: 1;
+}
+.task-row:hover {
+    -fx-background-color: #3E3E42;
+}
+
+/* Text Styling */
+.task-text {
+    -fx-text-fill: #E0E0E0;
+    -fx-font-size: 14px;
+}
+.task-text-finished {
+    -fx-text-fill: #808080;
+    -fx-font-size: 14px;
+    -fx-strikethrough: true;
+}
+.task-metadata {
+    -fx-text-fill: #858585;
+    -fx-font-size: 12px;
+}
+.task-star {
+    -fx-text-fill: #FFD700;
+    -fx-font-weight: bold;
+}
+.task-prefix {
+    -fx-text-fill: #4EC9B0; /* A nice studio-dev green */
+    -fx-font-weight: bold;
+}
+
+/* Input Area Styling */
+.input-field {
+    -fx-background-color: #3E3E42;
+    -fx-text-fill: white;
+    -fx-border-color: #555555;
+    -fx-border-radius: 3;
+    -fx-padding: 8;
+}
+.action-btn {
+    -fx-background-color: #0E639C;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.action-btn:hover {
+    -fx-background-color: #1177BB;
+}
+/* Focus Hub Styling */
+.timer-display {
+    -fx-font-size: 100px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+
+.focus-status {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FF6666; /* Red for focus */
+}
+
+.break-status {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4EC9B0; /* Green for break */
+}
+
+.massive-btn {
+    -fx-font-size: 18px;
+    -fx-padding: 10 30 10 30;
+}
+
+.scratchpad {
+    -fx-control-inner-background: #1E1E1E; /* Dark Gray */
+    -fx-background-color: #1E1E1E;
+    -fx-text-fill: #CCCCCC;
+}
+.scratchpad .content {
+    -fx-background-color: transparent;
+}
+
+/* =========================================
+   DARK THEME SCROLLBARS
+   ========================================= */
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color: #1E1E1E;
+}
+
+.scroll-bar .track, .scroll-bar .track-background {
+    -fx-background-color: #1E1E1E;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #3E3E42;
+    -fx-background-radius: 5em;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #555555;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2px;
+}
+
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-background-color: #AAAAAA;
+}
+
+/* Fix for the tiny square where horizontal and vertical scrollbars meet */
+.scroll-pane .corner {
+    -fx-background-color: #1E1E1E;
+}

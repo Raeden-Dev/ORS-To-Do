@@ -1,7 +1,9 @@
 package com.raeden.ors_to_do.dependencies;
 
+import com.raeden.ors_to_do.dependencies.TaskItem;
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,9 +34,11 @@ public class AppStats implements Serializable {
         private boolean showTags = false;
         private boolean allowFavorite = false;
         private boolean enableScore = false;
-
         // --- NEW: Links Toggle ---
         private boolean enableLinks = false;
+        private boolean enableIcons;
+        public boolean isEnableIcons() { return enableIcons; }
+        public void setEnableIcons(boolean enableIcons) { this.enableIcons = enableIcons; }
 
         public SectionConfig(String id, String name) {
             this.id = id;
@@ -93,19 +97,57 @@ public class AppStats implements Serializable {
         private String text;
         private String prefixColor;
         private String bgColor;
+        private List<java.time.DayOfWeek> activeDays;
+
+        private String iconSymbol;
+        private String iconColor;
+        public String getIconSymbol() { return iconSymbol; }
+        public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
+        public String getIconColor() { return iconColor; }
+        public void setIconColor(String iconColor) { this.iconColor = iconColor; }
+
+        // --- NEW: Dynamic Feature Storage ---
+        private String priorityName;
+        private int rewardPoints;
+        private int penaltyPoints;
+        private String workType;
+        private List<String> subTaskLines;
 
         public DailyTemplate(String prefix, String text, String prefixColor, String bgColor) {
             this.prefix = prefix;
             this.text = text;
             this.prefixColor = prefixColor;
             this.bgColor = bgColor;
+            this.activeDays = new java.util.ArrayList<>(java.util.Arrays.asList(java.time.DayOfWeek.values()));
+            this.subTaskLines = new java.util.ArrayList<>();
         }
+
+        public String getPriorityName() { return priorityName; }
+        public void setPriorityName(String priorityName) { this.priorityName = priorityName; }
+        public int getRewardPoints() { return rewardPoints; }
+        public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
+        public int getPenaltyPoints() { return penaltyPoints; }
+        public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
+        public String getWorkType() { return workType; }
+        public void setWorkType(String workType) { this.workType = workType; }
+
+        public List<String> getSubTaskLines() {
+            if (subTaskLines == null) subTaskLines = new java.util.ArrayList<>();
+            return subTaskLines;
+        }
+        public void setSubTaskLines(List<String> subTaskLines) { this.subTaskLines = subTaskLines; }
+
+        public List<java.time.DayOfWeek> getActiveDays() {
+            if (activeDays == null) activeDays = new java.util.ArrayList<>(java.util.Arrays.asList(java.time.DayOfWeek.values()));
+            return activeDays;
+        }
+        public void setActiveDays(List<java.time.DayOfWeek> activeDays) { this.activeDays = activeDays; }
 
         public String getPrefix() { return prefix; }
         public void setPrefix(String prefix) { this.prefix = prefix; }
         public String getText() { return text; }
         public void setText(String text) { this.text = text; }
-        public String getPrefixColor() { return prefixColor != null ? prefixColor : "#4EC9B0"; }
+        public String getPrefixColor() { return prefixColor; }
         public void setPrefixColor(String prefixColor) { this.prefixColor = prefixColor; }
         public String getBgColor() { return bgColor; }
         public void setBgColor(String bgColor) { this.bgColor = bgColor; }
@@ -129,6 +171,10 @@ public class AppStats implements Serializable {
     private Boolean runInBackground = null;
     private Boolean matchDailyRectColor = null;
     private int minDailyCompletionPercent = 100;
+    private boolean matchTitleColor = false;
+
+    public boolean isMatchTitleColor() { return matchTitleColor; }
+    public void setMatchTitleColor(boolean matchTitleColor) { this.matchTitleColor = matchTitleColor; }
 
     private String navQuickText = "Quick To-Do";
     private String navDailyText = "Daily To-Do";
@@ -142,6 +188,11 @@ public class AppStats implements Serializable {
     private String navAnalyticsColor = "#F2C94C";
     private String navArchiveColor = "#C586C0";
     private String navSettingsColor = "#858585";
+
+    private LocalDateTime analyticsResetTimestamp;
+
+    public LocalDateTime getAnalyticsResetTimestamp() { return analyticsResetTimestamp; }
+    public void setAnalyticsResetTimestamp(java.time.LocalDateTime analyticsResetTimestamp) { this.analyticsResetTimestamp = analyticsResetTimestamp; }
 
     private List<SectionConfig> sections = new ArrayList<>();
 
@@ -282,5 +333,7 @@ public class AppStats implements Serializable {
         this.advancedHistoryLog = new LinkedHashMap<>(other.advancedHistoryLog);
         this.brainDumpText = other.brainDumpText;
         this.pendingDrafts = new java.util.HashMap<>(other.pendingDrafts);
+        this.analyticsResetTimestamp = other.analyticsResetTimestamp;
+        this.matchTitleColor = other.matchTitleColor;
     }
 }

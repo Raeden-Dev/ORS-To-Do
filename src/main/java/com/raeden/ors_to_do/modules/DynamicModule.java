@@ -3,6 +3,7 @@ package com.raeden.ors_to_do.modules;
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.AnalyticsExporter;
 import com.raeden.ors_to_do.modules.dependencies.TaskDialogs;
 import com.raeden.ors_to_do.modules.dependencies.TaskCard;
 import javafx.animation.Animation;
@@ -55,7 +56,8 @@ public class DynamicModule extends BorderPane {
         dashboardStrip.setMinHeight(65);
 
         availableTasksLabel = new Label();
-        availableTasksLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #569CD6;");
+        String titleColor = appStats.isMatchTitleColor() ? config.getSidebarColor() : "#569CD6";
+        availableTasksLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + titleColor + ";");
         dashboardStrip.getChildren().add(availableTasksLabel);
 
         Region headerSpacer = new Region();
@@ -97,7 +99,7 @@ public class DynamicModule extends BorderPane {
         if (config.isShowAnalytics()) {
             Button exportBtn = new Button("📊 Export");
             exportBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 5;");
-            exportBtn.setOnAction(e -> com.raeden.ors_to_do.utils.AnalyticsExporter.exportSectionAnalytics(config, globalDatabase));
+            exportBtn.setOnAction(e -> AnalyticsExporter.exportSectionAnalytics(config, globalDatabase));
             dashboardStrip.getChildren().add(exportBtn);
         }
 

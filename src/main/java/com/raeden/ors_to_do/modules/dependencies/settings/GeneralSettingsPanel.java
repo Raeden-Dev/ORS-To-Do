@@ -2,23 +2,22 @@ package com.raeden.ors_to_do.modules.dependencies.settings;
 
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
-import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.util.Duration;
+
+import java.util.Arrays;
 import java.util.Base64;
 
 public class GeneralSettingsPanel extends VBox {
-    private final double BUTTON_WIDTH = 200.0;
 
     public GeneralSettingsPanel(AppStats appStats, Runnable refreshCallback) {
         super(15);
         setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
 
-        // --- NEW: Inject Dark Theme CSS for Sliders ---
+        // Inject Dark Theme CSS for Sliders
         String sliderCss = ".slider .track { -fx-background-color: #3E3E42; -fx-background-radius: 5; } " +
                 ".slider .thumb { -fx-background-color: #569CD6; } " +
                 ".slider .thumb:hover { -fx-background-color: #4EC9B0; }";
@@ -61,11 +60,16 @@ public class GeneralSettingsPanel extends VBox {
         matchOutlineCheck.setSelected(appStats.isMatchPriorityOutline());
         matchOutlineCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
 
+        CheckBox matchTitleColorCheck = new CheckBox("Match page title color to section sidebar color");
+        matchTitleColorCheck.setSelected(appStats.isMatchTitleColor());
+        matchTitleColorCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+
         behaviorGrid.add(new Label("Task Font Size:"), 0, 0); behaviorGrid.add(fontSizeSpinner, 1, 0);
         behaviorGrid.add(sliderLabel, 0, 1); behaviorGrid.add(sliderBox, 1, 1);
         behaviorGrid.add(runInBackgroundCheck, 0, 2, 2, 1);
         behaviorGrid.add(matchRectCheck, 0, 3, 2, 1);
         behaviorGrid.add(matchOutlineCheck, 0, 4, 2, 1);
+        behaviorGrid.add(matchTitleColorCheck, 0, 5, 2, 1);
 
         // Context Menu Texts
         Label contextHeader = new Label("Right-Click Menu Texts");
@@ -107,18 +111,10 @@ public class GeneralSettingsPanel extends VBox {
         navGrid.add(new Label("Archived:"), 0, 2); navGrid.add(archiveNavField, 1, 2); navGrid.add(archiveColorPicker, 2, 2);
         navGrid.add(new Label("Settings:"), 0, 3); navGrid.add(settingsNavField, 1, 3); navGrid.add(settingsColorPicker, 2, 3);
 
-        // Save Button
-        HBox saveActionBox = new HBox(15);
-        saveActionBox.setAlignment(Pos.CENTER_LEFT);
-        Button saveTextBtn = new Button("Save Global Changes");
-        saveTextBtn.setPrefWidth(BUTTON_WIDTH);
-        saveTextBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-
-        Label savedNotification = new Label("Saved Changes!");
-        savedNotification.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold; -fx-font-size: 14px;");
-        savedNotification.setVisible(false);
-
-        saveTextBtn.setOnAction(e -> {
+        // ========================================================
+        // --- AUTO-SAVE LOGIC ---
+        // ========================================================
+        Runnable autoSaveTrigger = () -> {
             appStats.setEditMenuText(editMenuField.getText().trim().isEmpty() ? "Edit Task" : editMenuField.getText().trim());
             appStats.setArchiveMenuText(archiveMenuField.getText().trim().isEmpty() ? "Archive Task" : archiveMenuField.getText().trim());
             appStats.setDeleteMenuText(deleteMenuField.getText().trim().isEmpty() ? "Delete" : deleteMenuField.getText().trim());
@@ -127,6 +123,7 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setRunInBackground(runInBackgroundCheck.isSelected());
             appStats.setMatchDailyRectColor(matchRectCheck.isSelected());
             appStats.setMatchPriorityOutline(matchOutlineCheck.isSelected());
+            appStats.setMatchTitleColor(matchTitleColorCheck.isSelected());
 
             appStats.setNavFocusText(focusNavField.getText().trim().isEmpty() ? "Focus Hub" : focusNavField.getText().trim());
             appStats.setNavArchiveText(archiveNavField.getText().trim().isEmpty() ? "Archived" : archiveNavField.getText().trim());
@@ -139,14 +136,41 @@ public class GeneralSettingsPanel extends VBox {
 
             StorageManager.saveStats(appStats);
             refreshCallback.run();
-            savedNotification.setVisible(true);
-            PauseTransition pause = new PauseTransition(Duration.seconds(3));
-            pause.setOnFinished(event -> savedNotification.setVisible(false));
-            pause.play();
-        });
+        };
 
-        saveActionBox.getChildren().addAll(saveTextBtn, savedNotification);
-        getChildren().addAll(textHeader, behaviorHeader, behaviorGrid, new Separator(), contextHeader, contextGrid, new Separator(), navHeader, navGrid, new Separator(), saveActionBox);
+        // --- ATTACH LISTENERS TO ALL INPUTS ---
+
+        fontSizeSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
+
+        // Sliders can fire hundreds of times while dragging. We only save when dragging stops.
+        streakSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
+            if (!isChanging) autoSaveTrigger.run();
+        });
+        streakSlider.setOnMouseReleased(e -> autoSaveTrigger.run());
+
+        runInBackgroundCheck.setOnAction(e -> autoSaveTrigger.run());
+        matchRectCheck.setOnAction(e -> autoSaveTrigger.run());
+        matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
+        matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
+
+        // TextFields save when you press Enter, OR when you click away (lose focus)
+        for (TextField tf : Arrays.asList(editMenuField, archiveMenuField, deleteMenuField, focusNavField, analyticsNavField, archiveNavField, settingsNavField)) {
+            tf.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                if (!isNowFocused) autoSaveTrigger.run();
+            });
+            tf.setOnAction(e -> autoSaveTrigger.run());
+        }
+
+        focusColorPicker.setOnAction(e -> autoSaveTrigger.run());
+        analyticsColorPicker.setOnAction(e -> autoSaveTrigger.run());
+        archiveColorPicker.setOnAction(e -> autoSaveTrigger.run());
+        settingsColorPicker.setOnAction(e -> autoSaveTrigger.run());
+
+        getChildren().addAll(
+                textHeader, behaviorHeader, behaviorGrid, new Separator(),
+                contextHeader, contextGrid, new Separator(),
+                navHeader, navGrid
+        );
     }
 
     private String toHexString(Color color) {

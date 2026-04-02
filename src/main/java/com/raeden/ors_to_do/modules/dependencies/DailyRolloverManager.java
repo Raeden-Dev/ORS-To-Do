@@ -1,4 +1,4 @@
-package com.raeden.ors_to_do.utils;
+package com.raeden.ors_to_do.modules.dependencies;
 
 import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
@@ -45,12 +45,35 @@ public class DailyRolloverManager {
                         }
                     }
 
-                    TaskItem.CustomPriority defaultPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
+                    TaskItem.CustomPriority fallbackPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
+
                     for (AppStats.DailyTemplate template : section.getAutoAddTemplates()) {
-                        TaskItem newTask = new TaskItem(template.getText(), defaultPrio, section.getId());
-                        if (template.getPrefix() != null && !template.getPrefix().isEmpty()) newTask.setPrefix(template.getPrefix());
-                        newTask.setPrefixColor(template.getPrefixColor());
+                        if (template.getActiveDays() != null && !template.getActiveDays().isEmpty() && !template.getActiveDays().contains(today.getDayOfWeek())) {
+                            continue;
+                        }
+
+                        TaskItem newTask = new TaskItem(template.getText(), fallbackPrio, section.getId());
+
+                        // --- NEW: Apply dynamic config variables during automatic rollover ---
+                        if (section.isShowPrefix() && template.getPrefix() != null && !template.getPrefix().isEmpty()) {
+                            newTask.setPrefix(template.getPrefix());
+                            newTask.setPrefixColor(template.getPrefixColor());
+                        }
+                        if (section.isShowPriority() && template.getPriorityName() != null) {
+                            appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
+                        }
+                        if (section.isShowWorkType() && template.getWorkType() != null) newTask.setWorkType(template.getWorkType());
+                        if (section.isEnableScore()) {
+                            newTask.setRewardPoints(template.getRewardPoints());
+                            newTask.setPenaltyPoints(template.getPenaltyPoints());
+                        }
+                        if (section.isEnableSubTasks() && template.getSubTaskLines() != null) {
+                            for (String st : template.getSubTaskLines()) {
+                                if (!st.trim().isEmpty()) newTask.getSubTasks().add(new TaskItem.SubTask(st.trim()));
+                            }
+                        }
                         if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+
                         taskDatabase.add(newTask);
                     }
                 }

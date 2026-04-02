@@ -8,8 +8,8 @@ import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
 import com.raeden.ors_to_do.modules.*;
-import com.raeden.ors_to_do.utils.DailyRolloverManager;
-import com.raeden.ors_to_do.utils.SystemTrayManager;
+import com.raeden.ors_to_do.modules.dependencies.DailyRolloverManager;
+import com.raeden.ors_to_do.modules.dependencies.SystemTrayManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Node;
@@ -54,7 +54,7 @@ public class TaskTrackerApp extends Application implements NativeKeyListener {
         appStats = StorageManager.loadStats();
 
         runSilentDataMigration();
-        DailyRolloverManager.processDailyRollover(appStats, taskDatabase); // DELEGATED
+        DailyRolloverManager.processDailyRollover(appStats, taskDatabase);
 
         try {
             GlobalScreen.registerNativeHook();
@@ -107,12 +107,12 @@ public class TaskTrackerApp extends Application implements NativeKeyListener {
 
     @Override
     public void start(Stage primaryStage) {
-        startSingleInstanceServer();
+        startSingleInstanceServer(primaryStage);
         Platform.setImplicitExit(false);
-        SystemTrayManager.setupSystemTray(primaryStage, this::shutdownApp); // DELEGATED
+        SystemTrayManager.setupSystemTray(primaryStage, this::shutdownApp);
 
         primaryStage.setOnCloseRequest(event -> {
-            DailyRolloverManager.autoArchiveTasks(appStats, taskDatabase); // DELEGATED
+            DailyRolloverManager.autoArchiveTasks(appStats, taskDatabase);
             StorageManager.saveTasks(taskDatabase);
             StorageManager.saveStats(appStats);
 
@@ -150,10 +150,29 @@ public class TaskTrackerApp extends Application implements NativeKeyListener {
         rootLayout.setLeft(sidebar);
 
         Scene scene = new Scene(rootLayout, 1000, 700);
-        String css = getClass().getResource("/styles.css").toExternalForm();
-        if (css != null) scene.getStylesheets().add(css);
+
+        // --- FIX: Safe CSS Loading ---
+        java.net.URL cssUrl = getClass().getResource("/styles.css");
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        } else {
+            System.out.println("Warning: styles.css not found. App will run with default JavaFX styling.");
+        }
 
         primaryStage.setTitle("Task-Tracker (JavaFX)");
+
+        // --- FIX: Safe Icon Loading ---
+        try {
+            java.io.InputStream iconStream = getClass().getResourceAsStream("/icon.png");
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            } else {
+                System.out.println("Warning: Window icon.png not found.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error loading window icon.");
+        }
+
         primaryStage.setScene(scene);
         primaryStage.show();
 
@@ -171,7 +190,7 @@ public class TaskTrackerApp extends Application implements NativeKeyListener {
         }
     }
 
-    private void startSingleInstanceServer() {
+    private void startSingleInstanceServer(Stage primaryStage) {
         Thread serverThread = new Thread(() -> {
             try {
                 ServerSocket serverSocket = new ServerSocket(INSTANCE_PORT, 1, InetAddress.getByName("127.0.0.1"));
@@ -181,7 +200,12 @@ public class TaskTrackerApp extends Application implements NativeKeyListener {
                     String msg = in.readLine();
                     if ("WAKE_UP".equals(msg)) {
                         Platform.runLater(() -> {
-                            // Wake up handled by TrayManager or main
+                            // --- FIX: Actually wake up the window! ---
+                            if (primaryStage != null) {
+                                primaryStage.show();
+                                primaryStage.setIconified(false);
+                                primaryStage.toFront();
+                            }
                         });
                     }
                     client.close();
