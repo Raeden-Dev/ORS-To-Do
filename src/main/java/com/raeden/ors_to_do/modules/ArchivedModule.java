@@ -7,19 +7,18 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
-public class ArchivedModuleFX extends BorderPane {
+public class ArchivedModule extends BorderPane {
     private VBox listContainer;
     private List<TaskItem> globalDatabase;
     private AppStats appStats;
     private Runnable onStateChangedCallback;
 
-    public ArchivedModuleFX(List<TaskItem> globalDatabase, AppStats appStats, Runnable onStateChangedCallback) {
+    public ArchivedModule(List<TaskItem> globalDatabase, AppStats appStats, Runnable onStateChangedCallback) {
         this.globalDatabase = globalDatabase;
         this.appStats = appStats;
         this.onStateChangedCallback = onStateChangedCallback;
@@ -43,8 +42,12 @@ public class ArchivedModuleFX extends BorderPane {
             alert.setHeaderText(null);
             alert.showAndWait().ifPresent(res -> {
                 if (res == ButtonType.YES) {
+                    int toDelete = (int) globalDatabase.stream().filter(TaskItem::isArchived).count();
                     globalDatabase.removeIf(TaskItem::isArchived);
+                    appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + toDelete);
+
                     StorageManager.saveTasks(globalDatabase);
+                    StorageManager.saveStats(appStats);
                     refreshList();
                     onStateChangedCallback.run();
                 }
@@ -69,7 +72,6 @@ public class ArchivedModuleFX extends BorderPane {
         listContainer.getChildren().clear();
         boolean hasArchived = false;
 
-        // Sort by completion/creation date so newest archived items are at the top
         List<TaskItem> sortedArchive = globalDatabase.stream()
                 .filter(TaskItem::isArchived)
                 .sorted((t1, t2) -> {
@@ -96,27 +98,30 @@ public class ArchivedModuleFX extends BorderPane {
     private VBox createTaskRow(TaskItem task) {
         VBox completeRow = new VBox();
         completeRow.getStyleClass().add("task-row");
-        completeRow.setStyle("-fx-opacity: 0.7;"); // Make archived items look slightly faded
+        completeRow.setStyle("-fx-opacity: 0.7;");
 
         HBox mainRow = new HBox(10);
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
-        // --- NEW: Dynamic Section Name Resolution ---
+        // --- DYNAMIC: Cross-reference Section Name and Sidebar Color ---
         String sectionName = "Unknown List";
+        String sectionColor = "#C586C0"; // Default Fallback Color
+
         if (task.getSectionId() != null) {
             Optional<AppStats.SectionConfig> config = appStats.getSections().stream()
                     .filter(c -> c.getId().equals(task.getSectionId()))
                     .findFirst();
             if (config.isPresent()) {
                 sectionName = config.get().getName();
+                sectionColor = config.get().getSidebarColor();
             }
         } else if (task.getLegacyOriginModule() != null) {
-            sectionName = task.getLegacyOriginModule().name(); // Safety fallback for older tasks
+            sectionName = task.getLegacyOriginModule().name();
         }
 
         Label moduleLabel = new Label("[" + sectionName + "]");
-        moduleLabel.setStyle("-fx-text-fill: #C586C0; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
+        moduleLabel.setStyle("-fx-text-fill: " + sectionColor + "; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
 
         Label dateLabel = new Label();
         if (task.getDateCompleted() != null) {
@@ -139,7 +144,28 @@ public class ArchivedModuleFX extends BorderPane {
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
-        // Render Subtasks if they exist
+        // --- NEW: Add Points Badge to Archived Task ---
+        if (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0) {
+            String badgeStr = "";
+            if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
+            if (task.getPenaltyPoints() > 0) badgeStr += "💀 -" + task.getPenaltyPoints();
+
+            Label ptsLabel = new Label(badgeStr.trim());
+            ptsLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold; -fx-font-size: 12px;");
+            ptsLabel.setPadding(new Insets(0, 10, 0, 0));
+            mainRow.getChildren().add(ptsLabel);
+        }
+
+        // --- NEW: Add Time Tracked Badge to Archived Task ---
+        if (task.getTimeSpentSeconds() > 0) {
+            int mins = task.getTimeSpentSeconds() / 60;
+            Label timeLabel = new Label("⏱ " + mins + "m");
+            timeLabel.setPadding(new Insets(0, 10, 0, 0));
+            timeLabel.setStyle("-fx-text-fill: #E06666; -fx-font-weight: bold; -fx-font-size: 13px;");
+            mainRow.getChildren().add(timeLabel);
+        }
+
+        // Render Subtasks
         if (!task.getSubTasks().isEmpty()) {
             VBox subTaskBox = new VBox(5);
             subTaskBox.setPadding(new Insets(0, 10, 10, 40));
@@ -176,7 +202,9 @@ public class ArchivedModuleFX extends BorderPane {
         deleteItem.setStyle("-fx-text-fill: #FF6666;");
         deleteItem.setOnAction(e -> {
             globalDatabase.remove(task);
+            appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + 1); // --- TRACK DELETIONS ---
             StorageManager.saveTasks(globalDatabase);
+            StorageManager.saveStats(appStats);
             refreshList();
         });
 

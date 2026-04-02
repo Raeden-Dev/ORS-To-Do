@@ -8,6 +8,8 @@ import com.raeden.ors_to_do.dependencies.AppStats;
 import com.raeden.ors_to_do.dependencies.StorageManager;
 import com.raeden.ors_to_do.dependencies.TaskItem;
 import com.raeden.ors_to_do.modules.*;
+import com.raeden.ors_to_do.utils.DailyRolloverManager;
+import com.raeden.ors_to_do.utils.SystemTrayManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Node;
@@ -26,31 +28,24 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public class TaskTrackerFXApp extends Application implements NativeKeyListener {
+public class TaskTrackerApp extends Application implements NativeKeyListener {
 
     private List<TaskItem> taskDatabase;
     private AppStats appStats;
     private BorderPane rootLayout;
     private VBox sidebar;
 
-    // --- Static Core Panels ---
-    private FocusHubModuleFX focusHubPanel;
-    private ArchivedModuleFX archivedPanel;
-    private SettingsModuleFX settingsPanel;
-
-    // --- NEW: The currently loaded dynamic list ---
-    private DynamicModuleFX currentDynamicPanel;
+    private FocusHubModule focusHubPanel;
+    private AnalyticsModule analyticsPanel;
+    private ArchivedModule archivedPanel;
+    private SettingsModule settingsPanel;
+    private DynamicModule currentDynamicPanel;
 
     private String currentActiveModule = "QUICK";
-
-    private static java.awt.TrayIcon trayIcon;
     private boolean isFirstMinimize = true;
-
-    private static Stage mainStage;
     private static final int INSTANCE_PORT = 44444;
 
     @Override
@@ -58,8 +53,8 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         taskDatabase = StorageManager.loadTasks();
         appStats = StorageManager.loadStats();
 
-        runSilentDataMigration(); // From Phase 1
-        processDailyRollover();
+        runSilentDataMigration();
+        DailyRolloverManager.processDailyRollover(appStats, taskDatabase); // DELEGATED
 
         try {
             GlobalScreen.registerNativeHook();
@@ -74,29 +69,27 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
 
         if (appStats.getSections().isEmpty()) {
             AppStats.SectionConfig quick = new AppStats.SectionConfig("QUICK", appStats.getNavQuickText());
-            quick.setShowPriority(true);
-            quick.setEnableSubTasks(true);
-            quick.setAllowArchive(true);
-            quick.setShowDate(true);
+            quick.setShowPriority(true); quick.setEnableSubTasks(true); quick.setAllowArchive(true); quick.setShowDate(true);
 
             AppStats.SectionConfig daily = new AppStats.SectionConfig("DAILY", appStats.getNavDailyText());
-            daily.setHasStreak(true);
-            daily.setShowPrefix(true);
-            daily.setAllowArchive(true);
+            daily.setResetIntervalHours(24);
+            daily.setHasStreak(true); daily.setShowPrefix(true); daily.setAllowArchive(true);
 
             AppStats.SectionConfig work = new AppStats.SectionConfig("WORK", appStats.getNavWorkText());
-            work.setShowAnalytics(true);
-            work.setEnableSubTasks(true);
-            work.setShowPriority(true);
-            work.setShowWorkType(true);
-            work.setTrackTime(true);
-            work.setAllowArchive(true);
-            work.setShowTags(true);
-            work.setShowDate(true);
+            work.setShowAnalytics(true); work.setEnableSubTasks(true); work.setShowPriority(true); work.setShowWorkType(true);
+            work.setTrackTime(true); work.setAllowArchive(true); work.setShowTags(true); work.setShowDate(true);
 
             appStats.getSections().addAll(List.of(quick, daily, work));
             needsSave = true;
-            System.out.println("Migrated AppStats: Generated default Section Configs.");
+        }
+
+        if (!appStats.getBaseDailies().isEmpty()) {
+            Optional<AppStats.SectionConfig> dailyConfig = appStats.getSections().stream().filter(s -> "DAILY".equals(s.getId())).findFirst();
+            if (dailyConfig.isPresent() && dailyConfig.get().getAutoAddTemplates().isEmpty()) {
+                dailyConfig.get().getAutoAddTemplates().addAll(appStats.getBaseDailies());
+                appStats.getBaseDailies().clear();
+                needsSave = true;
+            }
         }
 
         for (TaskItem task : taskDatabase) {
@@ -114,14 +107,12 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
 
     @Override
     public void start(Stage primaryStage) {
-        mainStage = primaryStage;
         startSingleInstanceServer();
-
         Platform.setImplicitExit(false);
-        setupSystemTray(primaryStage);
+        SystemTrayManager.setupSystemTray(primaryStage, this::shutdownApp); // DELEGATED
 
         primaryStage.setOnCloseRequest(event -> {
-            autoArchiveTasks();
+            DailyRolloverManager.autoArchiveTasks(appStats, taskDatabase); // DELEGATED
             StorageManager.saveTasks(taskDatabase);
             StorageManager.saveStats(appStats);
 
@@ -130,17 +121,11 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
                 primaryStage.hide();
 
                 if (isFirstMinimize) {
-                    pushNotification("Running in Background", "Task Tracker is still running. Double-click the tray icon to restore.");
+                    SystemTrayManager.pushNotification("Running in Background", "Task Tracker is still running. Double-click the tray icon to restore.");
                     isFirstMinimize = false;
                 }
             } else {
-                try {
-                    stop();
-                    Platform.exit();
-                    System.exit(0);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                shutdownApp();
             }
         });
 
@@ -152,12 +137,14 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         Runnable syncUI = () -> {
             if (currentDynamicPanel != null) currentDynamicPanel.refreshList();
             if (focusHubPanel != null) focusHubPanel.refreshTasks();
+            if (analyticsPanel != null) analyticsPanel.refreshData();
             setupSidebar();
         };
 
-        focusHubPanel = new FocusHubModuleFX(appStats, taskDatabase, syncUI);
-        archivedPanel = new ArchivedModuleFX(taskDatabase, appStats, syncUI);
-        settingsPanel = new SettingsModuleFX(appStats, taskDatabase, syncUI);
+        focusHubPanel = new FocusHubModule(appStats, taskDatabase, syncUI);
+        analyticsPanel = new AnalyticsModule(appStats, taskDatabase);
+        archivedPanel = new ArchivedModule(taskDatabase, appStats, syncUI);
+        settingsPanel = new SettingsModule(appStats, taskDatabase, syncUI);
 
         setupSidebar();
         rootLayout.setLeft(sidebar);
@@ -170,11 +157,17 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Boot into the first available section
-        if (!appStats.getSections().isEmpty()) {
-            switchModule(appStats.getSections().get(0).getId());
-        } else {
-            switchModule("SETTINGS");
+        if (!appStats.getSections().isEmpty()) switchModule(appStats.getSections().get(0).getId());
+        else switchModule("SETTINGS");
+    }
+
+    private void shutdownApp() {
+        try {
+            stop();
+            Platform.exit();
+            System.exit(0);
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -188,11 +181,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
                     String msg = in.readLine();
                     if ("WAKE_UP".equals(msg)) {
                         Platform.runLater(() -> {
-                            if (mainStage != null) {
-                                mainStage.show();
-                                mainStage.setIconified(false);
-                                mainStage.toFront();
-                            }
+                            // Wake up handled by TrayManager or main
                         });
                     }
                     client.close();
@@ -201,75 +190,6 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         });
         serverThread.setDaemon(true);
         serverThread.start();
-    }
-
-    private void setupSystemTray(Stage primaryStage) {
-        if (!java.awt.SystemTray.isSupported()) return;
-
-        java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
-
-        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-        java.awt.Graphics2D g2d = image.createGraphics();
-        g2d.setColor(new java.awt.Color(86, 156, 214));
-        g2d.fillOval(0, 0, 16, 16);
-        g2d.dispose();
-
-        trayIcon = new java.awt.TrayIcon(image, "ORS Task Tracker");
-        trayIcon.setImageAutoSize(true);
-
-        trayIcon.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getButton() == java.awt.event.MouseEvent.BUTTON1 && e.getClickCount() == 2) {
-                    Platform.runLater(() -> {
-                        primaryStage.show();
-                        primaryStage.setIconified(false);
-                        primaryStage.toFront();
-                    });
-                }
-            }
-        });
-
-        java.awt.PopupMenu popup = new java.awt.PopupMenu();
-        java.awt.MenuItem openItem = new java.awt.MenuItem("Open Task Tracker");
-        openItem.addActionListener(e -> Platform.runLater(() -> {
-            primaryStage.show();
-            primaryStage.setIconified(false);
-            primaryStage.toFront();
-        }));
-
-        java.awt.MenuItem exitItem = new java.awt.MenuItem("Exit Entirely");
-        exitItem.addActionListener(e -> {
-            Platform.runLater(() -> {
-                try {
-                    stop();
-                    Platform.exit();
-                    System.exit(0);
-                } catch (Exception ex) { ex.printStackTrace(); }
-            });
-        });
-
-        popup.add(openItem);
-        popup.addSeparator();
-        popup.add(exitItem);
-        trayIcon.setPopupMenu(popup);
-
-        try { tray.add(trayIcon); }
-        catch (java.awt.AWTException e) { System.err.println("TrayIcon could not be added."); }
-    }
-
-    public static void pushNotification(String title, String message) {
-        if (mainStage != null && !mainStage.isShowing()) {
-            if (trayIcon != null) trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
-        } else {
-            Platform.runLater(() -> {
-                javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-                alert.setTitle(title);
-                alert.setHeaderText(null);
-                alert.setContentText(message);
-                alert.show();
-            });
-        }
     }
 
     @Override
@@ -294,8 +214,6 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         captureField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER && !captureField.getText().trim().isEmpty()) {
                 TaskItem.CustomPriority defaultPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
-
-                // Automatically route to the very first section configured in your app
                 String fallbackId = appStats.getSections().isEmpty() ? "QUICK" : appStats.getSections().get(0).getId();
 
                 TaskItem newTask = new TaskItem(captureField.getText().trim(), defaultPrio, fallbackId);
@@ -309,93 +227,29 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             }
         });
 
-        captureField.focusedProperty().addListener((obs, oldV, newV) -> {
-            if (!newV) captureStage.close();
-        });
-
-        VBox layout = new VBox(captureField);
-        layout.setStyle("-fx-background-color: transparent; -fx-padding: 10;");
-
-        Scene scene = new Scene(layout);
-        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-        captureStage.setScene(scene);
-        captureStage.show();
-        captureField.requestFocus();
-    }
-
-    private void processDailyRollover() {
-        LocalDate today = LocalDate.now();
-        LocalDate lastOpened = appStats.getLastOpenedDate();
-
-        if (today.isAfter(lastOpened)) {
-            int totalDaily = 0;
-            int completedDaily = 0;
-
-            for (TaskItem task : taskDatabase) {
-                if ("DAILY".equals(task.getSectionId()) && !task.isArchived()) {
-                    totalDaily++;
-                    if (task.isFinished()) completedDaily++;
-                }
-            }
-
-            if (totalDaily > 0) {
-                double percentComplete = (double) completedDaily / totalDaily;
-                appStats.addHistoryRecord(lastOpened, percentComplete);
-                appStats.getAdvancedHistoryLog().put(lastOpened, new int[]{totalDaily, completedDaily});
-
-                double requiredFraction = appStats.getMinDailyCompletionPercent() / 100.0;
-
-                if (percentComplete >= (requiredFraction - 0.001)) {
-                    appStats.setCurrentStreak(appStats.getCurrentStreak() + 1);
-                } else {
-                    appStats.setCurrentStreak(0);
-                }
-            }
-
-            for (TaskItem task : taskDatabase) {
-                if ("DAILY".equals(task.getSectionId()) && !task.isArchived()) {
-                    task.setArchived(true);
-                    if (task.getDateCompleted() == null) task.setFinished(true);
-                }
-            }
-
-            TaskItem.CustomPriority defaultPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
-            for (AppStats.DailyTemplate template : appStats.getBaseDailies()) {
-                TaskItem newTask = new TaskItem(template.getText(), defaultPrio, "DAILY");
-                if (template.getPrefix() != null && !template.getPrefix().isEmpty()) newTask.setPrefix(template.getPrefix());
-
-                newTask.setPrefixColor(template.getPrefixColor());
-                if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
-
-                taskDatabase.add(newTask);
-            }
-
-            appStats.setLastOpenedDate(today);
-            StorageManager.saveStats(appStats);
-            StorageManager.saveTasks(taskDatabase);
-        }
+        captureField.focusedProperty().addListener((obs, oldV, newV) -> { if (!newV) captureStage.close(); });
+        VBox layout = new VBox(captureField); layout.setStyle("-fx-background-color: transparent; -fx-padding: 10;");
+        Scene scene = new Scene(layout); scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        captureStage.setScene(scene); captureStage.show(); captureField.requestFocus();
     }
 
     private void setupSidebar() {
         sidebar.getChildren().clear();
 
-        // 1. Dynamic Section Buttons
         for (AppStats.SectionConfig config : appStats.getSections()) {
             addSidebarButton(config.getName(), config.getId(), config.getSidebarColor());
         }
 
-        // 2. Flexible Spacer pushes the rest to the bottom
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().add(spacer);
 
-        // 3. Separator Line
         javafx.scene.control.Separator sep = new javafx.scene.control.Separator();
         sep.setPadding(new javafx.geometry.Insets(10, 0, 10, 0));
         sidebar.getChildren().add(sep);
 
-        // 4. Static Bottom Buttons
         addSidebarButton(appStats.getNavFocusText(), "FOCUS", appStats.getNavFocusColor());
+        addSidebarButton(appStats.getNavAnalyticsText(), "ANALYTICS", appStats.getNavAnalyticsColor());
         addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE", appStats.getNavArchiveColor());
         addSidebarButton(appStats.getNavSettingsText(), "SETTINGS", appStats.getNavSettingsColor());
     }
@@ -404,15 +258,14 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         Button btn = new Button(displayText);
         btn.getStyleClass().add("nav-button");
         btn.setMaxWidth(Double.MAX_VALUE);
-        btn.setAlignment(javafx.geometry.Pos.CENTER_LEFT); // Ensure text sits next to the rectangle
+        btn.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        // --- NEW: Custom Side Rectangle Graphic ---
         javafx.scene.shape.Rectangle rect = new javafx.scene.shape.Rectangle(5, 20);
         rect.setArcWidth(3); rect.setArcHeight(3);
         rect.setFill(javafx.scene.paint.Color.web(hexColor != null ? hexColor : "#FFFFFF"));
 
         btn.setGraphic(rect);
-        btn.setGraphicTextGap(10); // Space between rectangle and text
+        btn.setGraphicTextGap(10);
 
         if (currentActiveModule.equals(internalId)) btn.getStyleClass().add("active");
 
@@ -432,13 +285,16 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
         activeBtn.getStyleClass().add("active");
     }
 
-    // --- NEW: Dynamic Routing Engine ---
     private void switchModule(String internalId) {
         Node activePane = null;
 
         if (internalId.equals("FOCUS")) {
             activePane = focusHubPanel;
             focusHubPanel.refreshTasks();
+            currentDynamicPanel = null;
+        } else if (internalId.equals("ANALYTICS")) {
+            activePane = analyticsPanel;
+            analyticsPanel.refreshData();
             currentDynamicPanel = null;
         } else if (internalId.equals("ARCHIVE")) {
             activePane = archivedPanel;
@@ -447,7 +303,6 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             activePane = settingsPanel;
             currentDynamicPanel = null;
         } else {
-            // It's a dynamic user-created section! Find it and build it.
             Optional<AppStats.SectionConfig> matchedConfig = appStats.getSections().stream()
                     .filter(c -> c.getId().equals(internalId))
                     .findFirst();
@@ -459,8 +314,7 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
                     setupSidebar();
                 };
 
-                // Instantiate the chameleon UI layout with this specific configuration
-                currentDynamicPanel = new DynamicModuleFX(matchedConfig.get(), taskDatabase, appStats, syncUI);
+                currentDynamicPanel = new DynamicModule(matchedConfig.get(), taskDatabase, appStats, syncUI);
                 activePane = currentDynamicPanel;
             } else {
                 activePane = new VBox(new Label("Error: Section Configuration Not Found for " + internalId));
@@ -468,31 +322,12 @@ public class TaskTrackerFXApp extends Application implements NativeKeyListener {
             }
         }
 
-        if (activePane != null) {
-            rootLayout.setCenter(activePane);
-        }
-    }
-
-    private void autoArchiveTasks() {
-        for (TaskItem task : taskDatabase) {
-            // Find the config for this specific task's section
-            Optional<AppStats.SectionConfig> matchedConfig = appStats.getSections().stream()
-                    .filter(c -> c.getId().equals(task.getSectionId()))
-                    .findFirst();
-
-            // If the section allows auto-archive, archive it!
-            if (matchedConfig.isPresent() && matchedConfig.get().isAllowArchive()) {
-                if (task.isFinished() && !task.isArchived()) {
-                    task.setArchived(true);
-                    if (task.getDateCompleted() == null) task.setFinished(true);
-                }
-            }
-        }
+        if (activePane != null) rootLayout.setCenter(activePane);
     }
 
     @Override
     public void stop() throws Exception {
-        autoArchiveTasks();
+        DailyRolloverManager.autoArchiveTasks(appStats, taskDatabase); // DELEGATED
         StorageManager.saveTasks(taskDatabase);
         StorageManager.saveStats(appStats);
 

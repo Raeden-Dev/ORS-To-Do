@@ -119,3 +119,38 @@
 .scratchpad .content {
     -fx-background-color: transparent;
 }
+
+/* =========================================
+   DARK THEME SCROLLBARS
+   ========================================= */
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color: #1E1E1E;
+}
+
+.scroll-bar .track, .scroll-bar .track-background {
+    -fx-background-color: #1E1E1E;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #3E3E42;
+    -fx-background-radius: 5em;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #555555;
+}
+
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2px;
+}
+
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-background-color: #AAAAAA;
+}
+
+/* Fix for the tiny square where horizontal and vertical scrollbars meet */
+.scroll-pane .corner {
+    -fx-background-color: #1E1E1E;
+}

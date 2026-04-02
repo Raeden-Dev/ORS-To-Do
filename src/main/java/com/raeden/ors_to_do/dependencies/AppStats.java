@@ -16,7 +16,10 @@ public class AppStats implements Serializable {
         private String name;
         private String sidebarColor = "#569CD6";
 
-        // Modular Toggles
+        private int resetIntervalHours = 0;
+        private boolean autoArchiveCompleted = false;
+        private List<DailyTemplate> autoAddTemplates = new ArrayList<>();
+
         private boolean hasStreak = false;
         private boolean showAnalytics = false;
         private boolean enableSubTasks = false;
@@ -27,9 +30,11 @@ public class AppStats implements Serializable {
         private boolean showWorkType = false;
         private boolean allowArchive = false;
         private boolean showTags = false;
-
-        // --- NEW: Favorite System Toggle ---
         private boolean allowFavorite = false;
+        private boolean enableScore = false;
+
+        // --- NEW: Links Toggle ---
+        private boolean enableLinks = false;
 
         public SectionConfig(String id, String name) {
             this.id = id;
@@ -42,6 +47,17 @@ public class AppStats implements Serializable {
 
         public String getSidebarColor() { return sidebarColor != null ? sidebarColor : "#569CD6"; }
         public void setSidebarColor(String sidebarColor) { this.sidebarColor = sidebarColor; }
+
+        public int getResetIntervalHours() { return resetIntervalHours; }
+        public void setResetIntervalHours(int resetIntervalHours) { this.resetIntervalHours = resetIntervalHours; }
+
+        public boolean isAutoArchiveCompleted() { return autoArchiveCompleted; }
+        public void setAutoArchiveCompleted(boolean autoArchiveCompleted) { this.autoArchiveCompleted = autoArchiveCompleted; }
+
+        public List<DailyTemplate> getAutoAddTemplates() {
+            if (autoAddTemplates == null) autoAddTemplates = new ArrayList<>();
+            return autoAddTemplates;
+        }
 
         public boolean isHasStreak() { return hasStreak; }
         public void setHasStreak(boolean hasStreak) { this.hasStreak = hasStreak; }
@@ -65,6 +81,10 @@ public class AppStats implements Serializable {
         public void setShowTags(boolean showTags) { this.showTags = showTags; }
         public boolean isAllowFavorite() { return allowFavorite; }
         public void setAllowFavorite(boolean allowFavorite) { this.allowFavorite = allowFavorite; }
+        public boolean isEnableScore() { return enableScore; }
+        public void setEnableScore(boolean enableScore) { this.enableScore = enableScore; }
+        public boolean isEnableLinks() { return enableLinks; }
+        public void setEnableLinks(boolean enableLinks) { this.enableLinks = enableLinks; }
     }
 
     public static class DailyTemplate implements Serializable {
@@ -91,7 +111,13 @@ public class AppStats implements Serializable {
         public void setBgColor(String bgColor) { this.bgColor = bgColor; }
     }
 
+    private int globalScore = 0;
     private int currentStreak = 0;
+    private int highestStreak = 0;
+
+    private int lifetimeDeletedTasks = 0;
+    private boolean matchPriorityOutline = true;
+
     private LocalDate lastOpenedDate = LocalDate.now();
     private Map<LocalDate, Double> historyLog = new LinkedHashMap<>();
 
@@ -108,10 +134,12 @@ public class AppStats implements Serializable {
     private String navDailyText = "Daily To-Do";
     private String navWorkText = "Work List";
     private String navFocusText = "Focus Hub";
+    private String navAnalyticsText = "Analytics";
     private String navArchiveText = "Archived";
     private String navSettingsText = "Settings";
 
     private String navFocusColor = "#E06666";
+    private String navAnalyticsColor = "#F2C94C";
     private String navArchiveColor = "#C586C0";
     private String navSettingsColor = "#858585";
 
@@ -128,6 +156,24 @@ public class AppStats implements Serializable {
     private String brainDumpText = "";
     private Map<TaskItem.OriginModule, String> pendingDrafts = new java.util.HashMap<>();
 
+    public int getGlobalScore() { return globalScore; }
+    public void setGlobalScore(int globalScore) { this.globalScore = globalScore; }
+
+    public int getHighestStreak() { return highestStreak; }
+    public void setHighestStreak(int highestStreak) { this.highestStreak = highestStreak; }
+
+    public int getCurrentStreak() { return currentStreak; }
+    public void setCurrentStreak(int currentStreak) {
+        this.currentStreak = currentStreak;
+        if (this.currentStreak > this.highestStreak) this.highestStreak = this.currentStreak;
+    }
+
+    public int getLifetimeDeletedTasks() { return lifetimeDeletedTasks; }
+    public void setLifetimeDeletedTasks(int lifetimeDeletedTasks) { this.lifetimeDeletedTasks = lifetimeDeletedTasks; }
+
+    public boolean isMatchPriorityOutline() { return matchPriorityOutline; }
+    public void setMatchPriorityOutline(boolean matchPriorityOutline) { this.matchPriorityOutline = matchPriorityOutline; }
+
     public List<SectionConfig> getSections() {
         if (sections == null) sections = new ArrayList<>();
         return sections;
@@ -139,8 +185,6 @@ public class AppStats implements Serializable {
     public void setRunInBackground(boolean runInBackground) { this.runInBackground = runInBackground; }
     public boolean isMatchDailyRectColor() { return matchDailyRectColor != null && matchDailyRectColor; }
     public void setMatchDailyRectColor(boolean matchDailyRectColor) { this.matchDailyRectColor = matchDailyRectColor; }
-    public int getCurrentStreak() { return currentStreak; }
-    public void setCurrentStreak(int currentStreak) { this.currentStreak = currentStreak; }
     public LocalDate getLastOpenedDate() { return lastOpenedDate; }
     public void setLastOpenedDate(LocalDate lastOpenedDate) { this.lastOpenedDate = lastOpenedDate; }
     public Map<LocalDate, Double> getHistoryLog() { return historyLog; }
@@ -172,7 +216,6 @@ public class AppStats implements Serializable {
     public String getDeleteMenuText() { return deleteMenuText; }
     public void setDeleteMenuText(String deleteMenuText) { this.deleteMenuText = deleteMenuText; }
 
-    // Texts
     public String getNavQuickText() { return navQuickText; }
     public void setNavQuickText(String navQuickText) { this.navQuickText = navQuickText; }
     public String getNavDailyText() { return navDailyText; }
@@ -181,14 +224,17 @@ public class AppStats implements Serializable {
     public void setNavWorkText(String navWorkText) { this.navWorkText = navWorkText; }
     public String getNavFocusText() { return navFocusText; }
     public void setNavFocusText(String navFocusText) { this.navFocusText = navFocusText; }
+    public String getNavAnalyticsText() { return navAnalyticsText != null ? navAnalyticsText : "Analytics"; }
+    public void setNavAnalyticsText(String navAnalyticsText) { this.navAnalyticsText = navAnalyticsText; }
     public String getNavArchiveText() { return navArchiveText; }
     public void setNavArchiveText(String navArchiveText) { this.navArchiveText = navArchiveText; }
     public String getNavSettingsText() { return navSettingsText; }
     public void setNavSettingsText(String navSettingsText) { this.navSettingsText = navSettingsText; }
 
-    // Colors
     public String getNavFocusColor() { return navFocusColor != null ? navFocusColor : "#E06666"; }
     public void setNavFocusColor(String navFocusColor) { this.navFocusColor = navFocusColor; }
+    public String getNavAnalyticsColor() { return navAnalyticsColor != null ? navAnalyticsColor : "#F2C94C"; }
+    public void setNavAnalyticsColor(String navAnalyticsColor) { this.navAnalyticsColor = navAnalyticsColor; }
     public String getNavArchiveColor() { return navArchiveColor != null ? navArchiveColor : "#C586C0"; }
     public void setNavArchiveColor(String navArchiveColor) { this.navArchiveColor = navArchiveColor; }
     public String getNavSettingsColor() { return navSettingsColor != null ? navSettingsColor : "#858585"; }
@@ -202,5 +248,39 @@ public class AppStats implements Serializable {
     public void saveDraft(TaskItem.OriginModule module, String text) {
         if (text != null && !text.trim().isEmpty()) { pendingDrafts.put(module, text.trim()); }
         else { pendingDrafts.remove(module); }
+    }
+    // --- NEW: Safe Copy Method for Data Restoration ---
+    public void copyFrom(AppStats other) {
+        this.globalScore = other.globalScore;
+        this.currentStreak = other.currentStreak;
+        this.highestStreak = other.highestStreak;
+        this.lifetimeDeletedTasks = other.lifetimeDeletedTasks;
+        this.matchPriorityOutline = other.matchPriorityOutline;
+        this.lastOpenedDate = other.lastOpenedDate;
+        this.historyLog = new LinkedHashMap<>(other.historyLog);
+        this.editMenuText = other.editMenuText;
+        this.archiveMenuText = other.archiveMenuText;
+        this.deleteMenuText = other.deleteMenuText;
+        this.taskFontSize = other.taskFontSize;
+        this.runInBackground = other.runInBackground;
+        this.matchDailyRectColor = other.matchDailyRectColor;
+        this.minDailyCompletionPercent = other.minDailyCompletionPercent;
+        this.navQuickText = other.navQuickText;
+        this.navDailyText = other.navDailyText;
+        this.navWorkText = other.navWorkText;
+        this.navFocusText = other.navFocusText;
+        this.navAnalyticsText = other.navAnalyticsText;
+        this.navArchiveText = other.navArchiveText;
+        this.navSettingsText = other.navSettingsText;
+        this.navFocusColor = other.navFocusColor;
+        this.navAnalyticsColor = other.navAnalyticsColor;
+        this.navArchiveColor = other.navArchiveColor;
+        this.navSettingsColor = other.navSettingsColor;
+        this.sections = new ArrayList<>(other.sections);
+        this.customPriorities = new ArrayList<>(other.customPriorities);
+        this.baseDailies = new ArrayList<>(other.baseDailies);
+        this.advancedHistoryLog = new LinkedHashMap<>(other.advancedHistoryLog);
+        this.brainDumpText = other.brainDumpText;
+        this.pendingDrafts = new java.util.HashMap<>(other.pendingDrafts);
     }
 }

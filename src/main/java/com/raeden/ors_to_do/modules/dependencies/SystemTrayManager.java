@@ -1,0 +1,72 @@
+package com.raeden.ors_to_do.utils;
+
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.stage.Stage;
+
+public class SystemTrayManager {
+    private static java.awt.TrayIcon trayIcon;
+    private static Stage mainStage;
+
+    public static void setupSystemTray(Stage primaryStage, Runnable exitAction) {
+        mainStage = primaryStage;
+        if (!java.awt.SystemTray.isSupported()) return;
+
+        java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
+
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g2d = image.createGraphics();
+        g2d.setColor(new java.awt.Color(86, 156, 214));
+        g2d.fillOval(0, 0, 16, 16);
+        g2d.dispose();
+
+        trayIcon = new java.awt.TrayIcon(image, "ORS Task Tracker");
+        trayIcon.setImageAutoSize(true);
+
+        trayIcon.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getButton() == java.awt.event.MouseEvent.BUTTON1 && e.getClickCount() == 2) {
+                    Platform.runLater(() -> {
+                        primaryStage.show();
+                        primaryStage.setIconified(false);
+                        primaryStage.toFront();
+                    });
+                }
+            }
+        });
+
+        java.awt.PopupMenu popup = new java.awt.PopupMenu();
+        java.awt.MenuItem openItem = new java.awt.MenuItem("Open Task Tracker");
+        openItem.addActionListener(e -> Platform.runLater(() -> {
+            primaryStage.show();
+            primaryStage.setIconified(false);
+            primaryStage.toFront();
+        }));
+
+        java.awt.MenuItem exitItem = new java.awt.MenuItem("Exit Entirely");
+        exitItem.addActionListener(e -> Platform.runLater(exitAction));
+
+        popup.add(openItem);
+        popup.addSeparator();
+        popup.add(exitItem);
+        trayIcon.setPopupMenu(popup);
+
+        try { tray.add(trayIcon); }
+        catch (java.awt.AWTException e) { System.err.println("TrayIcon could not be added."); }
+    }
+
+    public static void pushNotification(String title, String message) {
+        if (mainStage != null && !mainStage.isShowing()) {
+            if (trayIcon != null) trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
+        } else {
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle(title);
+                alert.setHeaderText(null);
+                alert.setContentText(message);
+                alert.show();
+            });
+        }
+    }
+}

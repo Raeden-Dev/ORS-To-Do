@@ -47,10 +47,26 @@ public class TaskItem implements Serializable {
         public String getTextContent() { return textContent; }
         public void setTextContent(String textContent) { this.textContent = textContent; }
         public boolean isFinished() { return isFinished; }
-        public void setFinished(boolean finished) { isFinished = finished; }
+        public void setFinished(boolean finished) { this.isFinished = finished; }
     }
 
-    public enum OriginModule { QUICK, DAILY, WORK } // Kept purely to load legacy data
+    public static class TaskLink implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String name;
+        private String url;
+
+        public TaskLink(String name, String url) {
+            this.name = name;
+            this.url = url;
+        }
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+    }
+
+    public enum OriginModule { QUICK, DAILY, WORK }
 
     private String id;
     private String textContent;
@@ -72,24 +88,31 @@ public class TaskItem implements Serializable {
     private boolean isExpanded = false;
     private String prefixColor;
 
-    // Legacy field. DO NOT DELETE.
     private OriginModule originModule;
-
-    // --- NEW: Dynamic Modular ID ---
     private String sectionId;
 
-    // Overloaded Constructor for Old Files (keeps code compiling during Phase 1)
+    private boolean isCounterMode = false;
+    private int currentCount = 0;
+    private int maxCount = 0;
+
+    private int rewardPoints = 0;
+    private int penaltyPoints = 0;
+    private boolean pointsClaimed = false;
+    private boolean penaltyApplied = false;
+
+    private List<String> links = new ArrayList<>();
+    private List<TaskLink> taskLinks = new ArrayList<>();
+
     public TaskItem(String textContent, CustomPriority priority, OriginModule legacyModule) {
         this.id = UUID.randomUUID().toString();
         this.textContent = textContent;
         this.priority = priority;
         this.originModule = legacyModule;
-        this.sectionId = legacyModule.name(); // Auto-migrate locally
+        this.sectionId = legacyModule.name();
         this.isFinished = false;
         this.dateCreated = LocalDateTime.now();
     }
 
-    // New Dynamic Constructor
     public TaskItem(String textContent, CustomPriority priority, String sectionId) {
         this.id = UUID.randomUUID().toString();
         this.textContent = textContent;
@@ -99,18 +122,41 @@ public class TaskItem implements Serializable {
         this.dateCreated = LocalDateTime.now();
     }
 
+    public List<TaskLink> getTaskLinks() {
+        if (taskLinks == null) taskLinks = new ArrayList<>();
+
+        // Silently upgrade any old string links to TaskLink objects, using the URL as the name
+        if (links != null && !links.isEmpty()) {
+            for (String oldLink : links) {
+                taskLinks.add(new TaskLink(oldLink, oldLink));
+            }
+            links.clear();
+        }
+        return taskLinks;
+    }
+
+    public boolean isCounterMode() { return isCounterMode; }
+    public void setCounterMode(boolean counterMode) { isCounterMode = counterMode; }
+    public int getCurrentCount() { return currentCount; }
+    public void setCurrentCount(int currentCount) { this.currentCount = currentCount; }
+    public int getMaxCount() { return maxCount; }
+    public void setMaxCount(int maxCount) { this.maxCount = maxCount; }
+
+    public int getRewardPoints() { return rewardPoints; }
+    public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
+    public int getPenaltyPoints() { return penaltyPoints; }
+    public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
+    public boolean isPointsClaimed() { return pointsClaimed; }
+    public void setPointsClaimed(boolean pointsClaimed) { this.pointsClaimed = pointsClaimed; }
+    public boolean isPenaltyApplied() { return penaltyApplied; }
+    public void setPenaltyApplied(boolean penaltyApplied) { this.penaltyApplied = penaltyApplied; }
+
     public String getSectionId() { return sectionId; }
     public void setSectionId(String sectionId) { this.sectionId = sectionId; }
     public OriginModule getLegacyOriginModule() { return originModule; }
-
-    // THE BRIDGE: Prevents UI crashes during Phase 1 by mocking the old Enum
     public OriginModule getOriginModule() {
         if (originModule != null) return originModule;
-        try {
-            return OriginModule.valueOf(sectionId);
-        } catch (Exception e) {
-            return null; // Will safely handle totally custom sections later
-        }
+        try { return OriginModule.valueOf(sectionId); } catch (Exception e) { return null; }
     }
 
     public String getPrefixColor() { return prefixColor; }
@@ -122,6 +168,7 @@ public class TaskItem implements Serializable {
     public boolean isExpanded() { return isExpanded; }
     public void setExpanded(boolean expanded) { this.isExpanded = expanded; }
     public int getTimeSpentSeconds() { return timeSpentSeconds; }
+    public void setTimeSpentSeconds(int timeSpentSeconds) { this.timeSpentSeconds = timeSpentSeconds; }
     public void addTimeSpent(int seconds) { this.timeSpentSeconds += seconds; }
     public boolean isFavorite() { return isFavorite; }
     public void setFavorite(boolean favorite) { this.isFavorite = favorite; }
