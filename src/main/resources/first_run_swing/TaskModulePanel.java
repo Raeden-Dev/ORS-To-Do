@@ -1,7 +1,7 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.StorageManager;
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,7 +11,7 @@ import java.util.List;
 public class TaskModulePanel extends JPanel {
     private DefaultListModel<TaskItem> listModel;
     private JList<TaskItem> taskList;
-    private TaskItem.OriginModule moduleType;
+    private OriginModule moduleType;
     private List<TaskItem> globalDatabase;
     JTextField inputField = new JTextField();
 
@@ -23,7 +23,7 @@ public class TaskModulePanel extends JPanel {
             "#702459", "#97266D", "#44337A", "#553C9A", "#1A202C"
     };
 
-    public TaskModulePanel(TaskItem.OriginModule moduleType, List<TaskItem> globalDatabase) {
+    public TaskModulePanel(OriginModule moduleType, List<TaskItem> globalDatabase) {
         this.moduleType = moduleType;
         this.globalDatabase = globalDatabase;
         setLayout(new BorderLayout());
@@ -77,7 +77,7 @@ public class TaskModulePanel extends JPanel {
         if (text.trim().isEmpty()) return;
 
         TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, moduleType);
-        if (moduleType == TaskItem.OriginModule.WORK) {
+        if (moduleType == OriginModule.WORK) {
             newTask.setWorkType("Studio Dev"); // Default example
         }
 

@@ -1,7 +1,7 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.StorageManager;
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import java.awt.*;

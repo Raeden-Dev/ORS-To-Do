@@ -1,7 +1,7 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.StorageManager;
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,7 +13,7 @@ import java.util.List;
 
 public class TaskModulePanel extends JPanel {
     private JPanel listContainer;
-    private TaskItem.OriginModule moduleType;
+    private OriginModule moduleType;
     private List<TaskItem> globalDatabase;
     private JTextField inputField = new JTextField();
 
@@ -24,7 +24,7 @@ public class TaskModulePanel extends JPanel {
             "#702459", "#97266D", "#44337A", "#553C9A", "#1A202C"
     };
 
-    public TaskModulePanel(TaskItem.OriginModule moduleType, List<TaskItem> globalDatabase) {
+    public TaskModulePanel(OriginModule moduleType, List<TaskItem> globalDatabase) {
         this.moduleType = moduleType;
         this.globalDatabase = globalDatabase;
         setLayout(new BorderLayout());
@@ -97,7 +97,7 @@ public class TaskModulePanel extends JPanel {
         dateLabel.setForeground(Color.GRAY);
         westPanel.add(dateLabel);
 
-        if (moduleType == TaskItem.OriginModule.WORK) {
+        if (moduleType == OriginModule.WORK) {
             JLabel workTypeLabel = new JLabel("[" + (task.getWorkType().isEmpty() ? "General" : task.getWorkType()) + "]");
             westPanel.add(workTypeLabel);
         }
@@ -158,7 +158,7 @@ public class TaskModulePanel extends JPanel {
     private void addTask(String text) {
         if (text.trim().isEmpty()) return;
         TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, moduleType);
-        if (moduleType == TaskItem.OriginModule.WORK) newTask.setWorkType("Studio Dev");
+        if (moduleType == OriginModule.WORK) newTask.setWorkType("Studio Dev");
         globalDatabase.add(newTask);
         refreshList();
         inputField.setText("");
@@ -217,7 +217,7 @@ public class TaskModulePanel extends JPanel {
         JTextField startField = new JTextField(task.getStartDate() != null ? task.getStartDate().toLocalDate().toString() : "");
         JTextField deadlineField = new JTextField(task.getDeadline() != null ? task.getDeadline().toLocalDate().toString() : "");
 
-        if (task.getOriginModule() == TaskItem.OriginModule.WORK) {
+        if (task.getOriginModule() == OriginModule.WORK) {
             panel.add(new JLabel("Work Type:")); panel.add(workTypeField);
             panel.add(new JLabel("Start Date (YYYY-MM-DD):")); panel.add(startField);
             panel.add(new JLabel("Deadline (YYYY-MM-DD):")); panel.add(deadlineField);
@@ -228,7 +228,7 @@ public class TaskModulePanel extends JPanel {
         if (result == JOptionPane.OK_OPTION) {
             task.setTextContent(textField.getText().trim());
 
-            if (task.getOriginModule() == TaskItem.OriginModule.WORK) {
+            if (task.getOriginModule() == OriginModule.WORK) {
                 task.setWorkType(workTypeField.getText().trim());
                 try {
                     if (!startField.getText().trim().isEmpty()) task.setStartDate(LocalDate.parse(startField.getText().trim()).atStartOfDay());

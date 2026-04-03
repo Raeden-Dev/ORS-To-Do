@@ -77,7 +77,7 @@ public class DailyModulePanel extends JPanel {
     public void refreshList() {
         listContainer.removeAll();
         for (TaskItem task : globalDatabase) {
-            if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
+            if (task.getOriginModule() == OriginModule.DAILY && !task.isArchived()) {
                 listContainer.add(createTaskRow(task));
             }
         }
@@ -158,7 +158,7 @@ public class DailyModulePanel extends JPanel {
 
     private void addTask(String prefix, String text) {
         if (text.trim().isEmpty()) return;
-        TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, TaskItem.OriginModule.DAILY);
+        TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, OriginModule.DAILY);
         if (!prefix.trim().isEmpty()) {
             String cleanPrefix = prefix.trim().toUpperCase();
             if (!cleanPrefix.startsWith("[")) cleanPrefix = "[" + cleanPrefix;

@@ -61,7 +61,7 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
         checkboxLabel.setText(task.isFinished() ? "[☑]" : "[☐]");
 
         // 3. Module-Specific Formatting
-        if (task.getOriginModule() == TaskItem.OriginModule.WORK) {
+        if (task.getOriginModule() == OriginModule.WORK) {
             workTypeLabel.setVisible(true);
             workTypeLabel.setText("[" + (task.getWorkType().isEmpty() ? "General" : task.getWorkType()) + "]");
             // Optional: Add Start/Deadline logic here if dates are set

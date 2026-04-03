@@ -1,6 +1,6 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.AppStats;
+import com.raeden.ors_to_do.dependencies.models.AppStats;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

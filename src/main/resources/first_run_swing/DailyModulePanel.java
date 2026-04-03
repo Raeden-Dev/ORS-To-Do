@@ -1,9 +1,9 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.AppStats;
+import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.HistoryDialog;
-import com.raeden.ors_to_do.dependencies.StorageManager;
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import java.awt.*;
@@ -74,7 +74,7 @@ public class DailyModulePanel extends JPanel {
     private void refreshList() {
         listModel.clear();
         for (TaskItem task : globalDatabase) {
-            if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
+            if (task.getOriginModule() == OriginModule.DAILY && !task.isArchived()) {
                 listModel.addElement(task);
             }
         }
@@ -83,7 +83,7 @@ public class DailyModulePanel extends JPanel {
     private void addTask(String prefix, String text) {
         if (text.trim().isEmpty()) return;
 
-        TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, TaskItem.OriginModule.DAILY);
+        TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, OriginModule.DAILY);
         if (!prefix.trim().isEmpty()) {
             // Ensure format like "[GYM]" or "[DIET]"
             String cleanPrefix = prefix.trim().toUpperCase();

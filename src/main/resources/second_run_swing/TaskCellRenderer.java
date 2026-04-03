@@ -1,6 +1,6 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import java.awt.*;
@@ -75,7 +75,7 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
         // Set the state of the real checkbox
         checkBox.setSelected(task.isFinished());
 
-        if (task.getOriginModule() == TaskItem.OriginModule.WORK) {
+        if (task.getOriginModule() == OriginModule.WORK) {
             workTypeLabel.setVisible(true);
             workTypeLabel.setText("[" + (task.getWorkType().isEmpty() ? "General" : task.getWorkType()) + "]");
         } else {

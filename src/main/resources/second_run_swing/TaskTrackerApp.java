@@ -1,9 +1,9 @@
 package com.raeden.ors_to_do;
 
 import com.formdev.flatlaf.FlatDarkLaf;
-import com.raeden.ors_to_do.dependencies.AppStats;
-import com.raeden.ors_to_do.dependencies.StorageManager;
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import java.awt.*;
@@ -97,13 +97,13 @@ public class TaskTrackerApp extends JFrame {
             // FIXED: Added proper instantiation for the Daily To-Do panel
             JPanel modulePanel;
             if (moduleName.equals("Quick To-Do")) {
-                quickToDoPanel = new TaskModulePanel(TaskItem.OriginModule.QUICK, taskDatabase);
+                quickToDoPanel = new TaskModulePanel(OriginModule.QUICK, taskDatabase);
                 modulePanel = quickToDoPanel;
             } else if (moduleName.equals("Daily To-Do")) {
                 dailyToDoPanel = new DailyModulePanel(taskDatabase, appStats);
                 modulePanel = dailyToDoPanel;
             } else if (moduleName.equals("Work List")) {
-                workListPanel = new TaskModulePanel(TaskItem.OriginModule.WORK, taskDatabase);
+                workListPanel = new TaskModulePanel(OriginModule.WORK, taskDatabase);
                 modulePanel = workListPanel;
             } else if (moduleName.equals("Focus Hub")) {
                 focusHubPanel = new FocusHubModulePanel(appStats);
@@ -127,11 +127,11 @@ public class TaskTrackerApp extends JFrame {
         var drafts = appStats.getPendingDrafts();
         if (drafts == null || drafts.isEmpty()) return;
 
-        for (TaskItem.OriginModule module : drafts.keySet()) {
+        for (OriginModule module : drafts.keySet()) {
             String draftText = drafts.get(module);
             TaskItem draftTask;
 
-            if (module == TaskItem.OriginModule.DAILY) {
+            if (module == OriginModule.DAILY) {
                 draftTask = new TaskItem(draftText, TaskItem.Priority.MED, module);
                 draftTask.setPrefix("[DRAFT]");
             } else {
@@ -145,19 +145,19 @@ public class TaskTrackerApp extends JFrame {
 
     private void saveDraftsOnClose() {
         if (quickToDoPanel != null) {
-            appStats.saveDraft(TaskItem.OriginModule.QUICK, quickToDoPanel.getPendingInput());
+            appStats.saveDraft(OriginModule.QUICK, quickToDoPanel.getPendingInput());
         }
         if (workListPanel != null) {
-            appStats.saveDraft(TaskItem.OriginModule.WORK, workListPanel.getPendingInput());
+            appStats.saveDraft(OriginModule.WORK, workListPanel.getPendingInput());
         }
         if (dailyToDoPanel != null) {
-            appStats.saveDraft(TaskItem.OriginModule.DAILY, dailyToDoPanel.getPendingInput());
+            appStats.saveDraft(OriginModule.DAILY, dailyToDoPanel.getPendingInput());
         }
     }
 
     private void autoArchiveTasks() {
         for (TaskItem task : taskDatabase) {
-            if (task.getOriginModule() == TaskItem.OriginModule.QUICK && task.isFinished() && !task.isArchived()) {
+            if (task.getOriginModule() == OriginModule.QUICK && task.isFinished() && !task.isArchived()) {
                 task.setArchived(true);
                 if (task.getDateCompleted() == null) {
                     task.setFinished(true);
@@ -175,7 +175,7 @@ public class TaskTrackerApp extends JFrame {
             int completedDaily = 0;
 
             for (TaskItem task : tasks) {
-                if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
+                if (task.getOriginModule() == OriginModule.DAILY && !task.isArchived()) {
                     totalDaily++;
                     if (task.isFinished()) completedDaily++;
                 }
@@ -193,7 +193,7 @@ public class TaskTrackerApp extends JFrame {
             }
 
             for (TaskItem task : tasks) {
-                if (task.getOriginModule() == TaskItem.OriginModule.DAILY && !task.isArchived()) {
+                if (task.getOriginModule() == OriginModule.DAILY && !task.isArchived()) {
                     task.setFinished(false);
                 }
             }

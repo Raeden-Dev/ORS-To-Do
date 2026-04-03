@@ -1,6 +1,6 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import javax.swing.*;
 import java.awt.*;
@@ -61,7 +61,7 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
         checkboxLabel.setText(task.isFinished() ? "[☑]" : "[☐]");
 
         // 3. Module-Specific Formatting
-        if (task.getOriginModule() == TaskItem.OriginModule.WORK) {
+        if (task.getOriginModule() == OriginModule.WORK) {
             workTypeLabel.setVisible(true);
             workTypeLabel.setText("[" + (task.getWorkType().isEmpty() ? "General" : task.getWorkType()) + "]");
             // Optional: Add Start/Deadline logic here if dates are set

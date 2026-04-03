@@ -1,7 +1,7 @@
 package com.raeden.ors_to_do;
 
-import com.raeden.ors_to_do.dependencies.AppStats;
-import com.raeden.ors_to_do.dependencies.TaskItem;
+import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 
 import java.io.*;
 import java.util.ArrayList;
