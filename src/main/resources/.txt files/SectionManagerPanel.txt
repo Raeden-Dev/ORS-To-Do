@@ -348,7 +348,7 @@ public class SectionManagerPanel extends VBox {
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards (Click to launch URL/App)");
         enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
 
-        CheckBox notesPageCheck = new CheckBox("Is Notes Page (Hides checkboxes & deadlines)");
+        CheckBox notesPageCheck = new CheckBox("Notes Page");
         notesPageCheck.setSelected(config.isNotesPage());
         notesPageCheck.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
 

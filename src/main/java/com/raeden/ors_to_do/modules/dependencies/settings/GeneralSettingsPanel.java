@@ -167,7 +167,7 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Checkbox Theme", "Changes the visual style and color of the completion checkboxes.", themeBox, "#DCDCAA"),
                 createSettingRow("Zen Mode", "Number of active tasks required before Zen Mode becomes available.", zenSpinner, "#FF6666"),
                 createSettingRow("Require Completion Confirmation", "Prompts for confirmation before completing tasks in selected sections.", confirmMenu, "#FF6666"),
-                createSettingRow("Minimum Streak Threshold", "Percentage of daily tasks required to maintain a completion streak.", sliderBox, "#4EC9B0"),
+                createSettingRow("Minimum Streak Threshold", "Percentage of completed tasks required to maintain a completion streak.", sliderBox, "#4EC9B0"),
                 createSettingRow("Run in Background", "Keeps the application running in the system tray when closed.", runInBackgroundCheck, "#569CD6"),
                 createSettingRow("Run on Windows Startup", "Automatically launches Task Tracker when your computer boots.", chkStartup, "#569CD6"),
                 createSettingRow("Match Prefix Color", "Uses the prefix color for the left-side indicator rectangle on tasks.", matchRectCheck, "#CE9178"),
