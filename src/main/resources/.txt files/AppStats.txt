@@ -65,6 +65,17 @@ public class AppStats implements Serializable {
 
     private boolean enableTextToTask = true;
 
+    private List<String> requireConfirmationSections = new ArrayList<>();
+
+    public List<String> getRequireConfirmationSections() {
+        if (requireConfirmationSections == null) requireConfirmationSections = new ArrayList<>();
+        return requireConfirmationSections;
+    }
+
+    public void setRequireConfirmationSections(List<String> requireConfirmationSections) {
+        this.requireConfirmationSections = requireConfirmationSections;
+    }
+
     public boolean isEnableTextToTask() { return enableTextToTask; }
     public void setEnableTextToTask(boolean enableTextToTask) { this.enableTextToTask = enableTextToTask; }
 
@@ -72,6 +83,18 @@ public class AppStats implements Serializable {
     private boolean showSidebarTaskCount = true;
 
     // ... existing methods ...
+
+    // --- NEW: Section Presets ---
+    private List<SectionConfig> sectionPresets = new ArrayList<>();
+
+    public List<SectionConfig> getSectionPresets() {
+        if (sectionPresets == null) sectionPresets = new ArrayList<>();
+        return sectionPresets;
+    }
+
+    public void setSectionPresets(List<SectionConfig> sectionPresets) {
+        this.sectionPresets = sectionPresets;
+    }
 
     public boolean isShowSidebarTaskCount() { return showSidebarTaskCount; }
     public void setShowSidebarTaskCount(boolean showSidebarTaskCount) { this.showSidebarTaskCount = showSidebarTaskCount; }
@@ -143,6 +166,33 @@ public class AppStats implements Serializable {
     public void addStatXp(String statId, int amount) {
         if (statXpMap == null) statXpMap = new HashMap<>();
         statXpMap.put(statId, statXpMap.getOrDefault(statId, 0) + amount);
+    }
+
+    private List<String> deletedTaskHistory = new ArrayList<>();
+
+    public List<String> getDeletedTaskHistory() {
+        if (deletedTaskHistory == null) deletedTaskHistory = new ArrayList<>();
+        return deletedTaskHistory;
+    }
+
+    public void setDeletedTaskHistory(List<String> deletedTaskHistory) {
+        this.deletedTaskHistory = deletedTaskHistory;
+    }
+
+    private boolean runOnStartup = false;
+
+    public boolean isRunOnStartup() { return runOnStartup; }
+    public void setRunOnStartup(boolean runOnStartup) { this.runOnStartup = runOnStartup; }
+
+    // --- NEW: Checkbox Theme Setting ---
+    private String checkboxTheme = "Default";
+
+    public String getCheckboxTheme() {
+        return checkboxTheme == null ? "Default" : checkboxTheme;
+    }
+
+    public void setCheckboxTheme(String checkboxTheme) {
+        this.checkboxTheme = checkboxTheme;
     }
 
     public int getMinDailyCompletionPercent() { return minDailyCompletionPercent < 10 ? 100 : minDailyCompletionPercent; }

@@ -176,6 +176,21 @@ public class TaskDialogs {
         });
     }
 
+    // --- NEW: Checkbox Theme CSS Generator ---
+    public static String getCheckboxThemeCss(String theme) {
+        if ("Dark".equals(theme)) {
+            return ".check-box .box { -fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; } .check-box:selected .mark { -fx-background-color: #858585; }";
+        } else if ("Green".equals(theme)) {
+            return ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #4EC9B0; } .check-box:selected .mark { -fx-background-color: #4EC9B0; }";
+        } else if ("Blue".equals(theme)) {
+            return ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #569CD6; } .check-box:selected .mark { -fx-background-color: #569CD6; }";
+        } else if ("Purple".equals(theme)) {
+            return ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #C586C0; } .check-box:selected .mark { -fx-background-color: #C586C0; }";
+        }
+        // Default (White)
+        return ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #555555; } .check-box:selected .mark { -fx-background-color: white; }";
+    }
+
     public static String toHexString(Color color) {
         if (color == null) return null;
         return String.format("#%02X%02X%02X", (int) (color.getRed() * 255), (int) (color.getGreen() * 255), (int) (color.getBlue() * 255));

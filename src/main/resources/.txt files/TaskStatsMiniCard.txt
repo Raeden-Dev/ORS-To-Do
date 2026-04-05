@@ -24,21 +24,24 @@ public class TaskStatsMiniCard extends FlowPane {
         setVisible(isStatsVis);
         setManaged(isStatsVis);
 
+        // Calculate a proportional font size for the pills (slightly smaller than the main text)
+        int pillFontSize = Math.max(9, appStats.getTaskFontSize() - 3);
+
         if (config.isRewardsPage() && task.getCostPoints() > 0) {
             Label pLabel = new Label("💎 -" + task.getCostPoints() + " Cost");
-            pLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-size: 11px; -fx-background-color: #1A3A4D; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+            pLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #1A3A4D; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
             getChildren().add(pLabel);
             hasAnyStats = true;
         } else if (config.isEnableScore()) {
             if (task.getRewardPoints() > 0) {
                 Label pLabel = new Label("🏆 +" + task.getRewardPoints() + " Pts");
-                pLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 11px; -fx-background-color: #332B00; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                pLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #332B00; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
                 getChildren().add(pLabel);
                 hasAnyStats = true;
             }
             if (task.getPenaltyPoints() > 0) {
                 Label pLabel = new Label("💀 -" + task.getPenaltyPoints() + " Pts");
-                pLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 11px; -fx-background-color: #330000; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                pLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #330000; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
                 getChildren().add(pLabel);
                 hasAnyStats = true;
             }
@@ -52,7 +55,7 @@ public class TaskStatsMiniCard extends FlowPane {
                     String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
                     String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
                     Label sLabel = new Label(icon + "+" + rew + " " + stat.getName());
-                    sLabel.setStyle("-fx-text-fill: " + txtC + "; -fx-background-color: " + bgC + "; -fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                    sLabel.setStyle("-fx-text-fill: " + txtC + "; -fx-background-color: " + bgC + "; -fx-font-size: " + pillFontSize + "px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
                     getChildren().add(sLabel);
                     hasAnyStats = true;
                 }
@@ -61,7 +64,7 @@ public class TaskStatsMiniCard extends FlowPane {
                     String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
                     String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
                     Label sLabel = new Label(icon + "-" + pen + " " + stat.getName());
-                    sLabel.setStyle("-fx-text-fill: #FF6666; -fx-background-color: " + bgC + "; -fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold; -fx-border-color: #FF6666; -fx-border-radius: 4;");
+                    sLabel.setStyle("-fx-text-fill: #FF6666; -fx-background-color: " + bgC + "; -fx-font-size: " + pillFontSize + "px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold; -fx-border-color: #FF6666; -fx-border-radius: 4;");
                     getChildren().add(sLabel);
                     hasAnyStats = true;
                 }

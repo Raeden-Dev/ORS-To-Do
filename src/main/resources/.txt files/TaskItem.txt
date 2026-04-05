@@ -50,6 +50,16 @@ public class TaskItem implements Serializable {
     public boolean isStatsExpanded() { return statsExpanded; }
     public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
 
+    // --- NEW: Link Card Properties ---
+    private boolean isLinkCard;
+    private String linkActionPath;
+
+    public boolean isLinkCard() { return isLinkCard; }
+    public void setLinkCard(boolean linkCard) { this.isLinkCard = linkCard; }
+
+    public String getLinkActionPath() { return linkActionPath; }
+    public void setLinkActionPath(String linkActionPath) { this.linkActionPath = linkActionPath; }
+
     // --- NEW: NOTES Specific Variables ---
     private boolean isPinned = false;
     private String customOutlineColor = null;

@@ -14,6 +14,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PomodoroTimer extends VBox {
@@ -29,7 +30,11 @@ public class PomodoroTimer extends VBox {
     private Label statusLabel;
     private Button startPauseBtn;
     private ComboBox<Integer> timerOptions;
+
+    // --- NEW: Search Field and Background Task List ---
+    private TextField taskSearchField;
     private ComboBox<TaskItem> taskSelector;
+    private List<TaskItem> allFocusableTasks = new ArrayList<>();
 
     public PomodoroTimer(AppStats appStats, List<TaskItem> globalDatabase, Runnable refreshCallback) {
         super(15);
@@ -51,6 +56,17 @@ public class PomodoroTimer extends VBox {
         Label linkLabel = new Label("Link Focus to Task:");
         linkLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 14px; -fx-font-weight: bold;");
 
+        // --- NEW: Task Search Bar ---
+        taskSearchField = new TextField();
+        taskSearchField.setPromptText("🔍 Search tasks...");
+        taskSearchField.setPrefWidth(300);
+        taskSearchField.setMaxWidth(300);
+        taskSearchField.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3;");
+
+        taskSearchField.textProperty().addListener((obs, oldText, newText) -> {
+            applyTaskFilter(newText);
+        });
+
         taskSelector = new ComboBox<>();
         taskSelector.setPrefWidth(300);
         taskSelector.setStyle("-fx-background-color: #3E3E42; -fx-cursor: hand;");
@@ -61,13 +77,7 @@ public class PomodoroTimer extends VBox {
                 if (empty || item == null) {
                     setText("None (Free Focus)");
                 } else {
-                    String secName = "Task";
-                    if (item.getSectionId() != null) {
-                        for(SectionConfig c : appStats.getSections()){
-                            if(c.getId().equals(item.getSectionId())){ secName = c.getName(); break; }
-                        }
-                    }
-                    setText("[" + secName + "] " + item.getTextContent());
+                    setText("[" + getSectionName(item) + "] " + item.getTextContent());
                 }
                 setStyle("-fx-text-fill: black;");
             }
@@ -78,18 +88,13 @@ public class PomodoroTimer extends VBox {
                 if (empty || item == null) {
                     setText("None (Free Focus)");
                 } else {
-                    String secName = "Task";
-                    if (item.getSectionId() != null) {
-                        for(SectionConfig c : appStats.getSections()){
-                            if(c.getId().equals(item.getSectionId())){ secName = c.getName(); break; }
-                        }
-                    }
-                    setText("[" + secName + "] " + item.getTextContent());
+                    setText("[" + getSectionName(item) + "] " + item.getTextContent());
                 }
                 setStyle("-fx-text-fill: white;");
             }
         });
-        linkBox.getChildren().addAll(linkLabel, taskSelector);
+
+        linkBox.getChildren().addAll(linkLabel, taskSearchField, taskSelector);
 
         timeDisplay = new Label("25:00");
         timeDisplay.getStyleClass().add("timer-display");
@@ -134,8 +139,9 @@ public class PomodoroTimer extends VBox {
 
     public void refreshTasks() {
         TaskItem selected = taskSelector.getValue();
-        taskSelector.getItems().clear();
-        taskSelector.getItems().add(null);
+
+        allFocusableTasks.clear();
+        allFocusableTasks.add(null); // "None" option
 
         for (TaskItem task : globalDatabase) {
             if (!task.isFinished() && !task.isArchived()) {
@@ -150,15 +156,68 @@ public class PomodoroTimer extends VBox {
                 } else if (task.getOriginModule() == OriginModule.WORK || task.getOriginModule() == OriginModule.QUICK) {
                     canFocus = true;
                 }
-                if (canFocus) taskSelector.getItems().add(task);
+                if (canFocus) allFocusableTasks.add(task);
             }
         }
+
+        // Apply current filter to update the combo box items
+        applyTaskFilter(taskSearchField.getText());
 
         if (selected != null && taskSelector.getItems().contains(selected)) {
             taskSelector.setValue(selected);
         } else {
             taskSelector.setValue(null);
         }
+    }
+
+    // --- NEW: Helper method to filter tasks dynamically ---
+    private void applyTaskFilter(String query) {
+        TaskItem currentlySelected = taskSelector.getValue();
+        taskSelector.getItems().clear();
+
+        if (query == null || query.trim().isEmpty()) {
+            taskSelector.getItems().addAll(allFocusableTasks);
+        } else {
+            String lowerQuery = query.toLowerCase();
+            for (TaskItem task : allFocusableTasks) {
+                if (task == null) {
+                    taskSelector.getItems().add(null); // Always keep 'None' option
+                } else {
+                    String taskText = task.getTextContent().toLowerCase();
+                    String secName = getSectionName(task).toLowerCase();
+
+                    // Match against task text or section name
+                    if (taskText.contains(lowerQuery) || secName.contains(lowerQuery)) {
+                        taskSelector.getItems().add(task);
+                    }
+                }
+            }
+        }
+
+        // Restore selection if it's still in the filtered list
+        if (currentlySelected != null && taskSelector.getItems().contains(currentlySelected)) {
+            taskSelector.setValue(currentlySelected);
+        } else if (!taskSelector.getItems().isEmpty()) {
+            taskSelector.setValue(taskSelector.getItems().get(0));
+        }
+
+        // Auto-expand the dropdown when user is typing
+        if (taskSearchField.isFocused() && !taskSelector.getItems().isEmpty()) {
+            taskSelector.show();
+        }
+    }
+
+    // --- NEW: Helper method to fetch Section Name ---
+    private String getSectionName(TaskItem item) {
+        if (item == null) return "";
+        if (item.getSectionId() != null) {
+            for (SectionConfig c : appStats.getSections()) {
+                if (c.getId().equals(item.getSectionId())) {
+                    return c.getName();
+                }
+            }
+        }
+        return "Task";
     }
 
     private void setupTimerLogic() {

@@ -17,31 +17,35 @@ public class SettingsModule extends ScrollPane {
         setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         setBorder(Border.EMPTY);
 
-        VBox contentBox = new VBox(20); // Changed spacing to 20 to match your design goals
+        VBox contentBox = new VBox(20);
         contentBox.setPadding(new Insets(20));
 
-        // --- NEW: Help & About Panel ---
         HelpAboutPanel helpPanel = new HelpAboutPanel(appStats);
 
-        // --- Existing Control Center ---
         Label header = new Label("Control Center");
         header.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
 
-        GeneralSettingsPanel generalPanel = new GeneralSettingsPanel(appStats, refreshCallback);
-        TemplateManagerPanel templatePanel = new TemplateManagerPanel(appStats, globalDatabase, refreshCallback);
-        PriorityManagerPanel priorityPanel = new PriorityManagerPanel(appStats, refreshCallback);
-        DataManagementPanel dataPanel = new DataManagementPanel(appStats, globalDatabase, refreshCallback);
-        DangerZonePanel dangerPanel = new DangerZonePanel(appStats, globalDatabase, refreshCallback);
         StatsManagerPanel statsManagerPanel = new StatsManagerPanel(appStats, refreshCallback);
+
+        Runnable wrappedRefreshCallback = () -> {
+            // --- FIXED: Call the internal refresh method instead of overriding ---
+            statsManagerPanel.refreshState();
+            refreshCallback.run();
+        };
+
+        GeneralSettingsPanel generalPanel = new GeneralSettingsPanel(appStats, wrappedRefreshCallback);
+        TemplateManagerPanel templatePanel = new TemplateManagerPanel(appStats, globalDatabase, wrappedRefreshCallback);
+        PriorityManagerPanel priorityPanel = new PriorityManagerPanel(appStats, wrappedRefreshCallback);
+        DataManagementPanel dataPanel = new DataManagementPanel(appStats, globalDatabase, wrappedRefreshCallback);
+        DangerZonePanel dangerPanel = new DangerZonePanel(appStats, globalDatabase, wrappedRefreshCallback);
 
         Runnable onSectionChanged = () -> {
             templatePanel.refreshSectionSelector();
             dangerPanel.refreshDangerZone();
-            refreshCallback.run();
+            wrappedRefreshCallback.run();
         };
-        SectionManagerPanel sectionPanel = new SectionManagerPanel(appStats, globalDatabase, refreshCallback, onSectionChanged);
+        SectionManagerPanel sectionPanel = new SectionManagerPanel(appStats, globalDatabase, wrappedRefreshCallback, onSectionChanged);
 
-        // Add to view
         contentBox.getChildren().addAll(
                 helpPanel,
                 header,

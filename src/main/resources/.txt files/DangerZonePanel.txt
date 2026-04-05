@@ -90,6 +90,14 @@ public class DangerZonePanel extends VBox {
             });
         });
         wipePane.getChildren().add(resetAnalyticsBtn);
+
+        Button historyBtn = new Button("View Deleted Tasks History");
+        historyBtn.setPrefWidth(BUTTON_WIDTH);
+        historyBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-border-color: #555555; -fx-border-radius: 3;");
+        historyBtn.setOnAction(e -> {
+            com.raeden.ors_to_do.modules.dependencies.ui.DeletedHistoryDialog.show(appStats, refreshCallback);
+        });
+        wipePane.getChildren().add(historyBtn);
     }
 
     private Button createDangerButton(String text) {

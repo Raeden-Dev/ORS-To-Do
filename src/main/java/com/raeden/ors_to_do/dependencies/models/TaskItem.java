@@ -47,6 +47,11 @@ public class TaskItem implements Serializable {
     private Map<String, Integer> statRewards = new HashMap<>();
     private Map<String, Integer> statPenalties = new HashMap<>();
 
+    // --- NEW: Optional Task Flag ---
+    private boolean isOptional = false;
+    public boolean isOptional() { return isOptional; }
+    public void setOptional(boolean optional) { isOptional = optional; }
+
     public boolean isStatsExpanded() { return statsExpanded; }
     public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
 

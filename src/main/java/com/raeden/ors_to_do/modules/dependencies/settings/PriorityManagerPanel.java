@@ -3,7 +3,7 @@ package com.raeden.ors_to_do.modules.dependencies.settings;
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomPriority;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs; // --- ADDED IMPORT ---
+import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -14,7 +14,6 @@ public class PriorityManagerPanel extends VBox {
     private VBox existingPriosBox;
     private AppStats appStats;
     private Runnable refreshCallback;
-    private final double BUTTON_WIDTH = 200.0;
 
     public PriorityManagerPanel(AppStats appStats, Runnable refreshCallback) {
         super(15);
@@ -23,21 +22,29 @@ public class PriorityManagerPanel extends VBox {
 
         setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
         Label prioHeader = new Label("Manage Priorities");
-        prioHeader.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #CCCCCC;");
+        prioHeader.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
 
         existingPriosBox = new VBox(10);
         renderExistingPriorities();
 
+        // --- FIXED: 1-Row Layout with Dark Theme applied ---
         HBox prioInput = new HBox(10);
-        TextField prioName = new TextField(); prioName.setPromptText("Priority Name (e.g. URGENT)");
-        ColorPicker colorPicker = new ColorPicker();
+        prioInput.setAlignment(Pos.CENTER_LEFT);
+
+        TextField prioName = new TextField();
+        prioName.setPromptText("Priority Name (e.g. URGENT)");
+        prioName.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3;");
+        HBox.setHgrow(prioName, Priority.ALWAYS); // Widens the text field dynamically
+
+        ColorPicker colorPicker = new ColorPicker(Color.WHITE);
+        colorPicker.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; -fx-color-label-visible: false;");
 
         Button addPrioBtn = new Button("Add Priority");
-        addPrioBtn.setPrefWidth(BUTTON_WIDTH);
-        addPrioBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-border-color: #555555; -fx-cursor: hand;");
+        addPrioBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 5 15;");
+
         addPrioBtn.setOnAction(e -> {
-            if(!prioName.getText().isEmpty()) {
-                appStats.getCustomPriorities().add(new CustomPriority(prioName.getText(), toHexString(colorPicker.getValue())));
+            if(!prioName.getText().trim().isEmpty()) {
+                appStats.getCustomPriorities().add(new CustomPriority(prioName.getText().trim(), toHexString(colorPicker.getValue())));
                 StorageManager.saveStats(appStats);
                 renderExistingPriorities();
                 refreshCallback.run();
@@ -45,8 +52,9 @@ public class PriorityManagerPanel extends VBox {
             }
         });
 
-        prioInput.getChildren().addAll(prioName, colorPicker);
-        getChildren().addAll(prioHeader, existingPriosBox, new Separator(), prioInput, addPrioBtn);
+        prioInput.getChildren().addAll(prioName, colorPicker, addPrioBtn);
+
+        getChildren().addAll(prioHeader, existingPriosBox, new Separator(), prioInput);
     }
 
     private void renderExistingPriorities() {
@@ -69,7 +77,7 @@ public class PriorityManagerPanel extends VBox {
             HBox btnBox = new HBox(5);
 
             Button upBtn = new Button("▲");
-            upBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-cursor: hand;");
+            upBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
             upBtn.setDisable(index == 0);
             upBtn.setOnAction(e -> {
                 Collections.swap(appStats.getCustomPriorities(), index, index - 1);
@@ -79,7 +87,7 @@ public class PriorityManagerPanel extends VBox {
             });
 
             Button downBtn = new Button("▼");
-            downBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-cursor: hand;");
+            downBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
             downBtn.setDisable(index == appStats.getCustomPriorities().size() - 1);
             downBtn.setOnAction(e -> {
                 Collections.swap(appStats.getCustomPriorities(), index, index + 1);
@@ -89,12 +97,11 @@ public class PriorityManagerPanel extends VBox {
             });
 
             Button editBtn = new Button("Edit");
-            editBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand;");
+            editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
             editBtn.setOnAction(e -> {
                 Dialog<ButtonType> dialog = new Dialog<>();
                 dialog.setTitle("Edit Priority");
 
-                // --- ADDED FIX: Apply universal dark theme & always-on-top ---
                 TaskDialogs.styleDialog(dialog);
 
                 GridPane grid = new GridPane();
@@ -118,8 +125,8 @@ public class PriorityManagerPanel extends VBox {
                 });
             });
 
-            Button removeBtn = new Button("Remove");
-            removeBtn.setStyle("-fx-background-color: #552222; -fx-text-fill: white; -fx-cursor: hand;");
+            Button removeBtn = new Button("❌");
+            removeBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-cursor: hand;");
             removeBtn.setOnAction(e -> {
                 if (appStats.getCustomPriorities().size() <= 1) {
                     Alert alert = new Alert(Alert.AlertType.WARNING, "You must have at least one priority left in the system.");

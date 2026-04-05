@@ -67,7 +67,7 @@ public class TemplateManagerPanel extends VBox {
                     newTask.setPrefix(template.getPrefix());
                     newTask.setPrefixColor(template.getPrefixColor());
                 }
-                if (selected.isShowPriority() && template.getPriorityName() != null) {
+                if (selected.isShowPriority() && template.getPriorityName() != null && !template.isOptional()) {
                     appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
                 }
                 if (selected.isShowTaskType() && template.getTaskType() != null) newTask.setTaskType(template.getTaskType());
@@ -81,6 +81,8 @@ public class TemplateManagerPanel extends VBox {
                     }
                 }
                 if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+
+                newTask.setOptional(template.isOptional());
 
                 globalDatabase.add(newTask);
             }
@@ -143,12 +145,22 @@ public class TemplateManagerPanel extends VBox {
             HBox row = new HBox(10);
             row.setAlignment(Pos.CENTER_LEFT);
 
-            // --- FIXED: Read the dynamic background color, fallback to #2D2D30 if none/transparent ---
             String bgColor = (t.getBgColor() != null && !t.getBgColor().equals("transparent")) ? t.getBgColor() : "#2D2D30";
-            row.setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5;");
+            if (t.isOptional()) {
+                bgColor = "#332B00";
+            }
+
+            row.setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 10; -fx-border-color: " + (t.isOptional() ? "#FFD700" : "#3E3E42") + "; -fx-border-radius: 5;");
 
             HBox textContainer = new HBox(5);
             textContainer.setAlignment(Pos.CENTER_LEFT);
+
+            // --- FIXED: [OPT] Tag is the first element added to the container ---
+            if (t.isOptional()) {
+                Label optLbl = new Label("[OPT]");
+                optLbl.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
+                textContainer.getChildren().add(optLbl);
+            }
 
             if (selected.isEnableIcons() && t.getIconSymbol() != null && !t.getIconSymbol().equals("None")) {
                 Label iconLbl = new Label(t.getIconSymbol());
@@ -211,6 +223,7 @@ public class TemplateManagerPanel extends VBox {
                 clone.setTaskType(t.getTaskType());
                 clone.setRewardPoints(t.getRewardPoints());
                 clone.setPenaltyPoints(t.getPenaltyPoints());
+                clone.setOptional(t.isOptional());
                 if (t.getSubTaskLines() != null) {
                     clone.setSubTaskLines(new ArrayList<>(t.getSubTaskLines()));
                 }
@@ -257,6 +270,17 @@ public class TemplateManagerPanel extends VBox {
         }
         grid.add(new Label("Background Color:"), 0, rowIdx); grid.add(bgColorPicker, 1, rowIdx++);
 
+        CheckBox optionalCheck = new CheckBox("Is Optional Task?");
+        optionalCheck.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
+        optionalCheck.setSelected(template != null && template.isOptional());
+
+        if (!section.isEnableOptionalTasks()) {
+            optionalCheck.setDisable(true);
+            optionalCheck.setSelected(false);
+            optionalCheck.setText("Is Optional Task? (Disabled in Section Config)");
+        }
+        grid.add(optionalCheck, 1, rowIdx++);
+
         ComboBox<String> iconBox = null; ColorPicker iconColorPicker = null;
         if (section.isEnableIcons()) {
             iconBox = new ComboBox<>();
@@ -286,6 +310,24 @@ public class TemplateManagerPanel extends VBox {
                 appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(prioBox::setValue);
             }
             grid.add(new Label("Default Priority:"), 0, rowIdx); grid.add(prioBox, 1, rowIdx++);
+        }
+
+        ComboBox<CustomPriority> finalPrioBoxForListener = prioBox;
+        optionalCheck.setOnAction(e -> {
+            if (optionalCheck.isSelected()) {
+                if (finalPrioBoxForListener != null) {
+                    finalPrioBoxForListener.setDisable(true);
+                    finalPrioBoxForListener.setValue(null);
+                }
+            } else {
+                if (finalPrioBoxForListener != null) {
+                    finalPrioBoxForListener.setDisable(false);
+                }
+            }
+        });
+        if (template != null && template.isOptional() && prioBox != null) {
+            prioBox.setDisable(true);
+            prioBox.setValue(null);
         }
 
         TextField workTypeField = null;
@@ -341,8 +383,8 @@ public class TemplateManagerPanel extends VBox {
 
                 tToSave.setText(textField.getText().trim());
                 tToSave.setActiveDays(selectedDays);
-
                 tToSave.setBgColor(toHexString(finalBgColorPicker.getValue()));
+                tToSave.setOptional(optionalCheck.isSelected());
 
                 if (section.isEnableIcons() && finalIconBox != null) {
                     tToSave.setIconSymbol(finalIconBox.getValue());
@@ -352,9 +394,13 @@ public class TemplateManagerPanel extends VBox {
                     tToSave.setPrefix(finalPrefixField.getText().trim());
                     tToSave.setPrefixColor(toHexString(finalPrefixColor.getValue()));
                 }
-                if (section.isShowPriority() && finalPrioBox != null && finalPrioBox.getValue() != null) {
+
+                if (section.isShowPriority() && finalPrioBox != null && finalPrioBox.getValue() != null && !tToSave.isOptional()) {
                     tToSave.setPriorityName(finalPrioBox.getValue().getName());
+                } else if (tToSave.isOptional()) {
+                    tToSave.setPriorityName(null);
                 }
+
                 if (section.isShowTaskType() && finalWorkTypeField != null) tToSave.setTaskType(finalWorkTypeField.getText().trim());
                 if (section.isEnableScore() && finalRewardField != null) {
                     try { tToSave.setRewardPoints(Integer.parseInt(finalRewardField.getText().trim())); } catch(Exception ignore){}

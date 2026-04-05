@@ -44,6 +44,10 @@ public class TaskCard extends VBox {
     }
 
     public TaskCard(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate, List<Timeline> activeTimelines, BiConsumer<String, String> onReorder, Consumer<TaskItem> onGoToPage) {
+        // Apply Dynamic Checkbox Theme
+        String cbCss = TaskDialogs.getCheckboxThemeCss(appStats.getCheckboxTheme());
+        this.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(cbCss.getBytes()));
+
         this.task = task;
         this.config = config;
         this.appStats = appStats;
@@ -54,6 +58,9 @@ public class TaskCard extends VBox {
 
         VBox primaryCard = new VBox();
         primaryCard.getStyleClass().add("task-row");
+
+        int baseFontSize = appStats.getTaskFontSize();
+        int metaFontSize = Math.max(10, baseFontSize - 2);
 
         List<String> blockingTaskNames = new ArrayList<>();
         if (task.getDependsOnTaskIds() != null && !task.getDependsOnTaskIds().isEmpty()) {
@@ -69,7 +76,11 @@ public class TaskCard extends VBox {
         String bgStyle = task.getColorHex() != null && !task.getColorHex().equals("transparent") ? "-fx-background-color: " + task.getColorHex() + "; " : "";
         String borderStyle = "";
 
-        if (isNoteMode && task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) {
+        // --- FIXED: Apply default Link Card styling ---
+        if (task.isLinkCard()) {
+            bgStyle = "-fx-background-color: #1A3A4D; ";
+            borderStyle = "-fx-border-color: #569CD6; -fx-border-width: 1; -fx-border-radius: 4; ";
+        } else if (isNoteMode && task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) {
             borderStyle = "-fx-border-color: " + task.getCustomOutlineColor() + "; -fx-border-width: 1; -fx-border-radius: 4; ";
         } else if (!isLocked) {
             if (config.isAllowFavorite() && task.isFavorite()) {
@@ -113,9 +124,17 @@ public class TaskCard extends VBox {
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
+        // --- NEW: Visual indicator that it's clickable ---
+        if (task.isLinkCard()) {
+            mainRow.setCursor(javafx.scene.Cursor.HAND);
+        }
+
+        // --- FIXED: Single click logic added for Link Cards ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
+            } else if (event.getClickCount() == 1 && event.getButton() == MouseButton.PRIMARY && task.isLinkCard()) {
+                openActionPath(task.getLinkActionPath());
             }
         });
 
@@ -123,7 +142,7 @@ public class TaskCard extends VBox {
         boolean hasSubTasks = config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
 
         Button expandBtn = new Button(task.isExpanded() ? "▼" : "▶");
-        expandBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AAAAAA; -fx-font-weight: bold; -fx-padding: 0 5 0 0; -fx-cursor: hand;");
+        expandBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AAAAAA; -fx-font-weight: bold; -fx-padding: 0 5 0 0; -fx-cursor: hand; -fx-font-size: " + metaFontSize + "px;");
 
         if (isLocked || (!hasSubTasks && !hasLinks)) {
             expandBtn.setVisible(false);
@@ -162,11 +181,10 @@ public class TaskCard extends VBox {
             }
             sideRect.setStyle("-fx-background-color: " + fillColor + "; -fx-background-radius: 3;");
 
-
             if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
                 Label customIcon = new Label(task.getIconSymbol());
                 String iconColor = task.getIconColor() != null ? task.getIconColor() : "#FFFFFF";
-                customIcon.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: " + (appStats.getTaskFontSize() + 2) + "px;");
+                customIcon.setStyle("-fx-text-fill: " + iconColor + "; -fx-font-size: " + (baseFontSize + 2) + "px;");
                 metaBox.getChildren().add(customIcon);
             }
 
@@ -174,13 +192,14 @@ public class TaskCard extends VBox {
 
             if (config.isAllowFavorite() && task.isFavorite() && !isNoteMode) {
                 Label starLabel = new Label("[⭐]");
-                starLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
+                starLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + baseFontSize + "px; -fx-font-weight: bold;");
                 metaBox.getChildren().add(starLabel);
             }
 
-            if (config.isShowDate() && !isNoteMode) {
+            if (config.isShowDate() && !isNoteMode && !task.isLinkCard()) {
                 Label dateLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
                 dateLabel.getStyleClass().add("task-metadata");
+                dateLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: " + metaFontSize + "px;");
                 metaBox.getChildren().add(dateLabel);
             }
 
@@ -188,24 +207,25 @@ public class TaskCard extends VBox {
                 Label prefixLabel = new Label(task.getPrefix());
                 prefixLabel.getStyleClass().add("task-prefix");
                 String pColor = task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0";
-                prefixLabel.setStyle("-fx-text-fill: " + pColor + "; -fx-font-size: " + appStats.getTaskFontSize() + "px;");
+                prefixLabel.setStyle("-fx-text-fill: " + pColor + "; -fx-font-size: " + baseFontSize + "px;");
                 metaBox.getChildren().add(prefixLabel);
             }
 
             if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty() && !isNoteMode) {
-                Label workTypeLabel = new Label("[" + task.getTaskType() + "]");
-                workTypeLabel.getStyleClass().add("task-metadata");
-                metaBox.getChildren().add(workTypeLabel);
+                Label taskTypeLabel = new Label("[" + task.getTaskType() + "]");
+                taskTypeLabel.getStyleClass().add("task-metadata");
+                taskTypeLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: " + metaFontSize + "px;");
+                metaBox.getChildren().add(taskTypeLabel);
             }
         }
 
-        String fontStyle = "-fx-font-size: " + appStats.getTaskFontSize() + "px; ";
+        String fontStyle = "-fx-font-size: " + baseFontSize + "px; ";
 
         if (isLocked) {
             textContainer.setAlignment(Pos.CENTER);
 
             Label lockIcon = new Label("🔒");
-            lockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + (appStats.getTaskFontSize() + 2) + "px;");
+            lockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + (baseFontSize + 2) + "px;");
 
             String lockedText = blockingTaskNames.size() == 1 ? blockingTaskNames.get(0) : blockingTaskNames.size() + " tasks";
             Label lockMsg = new Label("Complete [" + lockedText + "] to unlock");
@@ -215,7 +235,7 @@ public class TaskCard extends VBox {
 
             if (blockingTaskNames.size() > 1) {
                 Label helpIcon = new Label("?");
-                helpIcon.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: help; -fx-background-color: #1E1E1E; -fx-padding: 0 5; -fx-background-radius: 10; -fx-border-color: #569CD6; -fx-border-radius: 10;");
+                helpIcon.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px; -fx-cursor: help; -fx-background-color: #1E1E1E; -fx-padding: 0 5; -fx-background-radius: 10; -fx-border-color: #569CD6; -fx-border-radius: 10;");
                 HBox.setMargin(helpIcon, new Insets(0, 0, 0, 5));
 
                 String tooltipText = "Required Tasks:\n• " + String.join("\n• ", blockingTaskNames);
@@ -231,35 +251,41 @@ public class TaskCard extends VBox {
             textContainer.setAlignment(Pos.CENTER_LEFT);
             Label textLabel = new Label(task.getTextContent());
             textLabel.setWrapText(true);
-            if (task.isFinished() && !isNoteMode) textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
+            if (task.isFinished() && !isNoteMode && !task.isLinkCard()) textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
             else textLabel.setStyle(fontStyle + "-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
             textContainer.getChildren().add(textLabel);
+
+            // --- NEW: Add a small indicator for Link Cards next to the text ---
+            if (task.isLinkCard()) {
+                Label linkIndicator = new Label("↗");
+                linkIndicator.setStyle("-fx-text-fill: #569CD6; -fx-font-size: " + metaFontSize + "px; -fx-padding: 0 0 0 5;");
+                textContainer.getChildren().add(linkIndicator);
+            }
         }
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
-        // --- NEW: Use extracted TaskStatsMiniCard ---
         TaskStatsMiniCard statsMiniCard = new TaskStatsMiniCard(task, config, appStats, isLocked);
 
         if (statsMiniCard.hasAnyStats() && !isNoteMode && !isLocked) {
             Button eyeBtn = new Button("👁");
-            eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
+            eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
             eyeBtn.setOnAction(e -> {
                 boolean newVis = !task.isStatsExpanded();
                 task.setStatsExpanded(newVis);
                 statsMiniCard.setVisible(newVis);
                 statsMiniCard.setManaged(newVis);
-                eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (newVis ? "#569CD6" : "#AAAAAA") + ";");
+                eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (newVis ? "#569CD6" : "#AAAAAA") + ";");
                 StorageManager.saveTasks(globalDatabase);
             });
             mainRow.getChildren().add(eyeBtn);
         }
 
         Label deadlineLabel = null;
-        if (task.getDeadline() != null && !isNoteMode) {
+        if (task.getDeadline() != null && !isNoteMode && !task.isLinkCard()) {
             deadlineLabel = new Label();
             deadlineLabel.setPadding(new Insets(0, 10, 0, 0));
-            deadlineLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: 13px;");
+            deadlineLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px;");
             Label finalDeadlineLabel = deadlineLabel;
 
             Runnable updateLabel = () -> {
@@ -303,15 +329,16 @@ public class TaskCard extends VBox {
             activeTimelines.add(deadlineTimer);
         }
 
-        if (!isLocked) {
+        // --- FIXED: Hide action components entirely for Link Cards ---
+        if (!isLocked && !task.isLinkCard()) {
             if (deadlineLabel != null) mainRow.getChildren().add(deadlineLabel);
 
             if (config.isTrackTime() && !isNoteMode) {
                 int mins = task.getTimeSpentSeconds() / 60;
                 Label timeLabel = new Label("⏱ " + mins + "m");
                 timeLabel.setPadding(new Insets(0, 10, 0, 0));
-                if (mins > 0) timeLabel.setStyle("-fx-text-fill: #E06666; -fx-font-weight: bold; -fx-font-size: 13px;");
-                else timeLabel.setStyle("-fx-text-fill: #858585; -fx-font-weight: bold; -fx-font-size: 13px;");
+                if (mins > 0) timeLabel.setStyle("-fx-text-fill: #E06666; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px;");
+                else timeLabel.setStyle("-fx-text-fill: #858585; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px;");
                 mainRow.getChildren().add(timeLabel);
             }
 
@@ -338,7 +365,7 @@ public class TaskCard extends VBox {
                 Button pinBtn = new Button("📌");
                 String pinColor = task.isPinned() ? "#FF6666" : "#FFFFFF";
                 double opacity = task.isPinned() ? 1.0 : 0.5;
-                pinBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 16px; -fx-text-fill: " + pinColor + "; -fx-opacity: " + opacity + ";");
+                pinBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-text-fill: " + pinColor + "; -fx-opacity: " + opacity + ";");
                 pinBtn.setOnAction(e -> {
                     task.setPinned(!task.isPinned());
                     StorageManager.saveTasks(globalDatabase);
@@ -348,7 +375,7 @@ public class TaskCard extends VBox {
 
             } else if (hasUnfinishedSubTasks) {
                 Label subLockIcon = new Label("🔒");
-                subLockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 16px; -fx-cursor: help;");
+                subLockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + baseFontSize + "px; -fx-cursor: help;");
 
                 Tooltip t = new Tooltip("Complete all sub-tasks to unlock!");
                 t.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: #FF6666; -fx-border-color: #FF6666; -fx-font-size: 12px;");
@@ -360,7 +387,6 @@ public class TaskCard extends VBox {
                 Button buyBtn = new Button(task.isCounterMode() ? "Buy (" + task.getCurrentCount() + "/" + task.getMaxCount() + ")" : "Buy");
                 buyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
                 if (task.isFinished()) buyBtn.setDisable(true);
-                // --- NEW: Use extracted action handler ---
                 buyBtn.setOnAction(e -> TaskActionHandler.handleRewardPurchase(task, appStats, globalDatabase, onUpdate));
                 actionContainer.getChildren().add(buyBtn);
 
@@ -389,7 +415,6 @@ public class TaskCard extends VBox {
                     if (!task.isPointsClaimed()) {
                         task.setCurrentCount(task.getCurrentCount() + 1);
                         if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
-                            // --- NEW: Use extracted action handler ---
                             TaskActionHandler.handleTaskCompletion(task, config, appStats, globalDatabase, onUpdate, null);
                         } else {
                             StorageManager.saveTasks(globalDatabase);
@@ -407,7 +432,6 @@ public class TaskCard extends VBox {
 
                 checkBox.setOnAction(e -> {
                     if (checkBox.isSelected()) {
-                        // --- NEW: Use extracted action handler ---
                         TaskActionHandler.handleTaskCompletion(task, config, appStats, globalDatabase, onUpdate, checkBox);
                     } else {
                         task.setFinished(false);
@@ -433,5 +457,31 @@ public class TaskCard extends VBox {
 
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
         primaryCard.setOnContextMenuRequested(e -> contextMenu.show(primaryCard, e.getScreenX(), e.getScreenY()));
+    }
+
+    // --- NEW: Desktop App / URL Launcher logic ---
+    private void openActionPath(String path) {
+        if (path == null || path.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                if (path.startsWith("http://") || path.startsWith("https://")) {
+                    java.awt.Desktop.getDesktop().browse(new java.net.URI(path));
+                } else {
+                    java.io.File file = new java.io.File(path);
+                    if (file.exists()) {
+                        java.awt.Desktop.getDesktop().open(file);
+                    } else {
+                        Runtime.getRuntime().exec(path);
+                    }
+                }
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to open path: \n" + path);
+                    alert.setHeaderText("Execution Error");
+                    TaskDialogs.styleDialog(alert);
+                    alert.show();
+                });
+            }
+        }).start();
     }
 }

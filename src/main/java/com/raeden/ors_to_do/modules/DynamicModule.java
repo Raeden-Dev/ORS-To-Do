@@ -14,6 +14,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 
 import java.util.*;
@@ -46,14 +48,12 @@ public class DynamicModule extends StackPane {
         mainContent = new BorderPane();
         mainContent.setPadding(new Insets(15));
 
-        // --- NEW: Hide Zen Mode on Notes Pages ---
         Runnable zenToggleAction = config.isNotesPage() ? () -> {} : this::toggleZenMode;
 
         zenOverlay = new ZenModeOverlay(config, appStats, globalDatabase, zenToggleAction, syncCallback, activeTimelines, this::reorderTasks);
         filterSortHeader = new FilterSortHeader(config, appStats, globalDatabase, zenToggleAction, this::refreshList);
 
         if (config.isNotesPage()) {
-            // Hide the Zen Mode button from the header entirely if it's a notes page
             filterSortHeader.getChildren().forEach(node -> {
                 if (node instanceof HBox) {
                     ((HBox) node).getChildren().removeIf(n -> n instanceof Button && ((Button) n).getText().contains("Zen Mode"));
@@ -71,8 +71,91 @@ public class DynamicModule extends StackPane {
         scrollPane.setBorder(Border.EMPTY);
         mainContent.setCenter(scrollPane);
 
+        ContextMenu bgMenu = new ContextMenu();
+        bgMenu.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #555555;");
+
+        MenuItem createItem = new MenuItem(config.isNotesPage() ? "Create New Note" : "Create New Task");
+        createItem.setStyle("-fx-text-fill: white;");
+        createItem.setOnAction(e -> createAndEditTask(false, false));
+        bgMenu.getItems().add(createItem);
+
+        if (config.isEnableLinkCards()) {
+            MenuItem createLinkItem = new MenuItem("Create Link Card");
+            createLinkItem.setStyle("-fx-text-fill: white;");
+            createLinkItem.setOnAction(e -> createAndEditTask(true, false));
+            bgMenu.getItems().add(createLinkItem);
+        }
+
+        if (config.isEnableOptionalTasks()) {
+            MenuItem createOptItem = new MenuItem("Create Optional Card");
+            createOptItem.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
+            createOptItem.setOnAction(e -> createAndEditTask(false, true));
+            bgMenu.getItems().add(createOptItem);
+        }
+
+        if (appStats.isEnableTextToTask() && !config.isNotesPage()) {
+            bgMenu.getItems().add(new SeparatorMenuItem());
+            MenuItem batchItem = new MenuItem("Batch to Task");
+            batchItem.setStyle("-fx-text-fill: white;");
+            batchItem.setOnAction(e -> {
+                TaskItem dummy = new TaskItem("", null, config.getId());
+                TaskDialogs.showTextToTaskDialog(dummy, globalDatabase, () -> {
+                    refreshList();
+                    if(syncCallback != null) syncCallback.run();
+                });
+            });
+            bgMenu.getItems().add(batchItem);
+        }
+
+        scrollPane.setOnContextMenuRequested(e -> {
+            Node target = (Node) e.getTarget();
+            boolean isTaskCard = false;
+            while (target != null) {
+                if (target instanceof TaskCard) {
+                    isTaskCard = true;
+                    break;
+                }
+                target = target.getParent();
+            }
+            if (!isTaskCard) {
+                bgMenu.show(scrollPane, e.getScreenX(), e.getScreenY());
+            }
+        });
+
+        // --- FIXED: EventFilter catches ANY mouse press (left, right, or middle) and instantly hides the menu ---
+        scrollPane.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            if (bgMenu.isShowing()) {
+                bgMenu.hide();
+            }
+        });
+
         buildInputPanel();
         refreshList();
+    }
+
+    private void createAndEditTask(boolean isLink, boolean isOptional) {
+        CustomPriority defaultPrio = null;
+        if (config.isShowPriority() && !config.isNotesPage() && priorityBox != null && !isOptional) {
+            defaultPrio = priorityBox.getValue();
+        } else if (config.isShowPriority() && !config.isNotesPage() && !appStats.getCustomPriorities().isEmpty() && !isOptional) {
+            defaultPrio = appStats.getCustomPriorities().get(0);
+        }
+
+        TaskItem newTask = new TaskItem("", defaultPrio, config.getId());
+        newTask.setLinkCard(isLink);
+        newTask.setOptional(isOptional);
+        if (config.isShowTaskType() && !config.isNotesPage()) newTask.setTaskType("General");
+
+        TaskDialogs.showEditDialog(newTask, config, appStats, globalDatabase, () -> {
+            if (newTask.getTextContent() != null && !newTask.getTextContent().trim().isEmpty()) {
+                if (!globalDatabase.contains(newTask)) {
+                    globalDatabase.add(newTask);
+                }
+                StorageManager.saveTasks(globalDatabase);
+            }
+            refreshList();
+            if (syncCallback != null) syncCallback.run();
+        });
     }
 
     private void buildInputPanel() {
@@ -80,7 +163,6 @@ public class DynamicModule extends StackPane {
         inputPanel.setAlignment(Pos.CENTER);
         inputPanel.setPadding(new Insets(15, 0, 0, 0));
 
-        // --- NEW: Hide Prefix on Notes Pages ---
         if (config.isShowPrefix() && !config.isNotesPage()) {
             prefixField = new TextField();
             prefixField.setPromptText("[PREFIX]");
@@ -91,7 +173,6 @@ public class DynamicModule extends StackPane {
 
         inputField = new TextField();
 
-        // --- NEW: Custom Prompt for Notes Pages ---
         if (config.isNotesPage()) {
             inputField.setPromptText("Enter new note for " + config.getName() + "...");
         } else if (config.isRewardsPage()) {
@@ -104,7 +185,6 @@ public class DynamicModule extends StackPane {
         HBox.setHgrow(inputField, Priority.ALWAYS);
         inputPanel.getChildren().add(inputField);
 
-        // --- NEW: Hide Priority on Notes Pages ---
         if (config.isShowPriority() && !config.isNotesPage()) {
             priorityBox = new ComboBox<>();
             priorityBox.getItems().addAll(appStats.getCustomPriorities());
@@ -130,7 +210,7 @@ public class DynamicModule extends StackPane {
     }
 
     private void toggleZenMode() {
-        if (config.isNotesPage()) return; // Failsafe
+        if (config.isNotesPage()) return;
 
         isZenMode = !isZenMode;
 
@@ -194,7 +274,6 @@ public class DynamicModule extends StackPane {
             }
         }
 
-        // --- NEW: Force Pinned Items to the top on Notes Pages ---
         String sortMode = filterSortHeader.getSortMode();
         if (!sortMode.equals("Custom Order")) {
             tasksToDisplay.sort((t1, t2) -> {
@@ -213,18 +292,16 @@ public class DynamicModule extends StackPane {
                 }
             });
         } else if (config.isNotesPage()) {
-            // Even in custom order, force pins to the top
             tasksToDisplay.sort((t1, t2) -> {
                 if (t1.isPinned() && !t2.isPinned()) return -1;
                 if (!t1.isPinned() && t2.isPinned()) return 1;
-                return 0; // Maintain existing custom order for non-pinned items
+                return 0;
             });
         }
 
         filterSortHeader.updateBadges(availableCount, completedCount);
 
         if (tasksToDisplay.isEmpty()) {
-            // --- NEW: Custom empty state text ---
             String emptyText = "Add a task to get started!";
             if (config.isNotesPage()) emptyText = "Add a note to your board!";
             else if (config.isRewardsPage()) emptyText = "Add a reward to your shop!";

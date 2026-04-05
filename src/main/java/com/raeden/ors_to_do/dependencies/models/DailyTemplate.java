@@ -27,6 +27,10 @@ public class DailyTemplate implements Serializable {
     private String taskType;
     private List<String> subTaskLines;
 
+    private boolean isOptional = false;
+    public boolean isOptional() { return isOptional; }
+    public void setOptional(boolean optional) { isOptional = optional; }
+
     public DailyTemplate(String prefix, String text, String prefixColor, String bgColor) {
         this.prefix = prefix;
         this.text = text;

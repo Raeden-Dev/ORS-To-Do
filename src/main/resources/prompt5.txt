@@ -56,7 +56,6 @@ WRITTEN BY ME FOR v1.4 Update
 
 > Implement a help section above "Control Center" in settings page, where add cards like analytics that describes how to use the application. Also add a credits button below that shows credit for the app.
 There will be 2 buttons in that section that opens two dialogs which is the help dialog and credit dialog respectively. Use button style like the given image. Make credit button lime and help button cyan.
-
 > Add ability (move up and down buttons) to re-arrange tasks added in auto task generator
 > Should be able to add multiple sub-task when the add sub task dialog opens and should be able to edit sub tasks (edit icon before the 'x')
 > Add a function in right click context menu to duplicate the task
@@ -104,6 +103,17 @@ Also make the import data dialog box dark
     - Font size for each setting should be same
     - Below each setting text there should be a smaller text explaining what that setting changes (similar to enable global custom stats)
     - Static Sidebar Texts & Colors should have dark themed text fields and color dropdown
-
 > New "Optional Tasks" that can only be created in pages with a reset interval and point system. Optional tasks don't account into total tasks. You also can toggle this on/off in section config.
   Optional Tasks can only be created through "Auto-Generating Tasks" section at settings page inside "Edit Template" where there is a checkbox called "Optional Task". Optional tasks always have a yellow outline and dark yellow background similar to "Score" tracker
+> I should be able to right click in the background of each section page and have these following options available:
+    - Create New Task (Opens the edit dialog of task as well)
+    - Create link card (If the page accepts link cards)
+    - Create Optional card (If the page accepts optional cards)
+    - Batch to Task (Remove the current batch to Task option in context menu from right clicking a task)
+> In "manage dynamic sections" at settings page, remove the New Section Name textfield and instead just keep the "Add Section" button, widen it a bit more and add a '+' before the text
+> In "Manage priorities" section at settings page, widen the priority name textbox, move the add priority button beside the dropdown and keep everything in 1 row to add a new priority. Also turn the theme of textbox and dropdown to dark theme
+
+
+> The reset interval doesn't show in the dashboard of sections if I remove and add it back or just add it newly. Fix it
+
+

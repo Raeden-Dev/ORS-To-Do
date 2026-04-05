@@ -57,15 +57,15 @@ public class TaskTrackerApp extends Application {
 
         if (appStats.getSections().isEmpty()) {
             SectionConfig quick = new SectionConfig("QUICK", appStats.getNavQuickText());
-            quick.setShowPriority(true); quick.setEnableSubTasks(true); quick.setAllowArchive(true); quick.setShowDate(true);
+            quick.setShowPriority(true); quick.setEnableSubTasks(true); quick.setAutoArchive(true); quick.setShowDate(true);
 
             SectionConfig daily = new SectionConfig("DAILY", appStats.getNavDailyText());
             daily.setResetIntervalHours(24);
-            daily.setHasStreak(true); daily.setShowPrefix(true); daily.setAllowArchive(true);
+            daily.setHasStreak(true); daily.setShowPrefix(true); daily.setAutoArchive(true);
 
             SectionConfig work = new SectionConfig("WORK", appStats.getNavWorkText());
-            work.setShowAnalytics(true); work.setEnableSubTasks(true); work.setShowPriority(true); work.setShowWorkType(true);
-            work.setTrackTime(true); work.setAllowArchive(true); work.setShowTags(true); work.setShowDate(true);
+            work.setShowAnalytics(true); work.setEnableSubTasks(true); work.setShowPriority(true); work.setShowTaskType(true);
+            work.setTrackTime(true); work.setAutoArchive(true); work.setShowTags(true); work.setShowDate(true);
 
             appStats.getSections().addAll(List.of(quick, daily, work));
             needsSave = true;

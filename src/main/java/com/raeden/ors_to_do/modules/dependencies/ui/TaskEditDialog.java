@@ -45,18 +45,18 @@ public class TaskEditDialog {
         grid.add(new Label(config.isNotesPage() ? "Note Text:" : (config.isRewardsPage() ? "Reward Name:" : "Content:")), 0, rowIdx);
         grid.add(contentField, 1, rowIdx++);
 
-        // --- NEW/FIXED: Link Card Toggle Logic ---
         CheckBox linkCardCheck = new CheckBox("Is Link Card?");
         linkCardCheck.setStyle("-fx-text-fill: white;");
 
-        // Determine if Link Cards are allowed
         boolean hasSubTasks = task.getSubTasks() != null && !task.getSubTasks().isEmpty();
-        boolean sectionAllowsLinks = config == null || config.isEnableLinkCards(); // allow null config for default sections
+        boolean sectionAllowsLinks = config == null || config.isEnableLinkCards();
 
-        if (!sectionAllowsLinks || hasSubTasks) {
+        if (!sectionAllowsLinks || hasSubTasks || task.isOptional()) {
             linkCardCheck.setDisable(true);
             linkCardCheck.setSelected(false);
-            if (hasSubTasks) {
+            if (task.isOptional()) {
+                linkCardCheck.setText("Is Link Card? (Disabled: Optional Task)");
+            } else if (hasSubTasks) {
                 linkCardCheck.setText("Is Link Card? (Disabled: Has Sub-Tasks)");
             } else {
                 linkCardCheck.setText("Is Link Card? (Disabled by Section Config)");
@@ -75,29 +75,108 @@ public class TaskEditDialog {
         grid.add(linkCardCheck, 0, rowIdx);
         grid.add(linkPathField, 1, rowIdx++);
 
+        // --- FIXED: Visual grouping and Separator for Styling Options ---
+        boolean allowStyling = config != null && (config.isNotesPage() || config.isEnableTaskStyling());
+        boolean allowIcons = config == null || config.isEnableIcons();
+        boolean allowPrefix = config == null || config.isShowPrefix();
+
         ColorPicker bgColorPicker = null;
         ColorPicker outlinePicker = null;
         ColorPicker sideboxPicker = null;
+        ComboBox<String> iconBox = null;
+        ColorPicker iconColorPicker = null;
+        TextField prefixFieldEdit = null;
+        ColorPicker preC = null;
 
-        if (config != null && config.isNotesPage()) {
-            bgColorPicker = new ColorPicker();
-            bgColorPicker.setMaxWidth(Double.MAX_VALUE);
-            if (task.getColorHex() != null && !task.getColorHex().equals("transparent")) bgColorPicker.setValue(Color.web(task.getColorHex()));
-            else bgColorPicker.setValue(Color.TRANSPARENT);
+        if (allowStyling || allowIcons || allowPrefix) {
+            grid.add(new Separator(), 0, rowIdx, 2, 1); rowIdx++;
 
-            outlinePicker = new ColorPicker();
-            outlinePicker.setMaxWidth(Double.MAX_VALUE);
-            if (task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) outlinePicker.setValue(Color.web(task.getCustomOutlineColor()));
-            else outlinePicker.setValue(Color.TRANSPARENT);
+            Label styleHeader = new Label("Task Appearance & Styling:");
+            styleHeader.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
+            grid.add(styleHeader, 0, rowIdx, 2, 1); rowIdx++;
 
-            sideboxPicker = new ColorPicker();
-            sideboxPicker.setMaxWidth(Double.MAX_VALUE);
-            if (task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) sideboxPicker.setValue(Color.web(task.getCustomSideboxColor()));
-            else sideboxPicker.setValue(Color.TRANSPARENT);
+            if (allowStyling) {
+                bgColorPicker = new ColorPicker();
+                bgColorPicker.setMaxWidth(Double.MAX_VALUE);
+                if (task.getColorHex() != null && !task.getColorHex().equals("transparent")) bgColorPicker.setValue(Color.web(task.getColorHex()));
+                else bgColorPicker.setValue(Color.TRANSPARENT);
 
-            grid.add(new Label("Background Color:"), 0, rowIdx); grid.add(bgColorPicker, 1, rowIdx++);
-            grid.add(new Label("Outline Color:"), 0, rowIdx); grid.add(outlinePicker, 1, rowIdx++);
-            grid.add(new Label("Sidebox Color:"), 0, rowIdx); grid.add(sideboxPicker, 1, rowIdx++);
+                outlinePicker = new ColorPicker();
+                outlinePicker.setMaxWidth(Double.MAX_VALUE);
+                if (task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) outlinePicker.setValue(Color.web(task.getCustomOutlineColor()));
+                else outlinePicker.setValue(Color.TRANSPARENT);
+
+                sideboxPicker = new ColorPicker();
+                sideboxPicker.setMaxWidth(Double.MAX_VALUE);
+                if (task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) sideboxPicker.setValue(Color.web(task.getCustomSideboxColor()));
+                else sideboxPicker.setValue(Color.TRANSPARENT);
+
+                grid.add(new Label("Background Color:"), 0, rowIdx); grid.add(bgColorPicker, 1, rowIdx++);
+                grid.add(new Label("Outline Color:"), 0, rowIdx); grid.add(outlinePicker, 1, rowIdx++);
+                grid.add(new Label("Sidebox Color:"), 0, rowIdx); grid.add(sideboxPicker, 1, rowIdx++);
+            }
+
+            if (allowIcons) {
+                iconBox = new ComboBox<>();
+                iconBox.setMaxWidth(Double.MAX_VALUE);
+                HBox.setHgrow(iconBox, Priority.ALWAYS);
+                iconBox.getItems().addAll(ICON_LIST);
+                iconBox.setValue(task.getIconSymbol() != null ? task.getIconSymbol() : "None");
+
+                iconColorPicker = new ColorPicker(Color.web(task.getIconColor() != null ? task.getIconColor() : "#FFFFFF"));
+
+                HBox iconRow = new HBox(10, iconBox, iconColorPicker);
+                grid.add(new Label("Icon & Color:"), 0, rowIdx); grid.add(iconRow, 1, rowIdx++);
+            }
+
+            if (allowPrefix) {
+                prefixFieldEdit = new TextField(task.getPrefix() != null ? task.getPrefix() : "");
+                prefixFieldEdit.setMaxWidth(Double.MAX_VALUE);
+                HBox.setHgrow(prefixFieldEdit, Priority.ALWAYS);
+
+                preC = new ColorPicker(Color.web(task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0"));
+
+                HBox prefixRow = new HBox(10, prefixFieldEdit, preC);
+                grid.add(new Label("Prefix & Color:"), 0, rowIdx); grid.add(prefixRow, 1, rowIdx++);
+            }
+
+            Button randomBtn = new Button("🎲 Randomize Style");
+            randomBtn.setMaxWidth(Double.MAX_VALUE);
+
+            ColorPicker finalBgColorPicker = bgColorPicker;
+            ColorPicker finalOutlinePicker = outlinePicker;
+            ColorPicker finalSideboxPicker = sideboxPicker;
+            ComboBox<String> finalRndIconBox = iconBox;
+            ColorPicker finalRndIconColor = iconColorPicker;
+            ColorPicker finalRndPrefixColor = preC;
+
+            // --- FIXED: Expanded Randomizer to target BG, Outline, and Sidebox ---
+            randomBtn.setOnAction(e -> {
+                java.util.Random rand = new java.util.Random();
+                double hue = rand.nextDouble() * 360.0;
+
+                if (finalRndIconBox != null) {
+                    finalRndIconBox.setValue(ICON_LIST[rand.nextInt(ICON_LIST.length - 1) + 1]);
+                }
+                if (finalRndIconColor != null) {
+                    finalRndIconColor.setValue(Color.hsb(hue, 0.5, 0.95));
+                }
+                if (finalRndPrefixColor != null) {
+                    finalRndPrefixColor.setValue(Color.hsb(hue, 0.7, 0.55));
+                }
+                if (finalBgColorPicker != null) {
+                    finalBgColorPicker.setValue(Color.hsb(hue, 0.8, 0.2));
+                }
+                if (finalOutlinePicker != null) {
+                    finalOutlinePicker.setValue(Color.hsb(hue, 0.8, 0.8));
+                }
+                if (finalSideboxPicker != null) {
+                    finalSideboxPicker.setValue(Color.hsb(hue, 0.6, 0.9));
+                }
+            });
+            grid.add(randomBtn, 1, rowIdx++);
+
+            grid.add(new Separator(), 0, rowIdx, 2, 1); rowIdx++;
         }
 
         MenuButton dependenciesMenu = new MenuButton("Dependencies (0)");
@@ -136,59 +215,8 @@ public class TaskEditDialog {
             grid.add(new Label((config != null && config.isRewardsPage()) ? "Unlock Condition:" : "Depends On:"), 0, rowIdx); grid.add(dependenciesMenu, 1, rowIdx++);
         }
 
-        ComboBox<String> iconBox = null; ColorPicker iconColorPicker = null;
-        if (config == null || config.isEnableIcons()) {
-            iconBox = new ComboBox<>();
-            iconBox.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(iconBox, Priority.ALWAYS);
-            iconBox.getItems().addAll(ICON_LIST);
-            iconBox.setValue(task.getIconSymbol() != null ? task.getIconSymbol() : "None");
-
-            iconColorPicker = new ColorPicker(Color.web(task.getIconColor() != null ? task.getIconColor() : "#FFFFFF"));
-
-            HBox iconRow = new HBox(10, iconBox, iconColorPicker);
-            grid.add(new Label("Icon & Color:"), 0, rowIdx); grid.add(iconRow, 1, rowIdx++);
-        }
-
-        TextField prefixFieldEdit = null; ColorPicker preC = null;
-        if (config == null || config.isShowPrefix()) {
-            prefixFieldEdit = new TextField(task.getPrefix() != null ? task.getPrefix() : "");
-            prefixFieldEdit.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(prefixFieldEdit, Priority.ALWAYS);
-
-            preC = new ColorPicker(Color.web(task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0"));
-
-            HBox prefixRow = new HBox(10, prefixFieldEdit, preC);
-            grid.add(new Label("Prefix & Color:"), 0, rowIdx); grid.add(prefixRow, 1, rowIdx++);
-        }
-
-        if (config == null || config.isEnableIcons() || config.isShowPrefix()) {
-            Button randomBtn = new Button("🎲 Randomize Appearance");
-            randomBtn.setMaxWidth(Double.MAX_VALUE);
-
-            ComboBox<String> finalRndIconBox = iconBox;
-            ColorPicker finalRndIconColor = iconColorPicker;
-            ColorPicker finalRndPrefixColor = preC;
-
-            randomBtn.setOnAction(e -> {
-                java.util.Random rand = new java.util.Random();
-                double hue = rand.nextDouble() * 360.0;
-
-                if (finalRndIconBox != null) {
-                    finalRndIconBox.setValue(ICON_LIST[rand.nextInt(ICON_LIST.length - 1) + 1]);
-                }
-                if (finalRndIconColor != null) {
-                    finalRndIconColor.setValue(Color.hsb(hue, 0.5, 0.95));
-                }
-                if (finalRndPrefixColor != null) {
-                    finalRndPrefixColor.setValue(Color.hsb(hue, 0.7, 0.55));
-                }
-            });
-            grid.add(randomBtn, 1, rowIdx++);
-        }
-
         ComboBox<CustomPriority> prioBoxEdit = null;
-        if (config == null || (config.isShowPriority() && !config.isNotesPage())) {
+        if ((config == null || (config.isShowPriority() && !config.isNotesPage())) && !task.isOptional()) {
             prioBoxEdit = new ComboBox<>();
             prioBoxEdit.setMaxWidth(Double.MAX_VALUE);
             prioBoxEdit.getItems().addAll(appStats.getCustomPriorities());
@@ -280,19 +308,27 @@ public class TaskEditDialog {
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        ColorPicker finalBgColorPicker = bgColorPicker;
-        ColorPicker finalOutlinePicker = outlinePicker;
-        ColorPicker finalSideboxPicker = sideboxPicker;
-
-        TextField finalPrefixFieldEdit = prefixFieldEdit; ColorPicker finalPreC = preC;
-        ComboBox<CustomPriority> finalPrioBoxEdit = prioBoxEdit; TextField finalTaskTypeField = taskTypeField;
-        ComboBox<String> finalIconBox = iconBox; ColorPicker finalIconColorPicker = iconColorPicker;
+        // Required re-capturing because these references are needed inside the OK button listener
+        // after being potentially initialized inside the styling block
+        ColorPicker okBgColorPicker = bgColorPicker;
+        ColorPicker okOutlinePicker = outlinePicker;
+        ColorPicker okSideboxPicker = sideboxPicker;
+        TextField okPrefixFieldEdit = prefixFieldEdit;
+        ColorPicker okPreC = preC;
+        ComboBox<String> okIconBox = iconBox;
+        ColorPicker okIconColorPicker = iconColorPicker;
+        ComboBox<CustomPriority> okPrioBoxEdit = prioBoxEdit;
+        TextField okTaskTypeField = taskTypeField;
 
         dialog.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                task.setTextContent(contentField.getText() != null ? contentField.getText().trim() : "");
+                String typedContent = contentField.getText() != null ? contentField.getText().trim() : "";
+                if (typedContent.isEmpty() && linkCardCheck.isSelected() && linkPathField.getText() != null && !linkPathField.getText().trim().isEmpty()) {
+                    typedContent = linkPathField.getText().trim();
+                }
 
-                // --- NEW: Discard link data if unchecked/disabled
+                task.setTextContent(typedContent);
+
                 if (linkCardCheck.isSelected()) {
                     task.setLinkCard(true);
                     task.setLinkActionPath(linkPathField.getText() != null ? linkPathField.getText().trim() : "");
@@ -301,13 +337,20 @@ public class TaskEditDialog {
                     task.setLinkActionPath("");
                 }
 
-                if (config != null && config.isNotesPage()) {
-                    if (finalBgColorPicker != null) task.setColorHex(toHexString(finalBgColorPicker.getValue()));
-                    if (finalOutlinePicker != null) task.setCustomOutlineColor(toHexString(finalOutlinePicker.getValue()));
-                    if (finalSideboxPicker != null) task.setCustomSideboxColor(toHexString(finalSideboxPicker.getValue()));
-                } else {
+                if (allowStyling) {
+                    if (okBgColorPicker != null) task.setColorHex(toHexString(okBgColorPicker.getValue()));
+                    if (okOutlinePicker != null) task.setCustomOutlineColor(toHexString(okOutlinePicker.getValue()));
+                    if (okSideboxPicker != null) task.setCustomSideboxColor(toHexString(okSideboxPicker.getValue()));
+                }
+
+                if (config == null || !config.isNotesPage()) {
                     task.setDependsOnTaskIds(selectedDeps);
-                    if ((config == null || config.isShowPriority()) && finalPrioBoxEdit != null) task.setPriority(finalPrioBoxEdit.getValue());
+
+                    if (okPrioBoxEdit != null) {
+                        task.setPriority(okPrioBoxEdit.getValue());
+                    } else if (task.isOptional()) {
+                        task.setPriority(null);
+                    }
 
                     if (datePicker.getValue() != null) {
                         try {
@@ -353,17 +396,17 @@ public class TaskEditDialog {
                     }
                 }
 
-                if ((config == null || config.isEnableIcons()) && finalIconBox != null) {
-                    task.setIconSymbol(finalIconBox.getValue());
-                    task.setIconColor(toHexString(finalIconColorPicker.getValue()));
+                if ((config == null || config.isEnableIcons()) && okIconBox != null) {
+                    task.setIconSymbol(okIconBox.getValue());
+                    task.setIconColor(toHexString(okIconColorPicker.getValue()));
                 }
 
-                if ((config == null || config.isShowPrefix()) && finalPrefixFieldEdit != null) {
-                    task.setPrefix(finalPrefixFieldEdit.getText() != null ? finalPrefixFieldEdit.getText().trim() : "");
-                    task.setPrefixColor(toHexString(finalPreC.getValue()));
+                if ((config == null || config.isShowPrefix()) && okPrefixFieldEdit != null) {
+                    task.setPrefix(okPrefixFieldEdit.getText() != null ? okPrefixFieldEdit.getText().trim() : "");
+                    task.setPrefixColor(toHexString(okPreC.getValue()));
                 }
-                if ((config == null || config.isShowTaskType()) && finalTaskTypeField != null) {
-                    task.setTaskType(finalTaskTypeField.getText() != null ? finalTaskTypeField.getText().trim() : "");
+                if ((config == null || config.isShowTaskType()) && okTaskTypeField != null) {
+                    task.setTaskType(okTaskTypeField.getText() != null ? okTaskTypeField.getText().trim() : "");
                 }
 
                 StorageManager.saveTasks(globalDatabase); onUpdate.run();
