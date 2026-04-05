@@ -1,0 +1,78 @@
+package com.raeden.ors_to_do.modules.dependencies.ui;
+
+import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.models.CustomStat;
+import com.raeden.ors_to_do.dependencies.models.SectionConfig;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
+import javafx.geometry.Insets;
+import javafx.scene.control.Label;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.VBox;
+
+public class TaskStatsMiniCard extends FlowPane {
+
+    private boolean hasAnyStats = false;
+
+    public TaskStatsMiniCard(TaskItem task, SectionConfig config, AppStats appStats, boolean isLocked) {
+        super(8, 8);
+        setPadding(new Insets(8, 12, 8, 12));
+        setStyle("-fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+        setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(this, new Insets(4, 0, 0, 0));
+
+        boolean isStatsVis = !isLocked && task.isStatsExpanded();
+        setVisible(isStatsVis);
+        setManaged(isStatsVis);
+
+        // Calculate a proportional font size for the pills (slightly smaller than the main text)
+        int pillFontSize = Math.max(9, appStats.getTaskFontSize() - 3);
+
+        if (config.isRewardsPage() && task.getCostPoints() > 0) {
+            Label pLabel = new Label("💎 -" + task.getCostPoints() + " Cost");
+            pLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #1A3A4D; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+            getChildren().add(pLabel);
+            hasAnyStats = true;
+        } else if (config.isEnableScore()) {
+            if (task.getRewardPoints() > 0) {
+                Label pLabel = new Label("🏆 +" + task.getRewardPoints() + " Pts");
+                pLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #332B00; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                getChildren().add(pLabel);
+                hasAnyStats = true;
+            }
+            if (task.getPenaltyPoints() > 0) {
+                Label pLabel = new Label("💀 -" + task.getPenaltyPoints() + " Pts");
+                pLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #330000; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                getChildren().add(pLabel);
+                hasAnyStats = true;
+            }
+        }
+
+        if (config.isEnableStatsSystem()) {
+            for (CustomStat stat : appStats.getCustomStats()) {
+                int rew = task.getStatRewards().getOrDefault(stat.getId(), 0);
+                if (rew > 0) {
+                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+                    String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
+                    Label sLabel = new Label(icon + "+" + rew + " " + stat.getName());
+                    sLabel.setStyle("-fx-text-fill: " + txtC + "; -fx-background-color: " + bgC + "; -fx-font-size: " + pillFontSize + "px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                    getChildren().add(sLabel);
+                    hasAnyStats = true;
+                }
+                int pen = task.getStatPenalties().getOrDefault(stat.getId(), 0);
+                if (pen > 0) {
+                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+                    Label sLabel = new Label(icon + "-" + pen + " " + stat.getName());
+                    sLabel.setStyle("-fx-text-fill: #FF6666; -fx-background-color: " + bgC + "; -fx-font-size: " + pillFontSize + "px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold; -fx-border-color: #FF6666; -fx-border-radius: 4;");
+                    getChildren().add(sLabel);
+                    hasAnyStats = true;
+                }
+            }
+        }
+    }
+
+    public boolean hasAnyStats() {
+        return hasAnyStats;
+    }
+}

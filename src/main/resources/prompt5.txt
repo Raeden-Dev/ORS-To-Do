@@ -75,12 +75,17 @@ Also make the import data dialog box dark
     I want a smaller card attached with the main card (it appears below it but is not same as sub task which expands the size of card, its an entirely new card but very less in height),
     all my stats rewards / penalty will be displayed there including points which used to show inside the card before. I should be able to hide this or using an "Eye" icon that will be in place of where the score/penalty used to show.
 > A "Text to Task" function in context menu (toggle-able in general configuration at settings) where I can input texts that will create tasks or tasks with subtasks similar to the copy task information function that is present already.
-
 > A small number beside each of the section button (to the left side before the rectangle) that shows how many tasks are there in that section. I can toggle this on/off in general configuration
+> Instead of "Work Types", name it as "Type", I can also set color for this additional prefix in the task
+> Task Tracker Icon should show in System Tray (right now it shows a blue circle)
 > The Dynamic filter buttons doesnt highlight which one is selected at the given moment. Add this functionality
-> If a task has sub-tasks and I add a dependency, I can still expand and see the sub-tasks. I shouldnt have the option to see subtasks at all.
-> I can see that I have a confirmation window pop-up if I want to complete a task and it has points. I should be able to add confirmation to other type of tasks as well. This settings should be available at "General configuration" section of settings page. All dynamic buttons and a "ALL" button, I can select multiple button that creates confirmation dialog when I finish task.
-> There is a separator between the 4 buttons (focus hub, analytics, archived, settings) and my dynamic pages. I should be able to click the separator to hide those 4 buttons and unhide them again (could add a simple slide down hide animation here) & an arrow pops up above the separator if I hover it.
+> Double clicking a task entry will open the edit dialog
+> If a task has sub-tasks and I add a dependency, I can still expand and see the sub-tasks and eye icon for stats. I shouldnt have the option to see subtasks or stats at all.
+  Also, if a task has multiple dependencies there should be a "?" icon in the end which shows list of all required task to complete to unlock it.
+> I can see that I have a confirmation window pop-up if I want to complete a task and it has points. I should be able to add confirmation to other type of tasks as well. This settings should be available at "General configuration" section of settings page.
+  All dynamic buttons and a "ALL" button, I can select multiple button that creates confirmation dialog when I finish task.
+> There is a separator between the 4 buttons (focus hub, analytics, archived, settings) and my dynamic pages.
+  I should be able to click the separator to hide those 4 buttons and unhide them again (could add a simple slide down hide animation here) & an arrow pops up above the separator if I hover it.
 > If I have a lot of dynamic buttons, it pushes  down the separator and the buttons below it instead of creating a scroll bar for the section.
 > Add a new button in danger zone, that shows history of deleted tasks in a new dialog. (I can also wipe this history from that page)
 > Below the "Active Tasks: X" text in dashboard, there should be a smaller label below it called "Active sub-tasks: X", X is the number of tasks active.
@@ -88,10 +93,17 @@ Also make the import data dialog box dark
 > Ability to set checkbox style from "general configuration" section, five themes to choose from: default, dark, green, blue, purple
 > Make the dropdowns all dark theme. Right now they are white default theme.
 > When I increase task font size in settings, all fonts in task should increase in size which includes dates, work types
-> Instead of "Work Types", name it as "Type", I can also set color for this additional prefix in the task
 > Starting to have a lot of tasks added, in focus hub its difficult to find a task from dropdown. Now add the option to search a task that filters with keywords
-> Task Tracker Icon should show in System Tray (right now it shows a blue circle)
-> New "Link" type task card that doesn't have a completion checkbox, rather when clicked I will open a link / folder / application that I hook into it
+> New "Link" type task card that doesn't have a completion checkbox or any other components, rather when clicked it will open a link / folder / application that I hook into it.
+  By default link cards have a blue border and dark blue background which is similar to the contrast of score component in dashboard
 > Organize the "Edit Section" dialog of dynamic sections. Add a dropdown for presets that I quickly select to create a custom section with settings of that preset. I should be able to create new presets as well.
+> Organize the "general configuration" section at settings page:
+    - Before each settings there should be a small rectangle just like how it is with section buttons in side bar
+    - Checkboxes, dropdowns, counters are all pushed to the right most side in the section, counters / dropdowns / checkboxes are paired together instead of something being in between one
+    - Same size for dropdowns and counters, counters should be dark theme instead of white
+    - Font size for each setting should be same
+    - Below each setting text there should be a smaller text explaining what that setting changes (similar to enable global custom stats)
+    - Static Sidebar Texts & Colors should have dark themed text fields and color dropdown
+
 > New "Optional Tasks" that can only be created in pages with a reset interval and point system. Optional tasks don't account into total tasks. You also can toggle this on/off in section config.
   Optional Tasks can only be created through "Auto-Generating Tasks" section at settings page inside "Edit Template" where there is a checkbox called "Optional Task". Optional tasks always have a yellow outline and dark yellow background similar to "Score" tracker

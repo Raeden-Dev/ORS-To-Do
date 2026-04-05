@@ -90,7 +90,7 @@ public class DailyRolloverManager {
                     .filter(c -> c.getId().equals(task.getSectionId()))
                     .findFirst();
 
-            if (matchedConfig.isPresent() && matchedConfig.get().isAllowArchive()) {
+            if (matchedConfig.isPresent() && matchedConfig.get().isAutoArchive()) {
                 if (task.isFinished() && !task.isArchived() && !task.isCounterMode()) {
                     task.setArchived(true);
                     if (task.getDateCompleted() == null) task.setFinished(true);

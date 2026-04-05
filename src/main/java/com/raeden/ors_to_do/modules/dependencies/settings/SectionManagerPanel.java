@@ -10,16 +10,20 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 public class SectionManagerPanel extends VBox {
+
     private VBox existingSectionsBox;
     private AppStats appStats;
     private List<TaskItem> globalDatabase;
     private Runnable refreshCallback;
     private Runnable onSectionChanged;
+
     private final double BUTTON_WIDTH = 200.0;
 
     public SectionManagerPanel(AppStats appStats, List<TaskItem> globalDatabase, Runnable refreshCallback, Runnable onSectionChanged) {
@@ -29,250 +33,419 @@ public class SectionManagerPanel extends VBox {
         this.refreshCallback = refreshCallback;
         this.onSectionChanged = onSectionChanged;
 
-        setStyle("-fx-border-color: #569CD6; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
-        Label sectionHeader = new Label("Manage Dynamic Sections");
-        sectionHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #569CD6;");
+        setStyle("-fx-border-color: #3E3E42; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
+
+        Label textHeader = new Label("Manage Dynamic Sections");
+        textHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+
+        HBox topRow = new HBox(10);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        TextField newSectionNameField = new TextField();
+        newSectionNameField.setPromptText("New Section Name...");
+        newSectionNameField.setPrefWidth(BUTTON_WIDTH);
+        newSectionNameField.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3;");
+
+        Button addSectionBtn = new Button("Add Section");
+        addSectionBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+
+        topRow.getChildren().addAll(newSectionNameField, addSectionBtn);
 
         existingSectionsBox = new VBox(10);
-        renderExistingSections();
 
-        Button createSectionBtn = new Button("+ Create New Section");
-        createSectionBtn.setPrefWidth(BUTTON_WIDTH);
-        createSectionBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        createSectionBtn.setOnAction(e -> showSectionDialog(null));
+        addSectionBtn.setOnAction(e -> {
+            String name = newSectionNameField.getText().trim();
+            if (!name.isEmpty()) {
+                SectionConfig config = new SectionConfig(UUID.randomUUID().toString(), name);
+                appStats.getSections().add(config);
+                newSectionNameField.clear();
+                StorageManager.saveStats(appStats);
+                refreshList();
+                if(onSectionChanged != null) onSectionChanged.run();
+                refreshCallback.run();
+            }
+        });
 
-        getChildren().addAll(sectionHeader, existingSectionsBox, new Separator(), createSectionBtn);
+        getChildren().addAll(textHeader, topRow, new Separator(), existingSectionsBox);
+        refreshList();
     }
 
-    private VBox createToggleBox(Control control, String description) {
-        VBox box = new VBox(2);
-        Label descLabel = new Label(description);
-        descLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px;");
-        descLabel.setWrapText(true);
-        box.getChildren().addAll(control, descLabel);
-        return box;
-    }
-
-    private void renderExistingSections() {
+    private void refreshList() {
         existingSectionsBox.getChildren().clear();
 
-        for (int i = 0; i < appStats.getSections().size(); i++) {
-            SectionConfig section = appStats.getSections().get(i);
-            int index = i;
-
-            HBox row = new HBox(15);
+        for (SectionConfig config : appStats.getSections()) {
+            HBox row = new HBox(10);
             row.setAlignment(Pos.CENTER_LEFT);
 
-            javafx.scene.shape.Rectangle colorRect = new javafx.scene.shape.Rectangle(12, 12);
-            colorRect.setArcWidth(3); colorRect.setArcHeight(3);
-            colorRect.setFill(Color.web(section.getSidebarColor()));
+            Rectangle colorIndicator = new Rectangle(12, 12, Color.web(config.getSidebarColor()));
+            colorIndicator.setStroke(Color.web("#555555"));
 
-            Label nameLabel = new Label(section.getName());
-            nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
-            nameLabel.setPrefWidth(150);
+            Label nameLabel = new Label(config.getName());
+            nameLabel.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+            HBox nameBox = new HBox(10, colorIndicator, nameLabel);
+            nameBox.setAlignment(Pos.CENTER_LEFT);
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
-            HBox btnBox = new HBox(5);
+            Button editBtn = new Button("⚙ Edit Features");
+            editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+            editBtn.setOnAction(e -> showEditSectionDialog(config));
 
-            Button upBtn = new Button("▲");
-            upBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-cursor: hand;");
-            upBtn.setDisable(index == 0);
-            upBtn.setOnAction(e -> {
-                Collections.swap(appStats.getSections(), index, index - 1);
-                StorageManager.saveStats(appStats);
-                renderExistingSections();
-                refreshCallback.run();
-            });
+            Button moveUpBtn = new Button("▲");
+            moveUpBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
+            moveUpBtn.setOnAction(e -> moveSection(config, -1));
 
-            Button downBtn = new Button("▼");
-            downBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-cursor: hand;");
-            downBtn.setDisable(index == appStats.getSections().size() - 1);
-            downBtn.setOnAction(e -> {
-                Collections.swap(appStats.getSections(), index, index + 1);
-                StorageManager.saveStats(appStats);
-                renderExistingSections();
-                refreshCallback.run();
-            });
+            Button moveDownBtn = new Button("▼");
+            moveDownBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
+            moveDownBtn.setOnAction(e -> moveSection(config, 1));
 
-            Button editBtn = new Button("Edit Config");
-            editBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand;");
-            editBtn.setOnAction(e -> showSectionDialog(section));
-
-            Button removeBtn = new Button("Delete");
-            removeBtn.setStyle("-fx-background-color: #552222; -fx-text-fill: white; -fx-cursor: hand;");
-            removeBtn.setOnAction(e -> {
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure? This will permanently delete the section '" + section.getName() + "' AND ALL TASKS inside it!", ButtonType.YES, ButtonType.NO);
-                alert.setHeaderText("Delete Section?");
+            Button deleteBtn = new Button("❌");
+            deleteBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-cursor: hand;");
+            deleteBtn.setOnAction(e -> {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Delete section '" + config.getName() + "'?\n\nThis will permanently delete all tasks inside it!", ButtonType.YES, ButtonType.NO);
+                alert.setHeaderText("Delete Section");
                 TaskDialogs.styleDialog(alert);
                 alert.showAndWait().ifPresent(res -> {
                     if (res == ButtonType.YES) {
-                        appStats.getSections().remove(section);
-                        globalDatabase.removeIf(t -> section.getId().equals(t.getSectionId()));
+                        appStats.getSections().remove(config);
+
+                        List<TaskItem> toRemove = new java.util.ArrayList<>();
+                        for (TaskItem task : globalDatabase) {
+                            if (config.getId().equals(task.getSectionId())) {
+                                toRemove.add(task);
+                            }
+                        }
+                        globalDatabase.removeAll(toRemove);
+
                         StorageManager.saveStats(appStats);
                         StorageManager.saveTasks(globalDatabase);
-
-                        renderExistingSections();
-                        onSectionChanged.run();
+                        refreshList();
+                        if(onSectionChanged != null) onSectionChanged.run();
+                        refreshCallback.run();
                     }
                 });
             });
 
-            btnBox.getChildren().addAll(upBtn, downBtn, editBtn, removeBtn);
-            row.getChildren().addAll(colorRect, nameLabel, spacer, btnBox);
+            row.getChildren().addAll(nameBox, spacer, moveUpBtn, moveDownBtn, editBtn, deleteBtn);
             existingSectionsBox.getChildren().add(row);
         }
     }
 
-    private void showSectionDialog(SectionConfig config) {
-        boolean isNew = (config == null);
+    private void moveSection(SectionConfig config, int offset) {
+        int currentIndex = appStats.getSections().indexOf(config);
+        int newIndex = currentIndex + offset;
+
+        if (newIndex >= 0 && newIndex < appStats.getSections().size()) {
+            Collections.swap(appStats.getSections(), currentIndex, newIndex);
+            StorageManager.saveStats(appStats);
+            refreshList();
+            if(onSectionChanged != null) onSectionChanged.run();
+            refreshCallback.run();
+        }
+    }
+
+    private VBox createToggleWithDesc(CheckBox cb, String desc) {
+        cb.setStyle("-fx-text-fill: white;");
+        Label descLabel = new Label(desc);
+        descLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px;");
+        VBox box = new VBox(2, cb, descLabel);
+        return box;
+    }
+
+    private void showEditSectionDialog(SectionConfig config) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(isNew ? "Create New Section" : "Edit Section: " + config.getName());
+        dialog.setTitle("Edit Section: " + config.getName());
         TaskDialogs.styleDialog(dialog);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(30); grid.setVgap(15);
-        grid.setPadding(new Insets(10));
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(10));
+        content.setPrefWidth(700);
 
-        TextField nameField = new TextField(isNew ? "" : config.getName());
-        nameField.setPromptText("e.g. Reading List");
-        grid.add(createToggleBox(nameField, "The name of your dynamic section."), 0, 0);
+        // ==========================================
+        // 1. PRESET MANAGER ROW
+        // ==========================================
+        HBox presetRow = new HBox(10);
+        presetRow.setAlignment(Pos.CENTER_LEFT);
+        presetRow.setStyle("-fx-background-color: #2D2D30; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5; -fx-background-radius: 5;");
 
-        ColorPicker sideColorPicker = new ColorPicker(Color.web(isNew ? "#569CD6" : config.getSidebarColor()));
-        grid.add(createToggleBox(sideColorPicker, "The color of the sidebar label."), 1, 0);
+        Label presetLabel = new Label("Load Preset:");
+        presetLabel.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
 
-        Spinner<Integer> resetSpinner = new Spinner<>(0, 8760, isNew ? 0 : config.getResetIntervalHours());
-        resetSpinner.setEditable(true);
-        grid.add(createToggleBox(resetSpinner, "Reset Interval (Hours). 0 = Never resets. 24 = Daily."), 0, 1);
+        ComboBox<SectionConfig> presetBox = new ComboBox<>();
+        presetBox.setStyle("-fx-background-color: #3E3E42; -fx-cursor: hand;");
+        presetBox.setPrefWidth(200);
+        presetBox.getItems().add(null);
+        presetBox.getItems().addAll(appStats.getSectionPresets());
 
-        CheckBox chkStreak = new CheckBox("Enable Streak System");
-        chkStreak.setSelected(!isNew && config.isHasStreak());
-        chkStreak.disableProperty().bind(resetSpinner.valueProperty().isEqualTo(0));
-        grid.add(createToggleBox(chkStreak, "Tracks consecutive completions. Requires a reset interval."), 1, 1);
+        presetBox.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(SectionConfig item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "Select Preset..." : item.getName());
+                setStyle("-fx-text-fill: " + (empty || item == null ? "#AAAAAA" : "black") + ";");
+            }
+        });
+        presetBox.setButtonCell(new ListCell<>() {
+            @Override protected void updateItem(SectionConfig item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "Select Preset..." : item.getName());
+                setStyle("-fx-text-fill: white;");
+            }
+        });
 
-        CheckBox chkArchive = new CheckBox("Allow Manual Archiving");
-        chkArchive.setSelected(!isNew && config.isAllowArchive());
-        grid.add(createToggleBox(chkArchive, "Enables right-click to send tasks to Archive."), 0, 2);
+        Button savePresetBtn = new Button("💾 Save Current Config as Preset");
+        savePresetBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
 
-        CheckBox chkAutoArchive = new CheckBox("Auto-Archive Completed");
-        chkAutoArchive.setSelected(!isNew && config.isAutoArchiveCompleted());
-        grid.add(createToggleBox(chkAutoArchive, "Tasks are sent to archive the moment they are checked off."), 1, 2);
+        Region presetSpacer = new Region();
+        HBox.setHgrow(presetSpacer, Priority.ALWAYS);
 
-        CheckBox chkSubTasks = new CheckBox("Enable Sub-Tasks");
-        chkSubTasks.setSelected(!isNew && config.isEnableSubTasks());
-        grid.add(createToggleBox(chkSubTasks, "Allows creating nested to-do items inside a card."), 0, 3);
+        presetRow.getChildren().addAll(presetLabel, presetBox, presetSpacer, savePresetBtn);
+        content.getChildren().add(presetRow);
 
-        CheckBox chkPriority = new CheckBox("Show Priority Toggles");
-        chkPriority.setSelected(!isNew && config.isShowPriority());
-        grid.add(createToggleBox(chkPriority, "Adds a priority ranking dropdown to each task."), 1, 3);
+        // ==========================================
+        // 2. NAME & COLOR ROW
+        // ==========================================
+        HBox basicInfoRow = new HBox(15);
+        basicInfoRow.setAlignment(Pos.CENTER_LEFT);
 
-        CheckBox chkDate = new CheckBox("Show Creation Date");
-        chkDate.setSelected(!isNew && config.isShowDate());
-        grid.add(createToggleBox(chkDate, "Displays the exact date the task was generated."), 0, 4);
+        VBox nameBox = new VBox(5, new Label("Name:"), new TextField(config.getName()));
+        ((TextField)nameBox.getChildren().get(1)).setPrefWidth(300);
 
-        CheckBox chkTime = new CheckBox("Track Focus Time");
-        chkTime.setSelected(!isNew && config.isTrackTime());
-        grid.add(createToggleBox(chkTime, "Links tasks to the Pomodoro Focus Hub timer."), 1, 4);
+        ColorPicker colorPicker = new ColorPicker(Color.web(config.getSidebarColor()));
+        colorPicker.setStyle("-fx-color-label-visible: false;");
+        VBox colorBox = new VBox(5, new Label("Theme Color:"), colorPicker);
 
-        CheckBox chkPrefix = new CheckBox("Enable Custom Prefixes");
-        chkPrefix.setSelected(!isNew && config.isShowPrefix());
-        grid.add(createToggleBox(chkPrefix, "Allows prefixing tags like [GYM] with custom colors."), 0, 5);
+        Spinner<Integer> intervalSpinner = new Spinner<>(0, 8760, config.getResetIntervalHours());
+        intervalSpinner.setEditable(true);
+        intervalSpinner.setPrefWidth(80);
+        VBox intervalBox = new VBox(5, new Label("Reset Interval (Hours):"), intervalSpinner);
 
-        CheckBox chkTaskType = new CheckBox("Enable Task Types");
-        chkTaskType.setSelected(!isNew && config.isShowTaskType());
-        grid.add(createToggleBox(chkTaskType, "Displays an editable string box for categorization."), 1, 5);
+        basicInfoRow.getChildren().addAll(nameBox, colorBox, intervalBox);
+        content.getChildren().addAll(basicInfoRow, new Separator());
 
-        CheckBox chkTags = new CheckBox("Enable Dynamic Filter Tags");
-        chkTags.setSelected(!isNew && config.isShowTags());
-        grid.add(createToggleBox(chkTags, "Auto-generates clickable sorting buttons at the top of the page."), 0, 6);
+        // ==========================================
+        // 3. FEATURE TOGGLES (2 COLUMN GRID)
+        // ==========================================
+        GridPane featuresGrid = new GridPane();
+        featuresGrid.setHgap(20);
+        featuresGrid.setVgap(15);
 
-        CheckBox chkFavorite = new CheckBox("Enable Favorite System");
-        chkFavorite.setSelected(!isNew && config.isAllowFavorite());
-        grid.add(createToggleBox(chkFavorite, "Allows starring tasks for a golden border override."), 1, 6);
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(50);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(50);
+        featuresGrid.getColumnConstraints().addAll(col1, col2);
 
-        CheckBox chkScore = new CheckBox("Enable Point System (Reward/Penalty)");
-        chkScore.setSelected(!isNew && config.isEnableScore());
-        grid.add(createToggleBox(chkScore, "Allows adding and earning score points for tasks."), 0, 7);
+        // --- Column 1 Variables ---
+        CheckBox allowManualArchiveCheck = new CheckBox("Allow Manual Archiving");
+        allowManualArchiveCheck.setSelected(config.isAllowManualArchiving());
 
-        CheckBox chkAnalytics = new CheckBox("Show Analytics Export");
-        chkAnalytics.setSelected(!isNew && config.isShowAnalytics());
-        grid.add(createToggleBox(chkAnalytics, "Displays a button to export an HTML graph of completed tasks."), 1, 7);
+        CheckBox enableSubTasksCheck = new CheckBox("Enable Sub-Tasks");
+        enableSubTasksCheck.setSelected(config.isEnableSubTasks());
 
-        CheckBox chkLinks = new CheckBox("Enable Task Links");
-        chkLinks.setSelected(!isNew && config.isEnableLinks());
-        grid.add(createToggleBox(chkLinks, "Allows attaching clickable URLs to tasks."), 0, 8);
+        CheckBox showDateCheck = new CheckBox("Show Creation Date");
+        showDateCheck.setSelected(config.isShowDate());
 
-        CheckBox chkIcons = new CheckBox("Enable Task Icons");
-        chkIcons.setSelected(!isNew && config.isEnableIcons());
-        grid.add(createToggleBox(chkIcons, "Allows attaching custom color-coded symbols to tasks."), 1, 8);
+        CheckBox showPrefixCheck = new CheckBox("Enable Custom Prefixes");
+        showPrefixCheck.setSelected(config.isShowPrefix());
 
-        CheckBox chkRewards = new CheckBox("Enable Rewards Shop Mode");
-        chkRewards.setSelected(!isNew && config.isRewardsPage());
-        chkRewards.setStyle("-fx-text-fill: #9CDCFE; -fx-font-weight: bold;");
-        grid.add(createToggleBox(chkRewards, "Turns this list into a shop where items cost points instead of giving them."), 0, 9);
+        CheckBox showTagsCheck = new CheckBox("Enable Dynamic Filter Tags");
+        showTagsCheck.setSelected(config.isShowTags());
 
-        CheckBox chkZen = new CheckBox("Enable Zen Mode");
-        chkZen.setSelected(!isNew && config.isEnableZenMode());
-        grid.add(createToggleBox(chkZen, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 1, 9);
+        CheckBox enableScoreCheck = new CheckBox("Enable Point System (Reward/Penalty)");
+        enableScoreCheck.setSelected(config.isEnableScore());
 
-        CheckBox chkNotesPage = new CheckBox("Enable Notes Page Mode");
-        chkNotesPage.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
-        chkNotesPage.setSelected(!isNew && config.isNotesPage());
-        grid.add(createToggleBox(chkNotesPage, "Turns this section into a pinned notes board (no tasks/scores)."), 0, 10);
+        CheckBox enableLinksCheck = new CheckBox("Enable Task Links");
+        enableLinksCheck.setSelected(config.isEnableLinks());
 
-        // --- FIXED: Toggle disables itself if global stats are off ---
-        CheckBox chkStats = new CheckBox("Enable Custom Stats System");
-        if (appStats.isGlobalStatsEnabled()) {
-            chkStats.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold;");
-            chkStats.setSelected(!isNew && config.isEnableStatsSystem());
-            grid.add(createToggleBox(chkStats, "Allows tasks to grant custom RPG stat points (e.g., +5 Strength)."), 1, 10);
-        } else {
-            chkStats.setStyle("-fx-text-fill: #555555;");
-            chkStats.setDisable(true);
-            chkStats.setSelected(false);
-            grid.add(createToggleBox(chkStats, "⚠️ Disabled. Turn on Global Custom Stats in General Settings first."), 1, 10);
-        }
+        CheckBox rewardsPageCheck = new CheckBox("Enable Rewards Shop Mode");
+        rewardsPageCheck.setSelected(config.isRewardsPage());
+        rewardsPageCheck.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
 
-        dialog.getDialogPane().setContent(grid);
+        featuresGrid.add(createToggleWithDesc(allowManualArchiveCheck, "Enables right-click to send tasks to Archive."), 0, 0);
+        featuresGrid.add(createToggleWithDesc(enableSubTasksCheck, "Allows creating nested to-do items inside a card."), 0, 1);
+        featuresGrid.add(createToggleWithDesc(showDateCheck, "Displays the exact date the task was generated."), 0, 2);
+        featuresGrid.add(createToggleWithDesc(showPrefixCheck, "Allows prefixing tags like [GYM] with custom colors."), 0, 3);
+        featuresGrid.add(createToggleWithDesc(showTagsCheck, "Auto-generates clickable sorting buttons at the top of the page."), 0, 4);
+        featuresGrid.add(createToggleWithDesc(enableScoreCheck, "Allows adding and earning score points for tasks."), 0, 5);
+        featuresGrid.add(createToggleWithDesc(enableLinksCheck, "Allows attaching clickable URLs to tasks."), 0, 6);
+        featuresGrid.add(createToggleWithDesc(rewardsPageCheck, "Turns this list into a shop where items cost points instead of giving them."), 0, 7);
+
+        // --- Column 2 Variables ---
+        // --- RESTORED: Streak System with dependency logic ---
+        CheckBox streakCheck = new CheckBox("Enable Streak System");
+        streakCheck.setSelected(config.isHasStreak());
+        streakCheck.setDisable(config.getResetIntervalHours() <= 0);
+
+        intervalSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null || newVal <= 0) {
+                streakCheck.setDisable(true);
+                streakCheck.setSelected(false);
+            } else {
+                streakCheck.setDisable(false);
+            }
+        });
+
+        CheckBox autoArchiveCheck = new CheckBox("Auto-Archive Completed");
+        autoArchiveCheck.setSelected(config.isAutoArchive());
+
+        CheckBox showPriorityCheck = new CheckBox("Show Priority Toggles");
+        showPriorityCheck.setSelected(config.isShowPriority());
+
+        CheckBox trackTimeCheck = new CheckBox("Track Focus Time");
+        trackTimeCheck.setSelected(config.isTrackTime());
+
+        CheckBox showTaskTypeCheck = new CheckBox("Enable Work Types");
+        showTaskTypeCheck.setSelected(config.isShowTaskType());
+
+        CheckBox favoriteCheck = new CheckBox("Enable Favorite System");
+        favoriteCheck.setSelected(config.isAllowFavorite());
+
+        CheckBox showAnalyticsCheck = new CheckBox("Show Analytics Export");
+        showAnalyticsCheck.setSelected(config.isShowAnalytics());
+
+        CheckBox enableIconsCheck = new CheckBox("Enable Task Icons");
+        enableIconsCheck.setSelected(config.isEnableIcons());
+
+        CheckBox enableZenModeCheck = new CheckBox("Enable Zen Mode");
+        enableZenModeCheck.setSelected(config.isEnableZenMode());
+
+        featuresGrid.add(createToggleWithDesc(streakCheck, "Tracks consecutive completions. Requires a reset interval."), 1, 0);
+        featuresGrid.add(createToggleWithDesc(autoArchiveCheck, "Tasks are sent to archive the moment they are checked off."), 1, 1);
+        featuresGrid.add(createToggleWithDesc(showPriorityCheck, "Adds a priority ranking dropdown to each task."), 1, 2);
+        featuresGrid.add(createToggleWithDesc(trackTimeCheck, "Links tasks to the Pomodoro Focus Hub timer."), 1, 3);
+        featuresGrid.add(createToggleWithDesc(showTaskTypeCheck, "Displays an editable string box for categorization."), 1, 4);
+        featuresGrid.add(createToggleWithDesc(favoriteCheck, "Allows starring tasks for a golden border override."), 1, 5);
+        featuresGrid.add(createToggleWithDesc(showAnalyticsCheck, "Displays a button to export an HTML graph of completed tasks."), 1, 6);
+        featuresGrid.add(createToggleWithDesc(enableIconsCheck, "Allows attaching custom color-coded symbols to tasks."), 1, 7);
+        featuresGrid.add(createToggleWithDesc(enableZenModeCheck, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 0, 8);
+
+        content.getChildren().add(featuresGrid);
+        content.getChildren().add(new Separator());
+
+        // --- EXTRA TOGGLES ---
+        CheckBox enableStatsSystemCheck = new CheckBox("Enable RPG Custom Stats");
+        enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
+
+        CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards (Click to launch URL/App)");
+        enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
+
+        CheckBox notesPageCheck = new CheckBox("Is Notes Page (Hides checkboxes & deadlines)");
+        notesPageCheck.setSelected(config.isNotesPage());
+        notesPageCheck.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
+
+        HBox extraBox = new HBox(20);
+        extraBox.getChildren().addAll(enableStatsSystemCheck, enableLinkCardsCheck, notesPageCheck);
+        content.getChildren().add(extraBox);
+
+        // ==========================================
+        // 4. ACTION HANDLERS
+        // ==========================================
+
+        // Load Preset Action
+        presetBox.setOnAction(e -> {
+            SectionConfig loadedPreset = presetBox.getValue();
+            if (loadedPreset != null) {
+                intervalSpinner.getValueFactory().setValue(loadedPreset.getResetIntervalHours());
+                streakCheck.setSelected(loadedPreset.isHasStreak());
+                allowManualArchiveCheck.setSelected(loadedPreset.isAllowManualArchiving());
+                enableSubTasksCheck.setSelected(loadedPreset.isEnableSubTasks());
+                showDateCheck.setSelected(loadedPreset.isShowDate());
+                showPrefixCheck.setSelected(loadedPreset.isShowPrefix());
+                showTagsCheck.setSelected(loadedPreset.isShowTags());
+                enableScoreCheck.setSelected(loadedPreset.isEnableScore());
+                enableLinksCheck.setSelected(loadedPreset.isEnableLinks());
+                rewardsPageCheck.setSelected(loadedPreset.isRewardsPage());
+                autoArchiveCheck.setSelected(loadedPreset.isAutoArchive());
+                showPriorityCheck.setSelected(loadedPreset.isShowPriority());
+                trackTimeCheck.setSelected(loadedPreset.isTrackTime());
+                showTaskTypeCheck.setSelected(loadedPreset.isShowTaskType());
+                favoriteCheck.setSelected(loadedPreset.isAllowFavorite());
+                showAnalyticsCheck.setSelected(loadedPreset.isShowAnalytics());
+                enableIconsCheck.setSelected(loadedPreset.isEnableIcons());
+                enableZenModeCheck.setSelected(loadedPreset.isEnableZenMode());
+                enableStatsSystemCheck.setSelected(loadedPreset.isEnableStatsSystem());
+                enableLinkCardsCheck.setSelected(loadedPreset.isEnableLinkCards());
+                notesPageCheck.setSelected(loadedPreset.isNotesPage());
+            }
+        });
+
+        // Save Preset Action
+        savePresetBtn.setOnAction(e -> {
+            TextInputDialog nameDialog = new TextInputDialog("Custom Preset");
+            nameDialog.setTitle("Save Preset");
+            nameDialog.setHeaderText("Enter a name for this preset configuration:");
+            TaskDialogs.styleDialog(nameDialog);
+
+            nameDialog.showAndWait().ifPresent(presetName -> {
+                SectionConfig newPreset = new SectionConfig(UUID.randomUUID().toString(), presetName);
+
+                newPreset.setResetIntervalHours(intervalSpinner.getValue());
+                newPreset.setHasStreak(streakCheck.isSelected());
+                newPreset.setAllowManualArchiving(allowManualArchiveCheck.isSelected());
+                newPreset.setEnableSubTasks(enableSubTasksCheck.isSelected());
+                newPreset.setShowDate(showDateCheck.isSelected());
+                newPreset.setShowPrefix(showPrefixCheck.isSelected());
+                newPreset.setShowTags(showTagsCheck.isSelected());
+                newPreset.setEnableScore(enableScoreCheck.isSelected());
+                newPreset.setEnableLinks(enableLinksCheck.isSelected());
+                newPreset.setRewardsPage(rewardsPageCheck.isSelected());
+                newPreset.setAutoArchive(autoArchiveCheck.isSelected());
+                newPreset.setShowPriority(showPriorityCheck.isSelected());
+                newPreset.setTrackTime(trackTimeCheck.isSelected());
+                newPreset.setShowTaskType(showTaskTypeCheck.isSelected());
+                newPreset.setAllowFavorite(favoriteCheck.isSelected());
+                newPreset.setShowAnalytics(showAnalyticsCheck.isSelected());
+                newPreset.setEnableIcons(enableIconsCheck.isSelected());
+                newPreset.setEnableZenMode(enableZenModeCheck.isSelected());
+                newPreset.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
+                newPreset.setEnableLinkCards(enableLinkCardsCheck.isSelected());
+                newPreset.setNotesPage(notesPageCheck.isSelected());
+
+                appStats.getSectionPresets().add(newPreset);
+                presetBox.getItems().add(newPreset);
+                presetBox.setValue(newPreset);
+                StorageManager.saveStats(appStats);
+            });
+        });
+
+        dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         dialog.showAndWait().ifPresent(res -> {
-            if (res == ButtonType.OK && !nameField.getText().trim().isEmpty()) {
-                SectionConfig target = isNew ? new SectionConfig(UUID.randomUUID().toString(), nameField.getText().trim()) : config;
+            if (res == ButtonType.OK) {
+                config.setName(((TextField)nameBox.getChildren().get(1)).getText().trim());
+                config.setSidebarColor(toHexString(colorPicker.getValue()));
+                config.setResetIntervalHours(intervalSpinner.getValue());
 
-                target.setName(nameField.getText().trim());
-                target.setSidebarColor(toHexString(sideColorPicker.getValue()));
-                target.setResetIntervalHours(resetSpinner.getValue());
-                target.setHasStreak(chkStreak.isSelected() && resetSpinner.getValue() > 0);
-                target.setAutoArchiveCompleted(chkAutoArchive.isSelected());
-                target.setAllowArchive(chkArchive.isSelected());
-                target.setEnableSubTasks(chkSubTasks.isSelected());
-                target.setShowPriority(chkPriority.isSelected());
-                target.setShowDate(chkDate.isSelected());
-                target.setTrackTime(chkTime.isSelected());
-                target.setShowPrefix(chkPrefix.isSelected());
-                target.setShowWorkType(chkTaskType.isSelected());
-                target.setShowTags(chkTags.isSelected());
-                target.setEnableScore(chkScore.isSelected());
-                target.setEnableLinks(chkLinks.isSelected());
-                target.setAllowFavorite(chkFavorite.isSelected());
-                target.setShowAnalytics(chkAnalytics.isSelected());
-                target.setEnableIcons(chkIcons.isSelected());
-                target.setRewardsPage(chkRewards.isSelected());
-                target.setEnableZenMode(chkZen.isSelected());
-                target.setNotesPage(chkNotesPage.isSelected());
+                config.setHasStreak(streakCheck.isSelected()); // SAVED
+                config.setAllowManualArchiving(allowManualArchiveCheck.isSelected());
+                config.setEnableSubTasks(enableSubTasksCheck.isSelected());
+                config.setShowDate(showDateCheck.isSelected());
+                config.setShowPrefix(showPrefixCheck.isSelected());
+                config.setShowTags(showTagsCheck.isSelected());
+                config.setEnableScore(enableScoreCheck.isSelected());
+                config.setEnableLinks(enableLinksCheck.isSelected());
+                config.setRewardsPage(rewardsPageCheck.isSelected());
 
-                // Only save true if global is also true
-                target.setEnableStatsSystem(appStats.isGlobalStatsEnabled() && chkStats.isSelected());
+                config.setAutoArchive(autoArchiveCheck.isSelected());
+                config.setShowPriority(showPriorityCheck.isSelected());
+                config.setTrackTime(trackTimeCheck.isSelected());
+                config.setShowTaskType(showTaskTypeCheck.isSelected());
+                config.setAllowFavorite(favoriteCheck.isSelected());
+                config.setShowAnalytics(showAnalyticsCheck.isSelected());
+                config.setEnableIcons(enableIconsCheck.isSelected());
+                config.setEnableZenMode(enableZenModeCheck.isSelected());
 
-                if (isNew) {
-                    appStats.getSections().add(target);
-                }
+                config.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
+                config.setEnableLinkCards(enableLinkCardsCheck.isSelected());
+                config.setNotesPage(notesPageCheck.isSelected());
 
                 StorageManager.saveStats(appStats);
-                renderExistingSections();
-                onSectionChanged.run();
+                refreshList();
+                if(onSectionChanged != null) onSectionChanged.run();
+                refreshCallback.run();
             }
         });
     }

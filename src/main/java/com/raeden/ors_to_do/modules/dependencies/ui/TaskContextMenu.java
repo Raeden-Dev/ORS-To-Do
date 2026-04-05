@@ -20,167 +20,249 @@ import static com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.*;
 
 public class TaskContextMenu {
 
-    private static final String[] DARK_PASTELS = {
-            "#2C3E50", "#34495E", "#1A252C", "#2D3748", "#2A4365",
-            "#2C5282", "#2B6CB0", "#234E52", "#285E61", "#2C7A7B",
-            "#22543D", "#276749", "#2F855A", "#744210", "#975A16",
-            "#702459", "#97266D", "#44337A", "#553C9A", "#1A202C"
-    };
-
     public static ContextMenu build(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate, Consumer<TaskItem> onGoToPage) {
         ContextMenu contextMenu = new ContextMenu();
+        boolean isNoteMode = config != null && config.isNotesPage();
 
-        if (onGoToPage != null) {
-            MenuItem gotoItem = new MenuItem("Go to card page");
-            gotoItem.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
-            gotoItem.setOnAction(e -> onGoToPage.accept(task));
-            contextMenu.getItems().addAll(gotoItem, new SeparatorMenuItem());
-        }
+        boolean isLinkCard = task.isLinkCard();
 
-        MenuItem copyItem = new MenuItem("Copy Card Information");
-        copyItem.setOnAction(e -> {
-            StringBuilder sb = new StringBuilder();
-            if (config.isShowDate()) sb.append("[").append(task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))).append("] ");
-            if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty()) sb.append("[").append(task.getTaskType()).append("] ");
-            else if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) sb.append(task.getPrefix()).append(" ");
+        MenuItem editItem = new MenuItem(isNoteMode ? "Edit Note" : "Edit Task");
+        editItem.setOnAction(e -> showEditDialog(task, config, appStats, globalDatabase, onUpdate));
 
-            sb.append(task.getTextContent());
-
-            if (task.getTaskLinks() != null) {
-                for (TaskLink linkObj : task.getTaskLinks()) {
-                    String dName = linkObj.getName();
-                    if (dName == null || dName.trim().isEmpty() || dName.equalsIgnoreCase("Link") || dName.equals(linkObj.getUrl())) {
-                        sb.append("\n    🔗 ").append(linkObj.getUrl());
-                    } else {
-                        sb.append("\n    🔗 ").append(dName).append(" (").append(linkObj.getUrl()).append(")");
-                    }
-                }
-            }
-
-            for (SubTask sub : task.getSubTasks()) {
-                sb.append("\n    > ").append(sub.getTextContent());
-            }
-
-            ClipboardContent content = new ClipboardContent();
-            content.putString(sb.toString());
-            Clipboard.getSystemClipboard().setContent(content);
-        });
-        contextMenu.getItems().addAll(copyItem, new SeparatorMenuItem());
-
-        // --- NEW: Duplicate Task Functionality ---
-        MenuItem duplicateItem = new MenuItem("Duplicate Task");
-        duplicateItem.setOnAction(e -> {
-            // Create base clone
-            TaskItem clone = new TaskItem(task.getTextContent() + " (Copy)", task.getPriority(), task.getSectionId());
-            clone.setColorHex(task.getColorHex());
-            clone.setPrefix(task.getPrefix());
-            clone.setPrefixColor(task.getPrefixColor());
-            clone.setIconSymbol(task.getIconSymbol());
-            clone.setIconColor(task.getIconColor());
-            clone.setTaskType(task.getTaskType());
-            clone.setRewardPoints(task.getRewardPoints());
-            clone.setPenaltyPoints(task.getPenaltyPoints());
-            clone.setCostPoints(task.getCostPoints());
-
-            if (task.isCounterMode()) {
-                clone.setCounterMode(true);
-                clone.setMaxCount(task.getMaxCount());
-            }
-
-            // Deep copy Sub-Tasks
-            for (SubTask st : task.getSubTasks()) {
-                clone.getSubTasks().add(new SubTask(st.getTextContent()));
-            }
-
-            // Deep copy Links
-            if (task.getTaskLinks() != null) {
-                for (TaskLink tl : task.getTaskLinks()) {
-                    clone.getTaskLinks().add(new TaskLink(tl.getName(), tl.getUrl()));
-                }
-            }
-
-            // Insert exactly below the original task
-            int idx = globalDatabase.indexOf(task);
-            if (idx != -1) {
-                globalDatabase.add(idx + 1, clone);
-            } else {
-                globalDatabase.add(clone);
-            }
-
-            StorageManager.saveTasks(globalDatabase);
-            onUpdate.run();
-        });
-        contextMenu.getItems().addAll(duplicateItem, new SeparatorMenuItem());
-
-        if (config.isAllowFavorite()) {
-            MenuItem favItem = new MenuItem(task.isFavorite() ? "Remove Favorite" : "Mark as Favorite");
-            favItem.setOnAction(e -> {
-                task.setFavorite(!task.isFavorite());
+        MenuItem pinItem = null;
+        if (isNoteMode) {
+            pinItem = new MenuItem(task.isPinned() ? "Unpin Note" : "Pin Note to Top");
+            pinItem.setOnAction(e -> {
+                task.setPinned(!task.isPinned());
                 StorageManager.saveTasks(globalDatabase);
                 onUpdate.run();
             });
-            contextMenu.getItems().addAll(favItem, new SeparatorMenuItem());
         }
 
-        if (appStats.isEnableTextToTask()) {
-            MenuItem textToTaskItem = new MenuItem("Text to Task");
-            textToTaskItem.setOnAction(e -> {
-                TaskDialogs.showTextToTaskDialog(task, globalDatabase, onUpdate);
-            });
-            contextMenu.getItems().add(textToTaskItem);
+        MenuItem copyItem = new MenuItem("Copy Text");
+        copyItem.setOnAction(e -> {
+            ClipboardContent content = new ClipboardContent();
+            content.putString(task.getTextContent());
+            Clipboard.getSystemClipboard().setContent(content);
+        });
+
+        MenuItem addSubTaskItem = null;
+        MenuItem textToTaskItem = null;
+        if ((config == null || config.isEnableSubTasks()) && !isNoteMode) {
+            addSubTaskItem = new MenuItem("Add Sub-tasks");
+            addSubTaskItem.setOnAction(e -> showAddSubTaskDialog(task, globalDatabase, onUpdate));
+
+            if (isLinkCard) {
+                addSubTaskItem.setDisable(true);
+                addSubTaskItem.setText("Add Sub-tasks (Disabled on Link Cards)");
+            }
+
+            if (appStats.isEnableTextToTask()) {
+                textToTaskItem = new MenuItem("Batch Text to Task");
+                textToTaskItem.setOnAction(e -> showTextToTaskDialog(task, globalDatabase, onUpdate));
+            }
         }
 
-        MenuItem editItem = new MenuItem("Edit Task");
-        editItem.setOnAction(e -> TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate));
-        contextMenu.getItems().add(editItem);
-
-        if (config.isEnableLinks()) {
-            MenuItem addLinkItem = new MenuItem("Add Link");
-            addLinkItem.setOnAction(e -> TaskDialogs.showLinkDialog(task, null, globalDatabase, onUpdate));
-            contextMenu.getItems().add(addLinkItem);
+        MenuItem addLinkItem = null;
+        if ((config == null || config.isEnableLinks()) && !isNoteMode && !isLinkCard) {
+            addLinkItem = new MenuItem("Add External Link");
+            addLinkItem.setOnAction(e -> showLinkDialog(task, null, globalDatabase, onUpdate));
         }
 
-        if (config.isEnableSubTasks()) {
-            MenuItem addSubItem = new MenuItem("Add Sub-task");
-            addSubItem.setOnAction(e -> showAddSubTaskDialog(task, globalDatabase, onUpdate));
-            contextMenu.getItems().add(addSubItem);
+        Menu linksMenu = null;
+        if ((config == null || config.isEnableLinks()) && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty() && !isNoteMode && !isLinkCard) {
+            linksMenu = new Menu("External Links");
+            for (TaskLink link : task.getTaskLinks()) {
+                Menu singleLinkMenu = new Menu(link.getName());
+
+                MenuItem openLinkItem = new MenuItem("Open Link");
+                openLinkItem.setOnAction(e -> {
+                    new Thread(() -> {
+                        try {
+                            if (link.getUrl().startsWith("http")) {
+                                java.awt.Desktop.getDesktop().browse(new java.net.URI(link.getUrl()));
+                            } else {
+                                java.io.File file = new java.io.File(link.getUrl());
+                                if (file.exists()) {
+                                    java.awt.Desktop.getDesktop().open(file);
+                                } else {
+                                    Runtime.getRuntime().exec(link.getUrl());
+                                }
+                            }
+                        } catch (Exception ex) {
+                            javafx.application.Platform.runLater(() -> {
+                                Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to open link: \n" + link.getUrl());
+                                TaskDialogs.styleDialog(alert);
+                                alert.show();
+                            });
+                        }
+                    }).start();
+                });
+
+                MenuItem editSpecificLinkItem = new MenuItem("Edit");
+                editSpecificLinkItem.setOnAction(e -> showLinkDialog(task, link, globalDatabase, onUpdate));
+
+                MenuItem copyLinkItem = new MenuItem("Copy Link");
+                copyLinkItem.setOnAction(e -> {
+                    ClipboardContent content = new ClipboardContent();
+                    content.putString(link.getUrl());
+                    Clipboard.getSystemClipboard().setContent(content);
+                });
+
+                MenuItem deleteLinkItem = new MenuItem("Delete Link");
+                deleteLinkItem.setOnAction(e -> {
+                    task.getTaskLinks().remove(link);
+                    StorageManager.saveTasks(globalDatabase);
+                    onUpdate.run();
+                });
+
+                singleLinkMenu.getItems().addAll(openLinkItem, editSpecificLinkItem, copyLinkItem, deleteLinkItem);
+                linksMenu.getItems().add(singleLinkMenu);
+            }
         }
 
-        Menu colorMenu = new Menu("Set Background Color");
-        for (String hex : DARK_PASTELS) {
-            MenuItem colorItem = new MenuItem("");
-            Rectangle colorIcon = new Rectangle(14, 14, Color.web(hex));
-            colorIcon.setStroke(Color.BLACK);
-            colorItem.setGraphic(colorIcon);
-            colorItem.setOnAction(e -> { task.setColorHex(hex); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
-            colorMenu.getItems().add(colorItem);
-        }
-        MenuItem resetColor = new MenuItem("Reset Background");
-        resetColor.setOnAction(e -> { task.setColorHex(null); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
-        colorMenu.getItems().addAll(new SeparatorMenuItem(), resetColor);
-        contextMenu.getItems().add(colorMenu);
+        MenuItem duplicateItem = new MenuItem("Duplicate");
+        duplicateItem.setOnAction(e -> {
+            TaskItem copy = new TaskItem(task.getTextContent() + " (Copy)", task.getPriority(), task.getSectionId());
+            copy.setPrefix(task.getPrefix());
+            copy.setPrefixColor(task.getPrefixColor());
+            copy.setIconSymbol(task.getIconSymbol());
+            copy.setIconColor(task.getIconColor());
+            copy.setDeadline(task.getDeadline());
+            copy.setColorHex(task.getColorHex());
+            copy.setTaskType(task.getTaskType());
+            copy.setRewardPoints(task.getRewardPoints());
+            copy.setCostPoints(task.getCostPoints());
+            copy.setPenaltyPoints(task.getPenaltyPoints());
+            copy.setCounterMode(task.isCounterMode());
+            copy.setMaxCount(task.getMaxCount());
+            copy.setCustomOutlineColor(task.getCustomOutlineColor());
+            copy.setCustomSideboxColor(task.getCustomSideboxColor());
 
-        if (config.isAllowArchive() && !task.isCounterMode()) {
-            MenuItem archiveItem = new MenuItem("Archive");
-            archiveItem.setOnAction(e -> {
-                if(!task.isFinished()) task.setFinished(true);
-                task.setArchived(true);
-                StorageManager.saveTasks(globalDatabase); onUpdate.run();
-            });
-            contextMenu.getItems().add(new SeparatorMenuItem());
-            contextMenu.getItems().add(archiveItem);
-        }
+            copy.setLinkCard(task.isLinkCard());
+            copy.setLinkActionPath(task.getLinkActionPath());
 
-        MenuItem deleteItem = new MenuItem("Delete");
-        deleteItem.setStyle("-fx-text-fill: #FF6666;");
-        deleteItem.setOnAction(e -> {
-            globalDatabase.remove(task);
+            if (task.getStatRewards() != null) copy.getStatRewards().putAll(task.getStatRewards());
+            if (task.getStatPenalties() != null) copy.getStatPenalties().putAll(task.getStatPenalties());
+
+            for (SubTask sub : task.getSubTasks()) {
+                copy.getSubTasks().add(new SubTask(sub.getTextContent()));
+            }
+            if (task.getTaskLinks() != null) {
+                for (TaskLink link : task.getTaskLinks()) {
+                    copy.getTaskLinks().add(new TaskLink(link.getName(), link.getUrl()));
+                }
+            }
+
+            globalDatabase.add(copy);
             StorageManager.saveTasks(globalDatabase);
             onUpdate.run();
         });
 
-        contextMenu.getItems().add(new SeparatorMenuItem());
-        contextMenu.getItems().add(deleteItem);
+        MenuItem colorItem = new MenuItem(isNoteMode ? "Reset Colors" : "Clear Background Color");
+        colorItem.setOnAction(e -> {
+            task.setColorHex("transparent");
+            task.setCustomOutlineColor("transparent");
+            task.setCustomSideboxColor("transparent");
+            StorageManager.saveTasks(globalDatabase);
+            onUpdate.run();
+        });
+
+        Menu moveMenu = new Menu("Move to...");
+        if (appStats != null) {
+            for (SectionConfig sc : appStats.getSections()) {
+                if (sc.getId().equals(task.getSectionId())) continue;
+
+                Rectangle colorRect = new Rectangle(10, 10, Color.web(sc.getSidebarColor()));
+                MenuItem sectionItem = new MenuItem(sc.getName(), colorRect);
+                sectionItem.setOnAction(e -> {
+                    task.setSectionId(sc.getId());
+                    StorageManager.saveTasks(globalDatabase);
+                    onUpdate.run();
+                });
+                moveMenu.getItems().add(sectionItem);
+            }
+        }
+        if (moveMenu.getItems().isEmpty()) {
+            MenuItem emptyInfo = new MenuItem("No other dynamic sections available");
+            emptyInfo.setDisable(true);
+            moveMenu.getItems().add(emptyInfo);
+        }
+
+        MenuItem toggleFavoriteItem = new MenuItem(task.isFavorite() ? "Remove Star" : "Star / Favorite");
+        if (config != null && !config.isAllowFavorite()) toggleFavoriteItem.setDisable(true);
+        toggleFavoriteItem.setOnAction(e -> {
+            task.setFavorite(!task.isFavorite());
+            StorageManager.saveTasks(globalDatabase);
+            onUpdate.run();
+        });
+
+        MenuItem archiveItem = new MenuItem(task.isArchived() ? "Unarchive" : "Archive");
+        archiveItem.setOnAction(e -> {
+            task.setArchived(!task.isArchived());
+            StorageManager.saveTasks(globalDatabase);
+            onUpdate.run();
+        });
+
+        MenuItem focusLinkItem = null;
+        if (onGoToPage != null && config == null && !task.isArchived()) {
+            focusLinkItem = new MenuItem("Go to Original Page ↗");
+            focusLinkItem.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
+            focusLinkItem.setOnAction(e -> onGoToPage.accept(task));
+        }
+
+        MenuItem deleteItem = new MenuItem("Delete Task");
+        deleteItem.setOnAction(e -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this task?", ButtonType.YES, ButtonType.NO);
+            alert.setHeaderText("Confirm Deletion");
+            TaskDialogs.styleDialog(alert);
+
+            alert.showAndWait().ifPresent(res -> {
+                if (res == ButtonType.YES) {
+                    String timestamp = java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, HH:mm"));
+                    appStats.getDeletedTaskHistory().add("[" + timestamp + "] " + task.getTextContent());
+                    appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + 1);
+
+                    globalDatabase.remove(task);
+
+                    for (TaskItem other : globalDatabase) {
+                        if (other.getDependsOnTaskIds() != null) {
+                            other.getDependsOnTaskIds().remove(task.getId());
+                        }
+                    }
+
+                    StorageManager.saveTasks(globalDatabase);
+                    StorageManager.saveStats(appStats);
+                    onUpdate.run();
+                }
+            });
+        });
+
+        contextMenu.getItems().addAll(editItem);
+        if (pinItem != null) contextMenu.getItems().add(pinItem);
+
+        contextMenu.getItems().addAll(
+                copyItem,
+                new SeparatorMenuItem()
+        );
+
+        if (focusLinkItem != null) contextMenu.getItems().addAll(focusLinkItem, new SeparatorMenuItem());
+
+        if (addSubTaskItem != null) contextMenu.getItems().add(addSubTaskItem);
+        if (textToTaskItem != null) contextMenu.getItems().add(textToTaskItem);
+        if (addLinkItem != null) contextMenu.getItems().add(addLinkItem);
+        if (linksMenu != null) contextMenu.getItems().add(linksMenu);
+
+        contextMenu.getItems().addAll(
+                new SeparatorMenuItem(),
+                duplicateItem,
+                colorItem,
+                moveMenu,
+                toggleFavoriteItem,
+                new SeparatorMenuItem(),
+                archiveItem,
+                deleteItem
+        );
 
         return contextMenu;
     }

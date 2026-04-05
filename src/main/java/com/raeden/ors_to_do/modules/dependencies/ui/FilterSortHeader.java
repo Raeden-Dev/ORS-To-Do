@@ -2,6 +2,7 @@ package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
+import com.raeden.ors_to_do.dependencies.models.SubTask;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.modules.dependencies.services.AnalyticsExporter;
 import javafx.animation.Animation;
@@ -23,7 +24,9 @@ public class FilterSortHeader extends VBox {
 
     private SectionConfig config;
     private AppStats appStats;
+    private List<TaskItem> globalDatabase;
     private Label availableTasksLabel;
+    private Label activeSubTasksLabel;
     private Label scoreLabel;
     private Button zenModeBtn;
     private FlowPane filterContainer;
@@ -34,6 +37,7 @@ public class FilterSortHeader extends VBox {
         super(10);
         this.config = config;
         this.appStats = appStats;
+        this.globalDatabase = globalDatabase; // Save database reference for counting
 
         // --- DASHBOARD STRIP ---
         HBox dashboardStrip = new HBox(15);
@@ -41,10 +45,17 @@ public class FilterSortHeader extends VBox {
         dashboardStrip.setPadding(new Insets(15));
         dashboardStrip.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #3E3E42; -fx-border-radius: 8; -fx-background-radius: 8;");
 
+        // --- FIXED: Wrap titles in a VBox to allow the sub-task counter underneath ---
+        VBox titleBox = new VBox(2);
         availableTasksLabel = new Label();
         String titleColor = appStats.isMatchTitleColor() ? config.getSidebarColor() : "#569CD6";
         availableTasksLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + titleColor + ";");
-        dashboardStrip.getChildren().add(availableTasksLabel);
+
+        activeSubTasksLabel = new Label();
+        activeSubTasksLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #858585;");
+
+        titleBox.getChildren().addAll(availableTasksLabel, activeSubTasksLabel);
+        dashboardStrip.getChildren().add(titleBox);
 
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
@@ -117,22 +128,16 @@ public class FilterSortHeader extends VBox {
         sortComboBox.getItems().addAll("Custom Order", "Most Recent", "Oldest First", "Alphabetical");
         if (config.isShowPriority()) sortComboBox.getItems().addAll("Priority: Low to High", "Priority: High to Low");
         sortComboBox.setValue("Custom Order");
-        sortComboBox.setStyle("-fx-background-color: #E0E0E0; -fx-cursor: hand;");
 
-        sortComboBox.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); }
-                else { setText(item); setStyle("-fx-text-fill: black; -fx-font-weight: bold;"); }
-            }
-        });
-        sortComboBox.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); }
-                else { setText(item); setStyle("-fx-text-fill: black;"); }
-            }
-        });
+        String css = ".combo-box { -fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; -fx-cursor: hand; } " +
+                ".combo-box .list-cell { -fx-text-fill: white; -fx-font-weight: bold; -fx-background-color: transparent; } " +
+                ".combo-box-popup .list-view { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
+                ".combo-box-popup .list-view .list-cell { -fx-background-color: #2D2D30; -fx-text-fill: white; -fx-font-weight: normal; } " +
+                ".combo-box-popup .list-view .list-cell:filled:hover, .combo-box-popup .list-view .list-cell:filled:selected { -fx-background-color: #569CD6; -fx-text-fill: white; } " +
+                ".combo-box .arrow-button { -fx-background-color: transparent; } " +
+                ".combo-box .arrow { -fx-background-color: #AAAAAA; }";
+
+        sortComboBox.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(css.getBytes()));
 
         sortComboBox.setOnAction(e -> onFilterSortChanged.run());
 
@@ -143,6 +148,26 @@ public class FilterSortHeader extends VBox {
     public void updateBadges(int availableCount, int completedCount) {
         if (config.isHasStreak()) availableTasksLabel.setText(config.getName() + " (" + completedCount + "/" + (availableCount + completedCount) + ")");
         else availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
+
+        // --- NEW: Calculate and update Sub-Task count ---
+        if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage()) {
+            int activeSubTaskCount = 0;
+            if (globalDatabase != null) {
+                for (TaskItem task : globalDatabase) {
+                    if (config.getId().equals(task.getSectionId()) && !task.isFinished() && !task.isArchived()) {
+                        for (SubTask sub : task.getSubTasks()) {
+                            if (!sub.isFinished()) activeSubTaskCount++;
+                        }
+                    }
+                }
+            }
+            activeSubTasksLabel.setText("Active sub-tasks: " + activeSubTaskCount);
+            activeSubTasksLabel.setVisible(true);
+            activeSubTasksLabel.setManaged(true);
+        } else {
+            activeSubTasksLabel.setVisible(false);
+            activeSubTasksLabel.setManaged(false);
+        }
 
         if (scoreLabel != null) scoreLabel.setText("🏆 Score: " + appStats.getGlobalScore());
 
@@ -163,11 +188,30 @@ public class FilterSortHeader extends VBox {
         filterContainer.getChildren().clear();
         ToggleGroup filterGroup = new ToggleGroup();
 
+        String activeAllStyle = "-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
+        String inactiveAllStyle = "-fx-background-color: #3E3E42; -fx-text-fill: #AAAAAA; -fx-cursor: hand;";
+
+        String activeTagStyle = "-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-color: #569CD6; -fx-border-radius: 3; -fx-cursor: hand;";
+        String inactiveTagStyle = "-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-border-color: #569CD6; -fx-border-radius: 3; -fx-cursor: hand;";
+
         ToggleButton allBtn = new ToggleButton("All");
-        allBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
         allBtn.setToggleGroup(filterGroup);
-        if (activeFilter.equals("All")) allBtn.setSelected(true);
-        allBtn.setOnAction(e -> { activeFilter = "All"; onFilterSortChanged.run(); });
+
+        if (activeFilter.equals("All")) {
+            allBtn.setSelected(true);
+            allBtn.setStyle(activeAllStyle);
+        } else {
+            allBtn.setStyle(inactiveAllStyle);
+        }
+
+        allBtn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            allBtn.setStyle(isSelected ? activeAllStyle : inactiveAllStyle);
+        });
+
+        allBtn.setOnAction(e -> {
+            activeFilter = "All";
+            onFilterSortChanged.run();
+        });
         filterContainer.getChildren().add(allBtn);
 
         List<String> sortedTags = new ArrayList<>(uniqueTags);
@@ -175,13 +219,25 @@ public class FilterSortHeader extends VBox {
 
         for (String tag : sortedTags) {
             ToggleButton tagBtn = new ToggleButton(tag);
-            tagBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-border-color: #569CD6; -fx-border-radius: 3; -fx-cursor: hand;");
             tagBtn.setToggleGroup(filterGroup);
-            if (activeFilter.equals(tag)) tagBtn.setSelected(true);
+
+            if (activeFilter.equals(tag)) {
+                tagBtn.setSelected(true);
+                tagBtn.setStyle(activeTagStyle);
+            } else {
+                tagBtn.setStyle(inactiveTagStyle);
+            }
+
+            tagBtn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+                tagBtn.setStyle(isSelected ? activeTagStyle : inactiveTagStyle);
+            });
 
             tagBtn.setOnAction(e -> {
-                if (tagBtn.isSelected()) activeFilter = tag;
-                else activeFilter = "All";
+                if (tagBtn.isSelected()) {
+                    activeFilter = tag;
+                } else {
+                    activeFilter = "All";
+                }
                 onFilterSortChanged.run();
             });
             filterContainer.getChildren().add(tagBtn);

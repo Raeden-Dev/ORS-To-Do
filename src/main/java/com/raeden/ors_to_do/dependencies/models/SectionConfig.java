@@ -11,7 +11,11 @@ public class SectionConfig implements Serializable {
     private String sidebarColor = "#569CD6";
 
     private int resetIntervalHours = 0;
-    private boolean autoArchiveCompleted = false;
+
+    // --- FIXED: Renamed to match exactly what SectionManagerPanel expects ---
+    private boolean autoArchive = false;
+    private boolean allowManualArchiving = false;
+
     private List<DailyTemplate> autoAddTemplates = new ArrayList<>();
 
     private boolean hasStreak = false;
@@ -22,30 +26,16 @@ public class SectionConfig implements Serializable {
     private boolean trackTime = false;
     private boolean showPrefix = false;
     private boolean showWorkType = false;
-    private boolean allowArchive = false;
     private boolean showTags = false;
     private boolean allowFavorite = false;
     private boolean enableScore = false;
     private boolean enableLinks = false;
     private boolean enableStatsSystem = false;
-
-    // --- NEW: NOTES MODE FLAG ---
+    private boolean enableLinkCards = true;
     private boolean isNotesPage = false;
-
-    public boolean isNotesPage() { return isNotesPage; }
-    public void setNotesPage(boolean isNotesPage) { this.isNotesPage = isNotesPage; }
-
-    private boolean enableIcons;
-    public boolean isEnableIcons() { return enableIcons; }
-    public void setEnableIcons(boolean enableIcons) { this.enableIcons = enableIcons; }
-
+    private boolean enableIcons = false;
     private boolean isRewardsPage = false;
-    public boolean isRewardsPage() { return isRewardsPage; }
-    public void setRewardsPage(boolean isRewardsPage) { this.isRewardsPage = isRewardsPage; }
-
     private boolean enableZenMode = false;
-    public boolean isEnableZenMode() { return enableZenMode; }
-    public void setEnableZenMode(boolean enableZenMode) { this.enableZenMode = enableZenMode; }
 
     public SectionConfig(String id, String name) {
         this.id = id;
@@ -62,8 +52,12 @@ public class SectionConfig implements Serializable {
     public int getResetIntervalHours() { return resetIntervalHours; }
     public void setResetIntervalHours(int resetIntervalHours) { this.resetIntervalHours = resetIntervalHours; }
 
-    public boolean isAutoArchiveCompleted() { return autoArchiveCompleted; }
-    public void setAutoArchiveCompleted(boolean autoArchiveCompleted) { this.autoArchiveCompleted = autoArchiveCompleted; }
+    // --- FIXED: Archiving Getters and Setters ---
+    public boolean isAutoArchive() { return autoArchive; }
+    public void setAutoArchive(boolean autoArchive) { this.autoArchive = autoArchive; }
+
+    public boolean isAllowManualArchiving() { return allowManualArchiving; }
+    public void setAllowManualArchiving(boolean allowManualArchiving) { this.allowManualArchiving = allowManualArchiving; }
 
     public List<DailyTemplate> getAutoAddTemplates() {
         if (autoAddTemplates == null) autoAddTemplates = new ArrayList<>();
@@ -85,9 +79,7 @@ public class SectionConfig implements Serializable {
     public boolean isShowPrefix() { return showPrefix; }
     public void setShowPrefix(boolean showPrefix) { this.showPrefix = showPrefix; }
     public boolean isShowTaskType() { return showWorkType; }
-    public void setShowWorkType(boolean showWorkType) { this.showWorkType = showWorkType; }
-    public boolean isAllowArchive() { return allowArchive; }
-    public void setAllowArchive(boolean allowArchive) { this.allowArchive = allowArchive; }
+    public void setShowTaskType(boolean showWorkType) { this.showWorkType = showWorkType; }
     public boolean isShowTags() { return showTags; }
     public void setShowTags(boolean showTags) { this.showTags = showTags; }
     public boolean isAllowFavorite() { return allowFavorite; }
@@ -98,4 +90,14 @@ public class SectionConfig implements Serializable {
     public void setEnableLinks(boolean enableLinks) { this.enableLinks = enableLinks; }
     public boolean isEnableStatsSystem() { return enableStatsSystem; }
     public void setEnableStatsSystem(boolean enableStatsSystem) { this.enableStatsSystem = enableStatsSystem; }
+    public boolean isEnableLinkCards() { return enableLinkCards; }
+    public void setEnableLinkCards(boolean enableLinkCards) { this.enableLinkCards = enableLinkCards; }
+    public boolean isNotesPage() { return isNotesPage; }
+    public void setNotesPage(boolean isNotesPage) { this.isNotesPage = isNotesPage; }
+    public boolean isEnableIcons() { return enableIcons; }
+    public void setEnableIcons(boolean enableIcons) { this.enableIcons = enableIcons; }
+    public boolean isRewardsPage() { return isRewardsPage; }
+    public void setRewardsPage(boolean isRewardsPage) { this.isRewardsPage = isRewardsPage; }
+    public boolean isEnableZenMode() { return enableZenMode; }
+    public void setEnableZenMode(boolean enableZenMode) { this.enableZenMode = enableZenMode; }
 }

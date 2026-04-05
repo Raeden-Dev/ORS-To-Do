@@ -1,12 +1,10 @@
 package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
-import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.models.CustomPriority;
-import com.raeden.ors_to_do.dependencies.models.SubTask;
 import javafx.application.Platform;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
@@ -16,6 +14,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
@@ -114,12 +113,22 @@ public class TaskCard extends VBox {
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
+        mainRow.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
+                TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
+            }
+        });
+
         boolean hasLinks = config.isEnableLinks() && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty();
         boolean hasSubTasks = config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
 
         Button expandBtn = new Button(task.isExpanded() ? "▼" : "▶");
         expandBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AAAAAA; -fx-font-weight: bold; -fx-padding: 0 5 0 0; -fx-cursor: hand;");
-        if (!hasSubTasks && !hasLinks) { expandBtn.setVisible(false); expandBtn.setManaged(false); }
+
+        if (isLocked || (!hasSubTasks && !hasLinks)) {
+            expandBtn.setVisible(false);
+            expandBtn.setManaged(false);
+        }
         expandBtn.setOnAction(e -> { task.setExpanded(!task.isExpanded()); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
 
         HBox metaBox = new HBox(7);
@@ -203,6 +212,21 @@ public class TaskCard extends VBox {
             lockMsg.setStyle(fontStyle + "-fx-text-fill: #858585; -fx-font-style: italic;");
 
             textContainer.getChildren().addAll(lockIcon, lockMsg);
+
+            if (blockingTaskNames.size() > 1) {
+                Label helpIcon = new Label("?");
+                helpIcon.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: help; -fx-background-color: #1E1E1E; -fx-padding: 0 5; -fx-background-radius: 10; -fx-border-color: #569CD6; -fx-border-radius: 10;");
+                HBox.setMargin(helpIcon, new Insets(0, 0, 0, 5));
+
+                String tooltipText = "Required Tasks:\n• " + String.join("\n• ", blockingTaskNames);
+                Tooltip t = new Tooltip(tooltipText);
+                t.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: #E0E0E0; -fx-border-color: #3E3E42; -fx-font-size: 12px;");
+                Tooltip.install(helpIcon, t);
+                t.setShowDelay(new Duration(500));
+
+                textContainer.getChildren().add(helpIcon);
+            }
+
         } else {
             textContainer.setAlignment(Pos.CENTER_LEFT);
             Label textLabel = new Label(task.getTextContent());
@@ -214,68 +238,10 @@ public class TaskCard extends VBox {
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
-        // --- FIXED: RPG Stats Mini-Card Full Width & State Memory ---
-        FlowPane statsMiniCard = new FlowPane(8, 8);
-        statsMiniCard.setPadding(new Insets(8, 12, 8, 12));
-        statsMiniCard.setStyle("-fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+        // --- NEW: Use extracted TaskStatsMiniCard ---
+        TaskStatsMiniCard statsMiniCard = new TaskStatsMiniCard(task, config, appStats, isLocked);
 
-        // Let the box span the full width
-        statsMiniCard.setMaxWidth(Double.MAX_VALUE);
-        VBox.setMargin(statsMiniCard, new Insets(4, 0, 0, 0)); // No left indent, exactly matching top width
-
-        // Grab the saved state so it doesn't close on refresh
-        boolean isStatsVis = task.isStatsExpanded();
-        statsMiniCard.setVisible(isStatsVis);
-        statsMiniCard.setManaged(isStatsVis);
-
-        boolean hasAnyStats = false;
-
-        if (config.isRewardsPage() && task.getCostPoints() > 0) {
-            Label pLabel = new Label("💎 -" + task.getCostPoints() + " Cost");
-            pLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-size: 11px; -fx-background-color: #1A3A4D; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-            statsMiniCard.getChildren().add(pLabel);
-            hasAnyStats = true;
-        } else if (config.isEnableScore()) {
-            if (task.getRewardPoints() > 0) {
-                Label pLabel = new Label("🏆 +" + task.getRewardPoints() + " Pts");
-                pLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 11px; -fx-background-color: #332B00; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-                statsMiniCard.getChildren().add(pLabel);
-                hasAnyStats = true;
-            }
-            if (task.getPenaltyPoints() > 0) {
-                Label pLabel = new Label("💀 -" + task.getPenaltyPoints() + " Pts");
-                pLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 11px; -fx-background-color: #330000; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-                statsMiniCard.getChildren().add(pLabel);
-                hasAnyStats = true;
-            }
-        }
-
-        if (config.isEnableStatsSystem()) {
-            for (CustomStat stat : appStats.getCustomStats()) {
-                int rew = task.getStatRewards().getOrDefault(stat.getId(), 0);
-                if (rew > 0) {
-                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
-                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
-                    String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
-                    Label sLabel = new Label(icon + "+" + rew + " " + stat.getName());
-                    sLabel.setStyle("-fx-text-fill: " + txtC + "; -fx-background-color: " + bgC + "; -fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-                    statsMiniCard.getChildren().add(sLabel);
-                    hasAnyStats = true;
-                }
-                int pen = task.getStatPenalties().getOrDefault(stat.getId(), 0);
-                if (pen > 0) {
-                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
-                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
-                    Label sLabel = new Label(icon + "-" + pen + " " + stat.getName());
-                    sLabel.setStyle("-fx-text-fill: #FF6666; -fx-background-color: " + bgC + "; -fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold; -fx-border-color: #FF6666; -fx-border-radius: 4;");
-                    statsMiniCard.getChildren().add(sLabel);
-                    hasAnyStats = true;
-                }
-            }
-        }
-
-        // --- FIXED: Toggle saves state silently without causing refresh blur ---
-        if (hasAnyStats && !isNoteMode) {
+        if (statsMiniCard.hasAnyStats() && !isNoteMode && !isLocked) {
             Button eyeBtn = new Button("👁");
             eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
             eyeBtn.setOnAction(e -> {
@@ -284,7 +250,7 @@ public class TaskCard extends VBox {
                 statsMiniCard.setVisible(newVis);
                 statsMiniCard.setManaged(newVis);
                 eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (newVis ? "#569CD6" : "#AAAAAA") + ";");
-                StorageManager.saveTasks(globalDatabase); // Save so state survives the next refreshList()
+                StorageManager.saveTasks(globalDatabase);
             });
             mainRow.getChildren().add(eyeBtn);
         }
@@ -366,6 +332,8 @@ public class TaskCard extends VBox {
             HBox actionContainer = new HBox(5);
             actionContainer.setAlignment(Pos.CENTER);
 
+            boolean hasUnfinishedSubTasks = !task.isFinished() && config.isEnableSubTasks() && !task.getSubTasks().isEmpty() && task.getSubTasks().stream().anyMatch(sub -> !sub.isFinished());
+
             if (isNoteMode) {
                 Button pinBtn = new Button("📌");
                 String pinColor = task.isPinned() ? "#FF6666" : "#FFFFFF";
@@ -377,12 +345,25 @@ public class TaskCard extends VBox {
                     onUpdate.run();
                 });
                 actionContainer.getChildren().add(pinBtn);
+
+            } else if (hasUnfinishedSubTasks) {
+                Label subLockIcon = new Label("🔒");
+                subLockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 16px; -fx-cursor: help;");
+
+                Tooltip t = new Tooltip("Complete all sub-tasks to unlock!");
+                t.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: #FF6666; -fx-border-color: #FF6666; -fx-font-size: 12px;");
+                Tooltip.install(subLockIcon, t);
+
+                actionContainer.getChildren().add(subLockIcon);
+
             } else if (config.isRewardsPage()) {
                 Button buyBtn = new Button(task.isCounterMode() ? "Buy (" + task.getCurrentCount() + "/" + task.getMaxCount() + ")" : "Buy");
                 buyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
                 if (task.isFinished()) buyBtn.setDisable(true);
-                buyBtn.setOnAction(e -> handleRewardPurchase());
+                // --- NEW: Use extracted action handler ---
+                buyBtn.setOnAction(e -> TaskActionHandler.handleRewardPurchase(task, appStats, globalDatabase, onUpdate));
                 actionContainer.getChildren().add(buyBtn);
+
             } else if (task.isCounterMode()) {
                 Button minusBtn = new Button("-");
                 minusBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
@@ -408,7 +389,8 @@ public class TaskCard extends VBox {
                     if (!task.isPointsClaimed()) {
                         task.setCurrentCount(task.getCurrentCount() + 1);
                         if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
-                            handleTaskCompletion(null);
+                            // --- NEW: Use extracted action handler ---
+                            TaskActionHandler.handleTaskCompletion(task, config, appStats, globalDatabase, onUpdate, null);
                         } else {
                             StorageManager.saveTasks(globalDatabase);
                             onUpdate.run();
@@ -425,7 +407,8 @@ public class TaskCard extends VBox {
 
                 checkBox.setOnAction(e -> {
                     if (checkBox.isSelected()) {
-                        handleTaskCompletion(checkBox);
+                        // --- NEW: Use extracted action handler ---
+                        TaskActionHandler.handleTaskCompletion(task, config, appStats, globalDatabase, onUpdate, checkBox);
                     } else {
                         task.setFinished(false);
                         StorageManager.saveTasks(globalDatabase);
@@ -435,116 +418,20 @@ public class TaskCard extends VBox {
                 actionContainer.getChildren().add(checkBox);
             }
 
-            boolean hasUnfinishedSubTasks = !task.isFinished() && config.isEnableSubTasks() && !task.getSubTasks().isEmpty() && task.getSubTasks().stream().anyMatch(sub -> !sub.isFinished());
-
-            if (hasUnfinishedSubTasks && !isNoteMode) {
-                for (javafx.scene.Node n : actionContainer.getChildren()) {
-                    n.setDisable(true);
-                }
-
-                Label subLockIcon = new Label("🔒");
-                subLockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 14px; -fx-cursor: hand;");
-                subLockIcon.setPadding(new Insets(0, 5, 0, 0));
-
-                Tooltip t = new Tooltip("Complete all sub-tasks to unlock!");
-                t.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: #FF6666; -fx-border-color: #FF6666; -fx-font-size: 12px;");
-                Tooltip.install(subLockIcon, t);
-
-                actionContainer.getChildren().add(0, subLockIcon);
-            }
-
             mainRow.getChildren().add(actionContainer);
         }
 
         SubTaskRenderer subTaskBox = new SubTaskRenderer(task, config, appStats, globalDatabase, onUpdate);
 
-        primaryCard.getChildren().addAll(mainRow, subTaskBox);
+        if (isLocked) {
+            subTaskBox.setVisible(false);
+            subTaskBox.setManaged(false);
+        }
 
+        primaryCard.getChildren().addAll(mainRow, subTaskBox);
         getChildren().addAll(primaryCard, statsMiniCard);
 
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
         primaryCard.setOnContextMenuRequested(e -> contextMenu.show(primaryCard, e.getScreenX(), e.getScreenY()));
-    }
-
-    private void handleRewardPurchase() {
-        if (appStats.getGlobalScore() < task.getCostPoints()) {
-            Alert alert = new Alert(Alert.AlertType.ERROR, "Not enough points! You need " + task.getCostPoints() + " but only have " + appStats.getGlobalScore() + ".");
-            alert.setHeaderText("Cannot Buy Reward");
-            TaskDialogs.styleDialog(alert);
-            alert.show();
-            return;
-        }
-
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Buy '" + task.getTextContent() + "' for " + task.getCostPoints() + " points?", ButtonType.YES, ButtonType.NO);
-        alert.setHeaderText("Confirm Purchase");
-        TaskDialogs.styleDialog(alert);
-
-        alert.showAndWait().ifPresent(res -> {
-            if (res == ButtonType.YES) {
-                appStats.setGlobalScore(appStats.getGlobalScore() - task.getCostPoints());
-                appStats.setLifetimePointsSpent(appStats.getLifetimePointsSpent() + task.getCostPoints());
-                appStats.setRewardsClaimed(appStats.getRewardsClaimed() + 1);
-
-                if (task.isCounterMode()) {
-                    task.setCurrentCount(task.getCurrentCount() + 1);
-                    if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
-                        task.setFinished(true);
-                    }
-                }
-
-                StorageManager.saveStats(appStats);
-                StorageManager.saveTasks(globalDatabase);
-                onUpdate.run();
-                pushNotification("Reward Claimed!", "You bought: " + task.getTextContent());
-            }
-        });
-    }
-
-    private void handleTaskCompletion(CheckBox optCheckBox) {
-        boolean hasRewards = task.getRewardPoints() > 0 || (config.isEnableStatsSystem() && !task.getStatRewards().isEmpty());
-
-        if (hasRewards && !task.isPointsClaimed()) {
-
-            StringBuilder rewardStr = new StringBuilder();
-            if (task.getRewardPoints() > 0) rewardStr.append("+").append(task.getRewardPoints()).append(" Global Points\n");
-
-            if (config.isEnableStatsSystem()) {
-                for (CustomStat stat : appStats.getCustomStats()) {
-                    int amt = task.getStatRewards().getOrDefault(stat.getId(), 0);
-                    if (amt > 0) rewardStr.append("+").append(amt).append(" ").append(stat.getName()).append(" XP\n");
-                }
-            }
-
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Claim the following rewards?\n\n" + rewardStr.toString().trim() + "\n\nThis will permanently lock the task.", ButtonType.YES, ButtonType.NO);
-            alert.setHeaderText("Complete Task & Claim Rewards");
-            TaskDialogs.styleDialog(alert);
-            alert.showAndWait().ifPresent(res -> {
-                if (res == ButtonType.YES) {
-                    task.setFinished(true);
-                    task.setPointsClaimed(true);
-                    if (task.isCounterMode() && task.getMaxCount() > 0) task.setCurrentCount(task.getMaxCount());
-                    for (SubTask sub : task.getSubTasks()) sub.setFinished(true);
-
-                    appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
-                    if (config.isEnableStatsSystem()) {
-                        task.getStatRewards().forEach((statId, amount) -> appStats.addStatXp(statId, amount));
-                    }
-
-                    StorageManager.saveStats(appStats);
-                    StorageManager.saveTasks(globalDatabase);
-                    onUpdate.run();
-                } else {
-                    if (optCheckBox != null) optCheckBox.setSelected(false);
-                    if (task.isCounterMode()) task.setCurrentCount(task.getCurrentCount() - 1);
-                    onUpdate.run();
-                }
-            });
-        } else {
-            task.setFinished(true);
-            if (task.isCounterMode() && task.getMaxCount() > 0) task.setCurrentCount(task.getMaxCount());
-            for (SubTask sub : task.getSubTasks()) sub.setFinished(true);
-            StorageManager.saveTasks(globalDatabase);
-            onUpdate.run();
-        }
     }
 }

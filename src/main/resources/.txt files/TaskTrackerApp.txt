@@ -138,7 +138,7 @@ public class TaskTrackerApp extends Application {
             }
         });
 
-        sidebarManager = new SidebarManager(appStats, globalSearchBar, this::navigateToModule);
+        sidebarManager = new SidebarManager(appStats, taskDatabase, globalSearchBar, this::navigateToModule);
 
         focusHubPanel = new FocusHubModule(appStats, taskDatabase, syncUI);
         analyticsPanel = new AnalyticsModule(appStats, taskDatabase);

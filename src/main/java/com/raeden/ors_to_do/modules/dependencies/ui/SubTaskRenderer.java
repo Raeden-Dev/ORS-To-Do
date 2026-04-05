@@ -26,6 +26,9 @@ public class SubTaskRenderer extends VBox {
         super(8);
         setPadding(new Insets(0, 10, 15, 60));
 
+        String cbCss = TaskDialogs.getCheckboxThemeCss(appStats.getCheckboxTheme());
+        this.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(cbCss.getBytes()));
+
         boolean hasLinks = config.isEnableLinks() && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty();
         boolean hasSubTasks = config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
 

@@ -68,6 +68,14 @@ public class AppStats implements Serializable {
     public boolean isEnableTextToTask() { return enableTextToTask; }
     public void setEnableTextToTask(boolean enableTextToTask) { this.enableTextToTask = enableTextToTask; }
 
+    // --- NEW: Sidebar Task Count Toggle ---
+    private boolean showSidebarTaskCount = true;
+
+    // ... existing methods ...
+
+    public boolean isShowSidebarTaskCount() { return showSidebarTaskCount; }
+    public void setShowSidebarTaskCount(boolean showSidebarTaskCount) { this.showSidebarTaskCount = showSidebarTaskCount; }
+
     private boolean globalStatsEnabled = false;
 
     private LocalDateTime analyticsResetTimestamp;

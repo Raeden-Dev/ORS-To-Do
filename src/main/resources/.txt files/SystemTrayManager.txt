@@ -1,92 +1,93 @@
 package com.raeden.ors_to_do.modules.dependencies.services;
 
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.InputStream;
+
 public class SystemTrayManager {
-    private static java.awt.TrayIcon trayIcon;
+    private static TrayIcon trayIcon;
     private static Stage mainStage;
 
-    public static void setupSystemTray(Stage primaryStage, Runnable exitAction) {
-        mainStage = primaryStage;
-        if (!java.awt.SystemTray.isSupported()) return;
+    public static void setupSystemTray(Stage stage, Runnable onExit) {
+        mainStage = stage;
+        if (!SystemTray.isSupported()) {
+            System.out.println("System tray is not supported on this OS.");
+            return;
+        }
 
-        java.awt.SystemTray tray = java.awt.SystemTray.getSystemTray();
-        java.awt.Image trayImage = null;
-
-        // --- SAFE ICON LOADING ---
         try {
-            java.net.URL imageURL = SystemTrayManager.class.getResource("/icon.png");
-            if (imageURL != null) {
-                trayImage = java.awt.Toolkit.getDefaultToolkit().getImage(imageURL);
+            // --- FIXED: Load the custom icon.png from resources as an AWT Image ---
+            Image awtImage = null;
+            InputStream iconStream = SystemTrayManager.class.getResourceAsStream("/icon.png");
+
+            if (iconStream != null) {
+                awtImage = ImageIO.read(iconStream);
+            } else {
+                // Fallback to a blank image if icon.png is missing to prevent crashes
+                awtImage = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                System.out.println("Warning: /icon.png not found for System Tray.");
             }
-        } catch (Exception e) {
-            System.out.println("Tray icon.png not found, falling back to default.");
-        }
 
-        // --- FALLBACK (If image is null or missing) ---
-        if (trayImage == null) {
-            java.awt.image.BufferedImage fallback = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-            java.awt.Graphics2D g2d = fallback.createGraphics();
-            g2d.setColor(new java.awt.Color(86, 156, 214));
-            g2d.fillOval(0, 0, 16, 16);
-            g2d.dispose();
-            trayImage = fallback;
-        }
+            SystemTray tray = SystemTray.getSystemTray();
 
-        trayIcon = new java.awt.TrayIcon(trayImage, "ORS Task Tracker");
-        trayIcon.setImageAutoSize(true);
+            // Set the image and ensure it scales correctly to the taskbar size
+            trayIcon = new TrayIcon(awtImage, "Task Tracker");
+            trayIcon.setImageAutoSize(true);
 
-        trayIcon.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getButton() == java.awt.event.MouseEvent.BUTTON1 && e.getClickCount() == 2) {
-                    Platform.runLater(() -> {
-                        primaryStage.show();
-                        primaryStage.setIconified(false);
-                        primaryStage.toFront();
-                    });
+            // Double-click to restore the app
+            trayIcon.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1) {
+                        Platform.runLater(() -> {
+                            if (mainStage != null) {
+                                mainStage.show();
+                                mainStage.toFront();
+                            }
+                        });
+                    }
                 }
-            }
-        });
+            });
 
-        java.awt.PopupMenu popup = new java.awt.PopupMenu();
-        java.awt.MenuItem openItem = new java.awt.MenuItem("Open Task Tracker");
-        openItem.addActionListener(e -> Platform.runLater(() -> {
-            primaryStage.show();
-            primaryStage.setIconified(false);
-            primaryStage.toFront();
-        }));
+            // Create Right-Click popup menu
+            PopupMenu popup = new PopupMenu();
 
-        java.awt.MenuItem exitItem = new java.awt.MenuItem("Exit Entirely");
-        exitItem.addActionListener(e -> Platform.runLater(exitAction));
+            MenuItem openItem = new MenuItem("Open Task Tracker");
+            openItem.addActionListener(e -> Platform.runLater(() -> {
+                if (mainStage != null) {
+                    mainStage.show();
+                    mainStage.toFront();
+                }
+            }));
 
-        popup.add(openItem);
-        popup.addSeparator();
-        popup.add(exitItem);
-        trayIcon.setPopupMenu(popup);
+            MenuItem exitItem = new MenuItem("Exit");
+            exitItem.addActionListener(e -> {
+                tray.remove(trayIcon);
+                Platform.runLater(onExit);
+            });
 
-        try { tray.add(trayIcon); }
-        catch (java.awt.AWTException e) { System.err.println("TrayIcon could not be added."); }
+            popup.add(openItem);
+            popup.addSeparator();
+            popup.add(exitItem);
+
+            trayIcon.setPopupMenu(popup);
+            tray.add(trayIcon);
+
+        } catch (Exception e) {
+            System.out.println("Error initializing System Tray: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public static void pushNotification(String title, String message) {
-        if (mainStage != null && !mainStage.isShowing()) {
-            if (trayIcon != null) trayIcon.displayMessage(title, message, java.awt.TrayIcon.MessageType.INFO);
-        } else {
-            Platform.runLater(() -> {
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle(title);
-                alert.setHeaderText(null);
-                alert.setContentText(message);
-
-                // --- FIXED: Use global Dark Theme & Always-On-Top settings ---
-                TaskDialogs.styleDialog(alert);
-
-                alert.show();
-            });
+        if (trayIcon != null) {
+            // Use standard INFO message type for the notification
+            trayIcon.displayMessage(title, message, TrayIcon.MessageType.INFO);
         }
     }
 }

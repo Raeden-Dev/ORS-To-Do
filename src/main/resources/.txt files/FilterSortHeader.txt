@@ -117,22 +117,17 @@ public class FilterSortHeader extends VBox {
         sortComboBox.getItems().addAll("Custom Order", "Most Recent", "Oldest First", "Alphabetical");
         if (config.isShowPriority()) sortComboBox.getItems().addAll("Priority: Low to High", "Priority: High to Low");
         sortComboBox.setValue("Custom Order");
-        sortComboBox.setStyle("-fx-background-color: #E0E0E0; -fx-cursor: hand;");
 
-        sortComboBox.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); }
-                else { setText(item); setStyle("-fx-text-fill: black; -fx-font-weight: bold;"); }
-            }
-        });
-        sortComboBox.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); }
-                else { setText(item); setStyle("-fx-text-fill: black;"); }
-            }
-        });
+        // --- FIXED: Inject Dark Theme CSS into the Sort ComboBox & removed hardcoded black text ---
+        String css = ".combo-box { -fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; -fx-cursor: hand; } " +
+                ".combo-box .list-cell { -fx-text-fill: white; -fx-font-weight: bold; -fx-background-color: transparent; } " +
+                ".combo-box-popup .list-view { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
+                ".combo-box-popup .list-view .list-cell { -fx-background-color: #2D2D30; -fx-text-fill: white; -fx-font-weight: normal; } " +
+                ".combo-box-popup .list-view .list-cell:filled:hover, .combo-box-popup .list-view .list-cell:filled:selected { -fx-background-color: #569CD6; -fx-text-fill: white; } " +
+                ".combo-box .arrow-button { -fx-background-color: transparent; } " +
+                ".combo-box .arrow { -fx-background-color: #AAAAAA; }";
+
+        sortComboBox.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(css.getBytes()));
 
         sortComboBox.setOnAction(e -> onFilterSortChanged.run());
 
@@ -163,11 +158,30 @@ public class FilterSortHeader extends VBox {
         filterContainer.getChildren().clear();
         ToggleGroup filterGroup = new ToggleGroup();
 
+        String activeAllStyle = "-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;";
+        String inactiveAllStyle = "-fx-background-color: #3E3E42; -fx-text-fill: #AAAAAA; -fx-cursor: hand;";
+
+        String activeTagStyle = "-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-color: #569CD6; -fx-border-radius: 3; -fx-cursor: hand;";
+        String inactiveTagStyle = "-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-border-color: #569CD6; -fx-border-radius: 3; -fx-cursor: hand;";
+
         ToggleButton allBtn = new ToggleButton("All");
-        allBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
         allBtn.setToggleGroup(filterGroup);
-        if (activeFilter.equals("All")) allBtn.setSelected(true);
-        allBtn.setOnAction(e -> { activeFilter = "All"; onFilterSortChanged.run(); });
+
+        if (activeFilter.equals("All")) {
+            allBtn.setSelected(true);
+            allBtn.setStyle(activeAllStyle);
+        } else {
+            allBtn.setStyle(inactiveAllStyle);
+        }
+
+        allBtn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            allBtn.setStyle(isSelected ? activeAllStyle : inactiveAllStyle);
+        });
+
+        allBtn.setOnAction(e -> {
+            activeFilter = "All";
+            onFilterSortChanged.run();
+        });
         filterContainer.getChildren().add(allBtn);
 
         List<String> sortedTags = new ArrayList<>(uniqueTags);
@@ -175,13 +189,25 @@ public class FilterSortHeader extends VBox {
 
         for (String tag : sortedTags) {
             ToggleButton tagBtn = new ToggleButton(tag);
-            tagBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-border-color: #569CD6; -fx-border-radius: 3; -fx-cursor: hand;");
             tagBtn.setToggleGroup(filterGroup);
-            if (activeFilter.equals(tag)) tagBtn.setSelected(true);
+
+            if (activeFilter.equals(tag)) {
+                tagBtn.setSelected(true);
+                tagBtn.setStyle(activeTagStyle);
+            } else {
+                tagBtn.setStyle(inactiveTagStyle);
+            }
+
+            tagBtn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+                tagBtn.setStyle(isSelected ? activeTagStyle : inactiveTagStyle);
+            });
 
             tagBtn.setOnAction(e -> {
-                if (tagBtn.isSelected()) activeFilter = tag;
-                else activeFilter = "All";
+                if (tagBtn.isSelected()) {
+                    activeFilter = tag;
+                } else {
+                    activeFilter = "All";
+                }
                 onFilterSortChanged.run();
             });
             filterContainer.getChildren().add(tagBtn);

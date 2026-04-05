@@ -77,6 +77,10 @@ public class GeneralSettingsPanel extends VBox {
         chkGlobalStats.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold; -fx-font-size: 14px;");
         chkGlobalStats.setSelected(appStats.isGlobalStatsEnabled());
 
+        CheckBox chkSidebarCount = new CheckBox("Show active task count on sidebar buttons");
+        chkSidebarCount.setSelected(appStats.isShowSidebarTaskCount());
+        chkSidebarCount.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+
         Label statsDesc = new Label("Turns on the RPG points system across the entire application and tracks them in Analytics.");
         statsDesc.setStyle("-fx-text-fill: #858585; -fx-font-size: 12px;");
         VBox statsBox = new VBox(2, chkGlobalStats, statsDesc);
@@ -91,6 +95,7 @@ public class GeneralSettingsPanel extends VBox {
         behaviorGrid.add(chkTextToTask, 0,7, 2, 1);
         behaviorGrid.add(new Label("Zen Mode Task Paralysis Threshold:"), 0, 8); behaviorGrid.add(zenSpinner, 1, 8);
         behaviorGrid.add(statsBox, 0, 9, 2, 1); // Add the stats box to the grid
+        behaviorGrid.add(chkSidebarCount, 0, 10, 2, 1);
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");
         navHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
@@ -128,6 +133,7 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setZenModeThreshold(zenSpinner.getValue());
             appStats.setGlobalStatsEnabled(chkGlobalStats.isSelected()); // Save Stats Switch State
             appStats.setEnableTextToTask(chkTextToTask.isSelected());
+            appStats.setShowSidebarTaskCount(chkSidebarCount.isSelected());
 
             appStats.setNavFocusText(focusNavField.getText().trim().isEmpty() ? "Focus Hub" : focusNavField.getText().trim());
             appStats.setNavArchiveText(archiveNavField.getText().trim().isEmpty() ? "Archived" : archiveNavField.getText().trim());
@@ -156,6 +162,7 @@ public class GeneralSettingsPanel extends VBox {
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
         chkGlobalStats.setOnAction(e -> autoSaveTrigger.run()); // Trigger save/refresh on toggle
         chkTextToTask.setOnAction(e -> autoSaveTrigger.run());
+        chkSidebarCount.setOnAction(e -> autoSaveTrigger.run());
 
         alwaysOnTopCheck.setOnAction(e -> {
             autoSaveTrigger.run();

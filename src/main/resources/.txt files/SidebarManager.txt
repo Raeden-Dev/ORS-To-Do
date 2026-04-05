@@ -2,16 +2,20 @@ package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 public class SidebarManager extends VBox {
@@ -19,11 +23,13 @@ public class SidebarManager extends VBox {
     private GlobalSearchBar searchBar;
     private Consumer<String> onNavigate;
     private String currentActiveModule = "QUICK";
+    private List<TaskItem> globalDatabase;
 
-    public SidebarManager(AppStats appStats, GlobalSearchBar searchBar, Consumer<String> onNavigate) {
+    public SidebarManager(AppStats appStats, List<TaskItem> globalDatabase, GlobalSearchBar searchBar, Consumer<String> onNavigate) {
         this.appStats = appStats;
         this.searchBar = searchBar;
         this.onNavigate = onNavigate;
+        this.globalDatabase = globalDatabase;
 
         getStyleClass().add("sidebar");
         setPrefWidth(220);
@@ -38,9 +44,20 @@ public class SidebarManager extends VBox {
         VBox.setMargin(searchBar, new Insets(0, 0, 10, 0));
         getChildren().add(searchBar);
 
-        // Render Dynamic Sections
+        // Render Dynamic Sections with Task Counts
         for (SectionConfig config : appStats.getSections()) {
-            addSidebarButton(config.getName(), config.getId(), config.getSidebarColor());
+            int activeTaskCount = 0;
+
+            // Calculate active tasks if the setting is enabled
+            if (appStats.isShowSidebarTaskCount() && globalDatabase != null) {
+                for (TaskItem task : globalDatabase) {
+                    if (config.getId().equals(task.getSectionId()) && !task.isFinished() && !task.isArchived()) {
+                        activeTaskCount++;
+                    }
+                }
+            }
+
+            addSidebarButton(config.getName(), config.getId(), config.getSidebarColor(), activeTaskCount);
         }
 
         // Add spacer
@@ -53,14 +70,14 @@ public class SidebarManager extends VBox {
         sep.setPadding(new Insets(10, 0, 10, 0));
         getChildren().add(sep);
 
-        // Render Static Modules
-        addSidebarButton(appStats.getNavFocusText(), "FOCUS", appStats.getNavFocusColor());
-        addSidebarButton(appStats.getNavAnalyticsText(), "ANALYTICS", appStats.getNavAnalyticsColor());
-        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE", appStats.getNavArchiveColor());
-        addSidebarButton(appStats.getNavSettingsText(), "SETTINGS", appStats.getNavSettingsColor());
+        // Render Static Modules (Pass -1 to skip rendering a count badge)
+        addSidebarButton(appStats.getNavFocusText(), "FOCUS", appStats.getNavFocusColor(), -1);
+        addSidebarButton(appStats.getNavAnalyticsText(), "ANALYTICS", appStats.getNavAnalyticsColor(), -1);
+        addSidebarButton(appStats.getNavArchiveText(), "ARCHIVE", appStats.getNavArchiveColor(), -1);
+        addSidebarButton(appStats.getNavSettingsText(), "SETTINGS", appStats.getNavSettingsColor(), -1);
     }
 
-    private void addSidebarButton(String displayText, String internalId, String hexColor) {
+    private void addSidebarButton(String displayText, String internalId, String hexColor, int taskCount) {
         Button btn = new Button(displayText);
         btn.getStyleClass().add("nav-button");
         btn.setMaxWidth(Double.MAX_VALUE);
@@ -70,7 +87,23 @@ public class SidebarManager extends VBox {
         rect.setArcWidth(3); rect.setArcHeight(3);
         rect.setFill(Color.web(hexColor != null ? hexColor : "#FFFFFF"));
 
-        btn.setGraphic(rect);
+        // Container for Number Badge and Rectangle
+        HBox graphicContainer = new HBox(8);
+        graphicContainer.setAlignment(Pos.CENTER_LEFT);
+
+        // Render the badge if the count is greater than 0 and the setting is toggled on
+        if (taskCount > 0 && appStats.isShowSidebarTaskCount()) {
+            // --- FIXED: Format as a 2-digit number with a leading zero if necessary ---
+            String displayCount = String.format("%02d", taskCount);
+
+            Label countLabel = new Label(displayCount);
+            countLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px; -fx-font-weight: bold;");
+            graphicContainer.getChildren().add(countLabel);
+        }
+
+        graphicContainer.getChildren().add(rect);
+
+        btn.setGraphic(graphicContainer);
         btn.setGraphicTextGap(10);
 
         if (currentActiveModule.equals(internalId)) {
