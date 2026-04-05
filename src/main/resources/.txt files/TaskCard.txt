@@ -268,7 +268,7 @@ public class TaskCard extends VBox {
 
             if (task.isLinkCard()) {
                 Label linkIndicator = new Label("↗");
-                linkIndicator.setStyle("-fx-text-fill: #569CD6; -fx-font-size: " + metaFontSize + "px; -fx-padding: 0 0 0 5;");
+                linkIndicator.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px; -fx-padding: 0 0 0 5;");
                 textContainer.getChildren().add(linkIndicator);
             }
         }
@@ -278,7 +278,7 @@ public class TaskCard extends VBox {
         TaskStatsMiniCard statsMiniCard = new TaskStatsMiniCard(task, config, appStats, isLocked);
 
         if (statsMiniCard.hasAnyStats() && !isNoteMode && !isLocked) {
-            Button eyeBtn = new Button("👁");
+            Button eyeBtn = new Button("✦");
             eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
             eyeBtn.setOnAction(e -> {
                 boolean newVis = !task.isStatsExpanded();

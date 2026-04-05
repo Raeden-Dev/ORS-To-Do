@@ -70,3 +70,7 @@ NEW ADDITIONS FOR v1.39
 > A stat Atrophy (Passive Decay)
     - If a user doesn't complete any tasks associated with a specific stat (like "Strength" or "Creativity") for 3 or 7 days, that stat begins to slowly drain.
     This forces you to maintain a balanced routine to keep your highly-leveled Perks from de-leveling and losing their glow. This atrophy is configurable per stat
+
+=================================================
+NEW ADDITIONS FOR v1.39 DIVIVED INTO PHASES BY AI
+=================================================

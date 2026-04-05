@@ -44,10 +44,10 @@ public class TaskDialogs {
     public static void showCreditsDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About & Credits");
-        alert.setHeaderText("Task Tracker Suite");
+        alert.setHeaderText("Task Tracker");
         alert.setContentText(
-                "Developed for One Raid Studio.\n\n" +
-                        "Designed to maximize productivity, eliminate task paralysis, and gamify workflow. Thank you for using the application!"
+                "Developed for anyone who wants to keep track of everything in their life.\n\n" +
+                        "Credits @Sadman Sakib - One Raid Studio"
         );
         styleDialog(alert);
         alert.show();
@@ -70,14 +70,19 @@ public class TaskDialogs {
         scroll.getStylesheets().add("data:text/css;base64," +
                 java.util.Base64.getEncoder().encodeToString(".scroll-pane > .viewport { -fx-background-color: transparent; } .scroll-bar:vertical { -fx-opacity: 0.7; }".getBytes()));
 
-        contentBox.getChildren().addAll(
-                createHelpCard("📊 Analytics", "Track completion streaks, total tasks done, and productivity statistics in the main dashboard."),
-                createHelpCard("☯ Zen Mode", "Access Zen Mode from a section dashboard to focus on a single high-priority task. " +
-                        "It becomes available when tasks exceed your threshold (currently: " + stats.getZenModeThreshold() + ")."),
-                createHelpCard("⏱ Pomodoro Timer", "Located in Focus Hub. Link the timer to an active, time-tracked task to automatically " +
-                        "log your work duration upon session completion."),
-                createHelpCard("📌 Sub-Task Locks", "If a task has sub-tasks, the main completion button will lock until all sub-tasks are completed."),
-                createHelpCard("💎 Rewards Shop", "Turn any section into a 'Rewards Page' via Section Manager. Assign cost points to items and 'Buy' them using your global score.")
+        boolean b = contentBox.getChildren().addAll(
+                createHelpCard("🏆" + " Complete Control", "You are in charge of what you want to turn this application into. Whether a simple to-do app or a full rpg game system where the game is your life.", "yellow"),
+                createHelpCard("♠" + " Stylized UI", "If you fancy nice and sleek looks, you can use your creativity to bring some color into the tasks or this application.", "aqua"),
+                createHelpCard("⚡" + " Gamifying", "Gain skills or perks through completed challenges or achieving a certain level of a stat. You have to work hard to maintain your perks as well!", "purple"),
+                createHelpCard("🔥" + " Streak System", "If you want to see the results of your consistency.", "orange"),
+                createHelpCard("📊 Analytics", "Track completion streaks, total tasks done, and productivity statistics in the main dashboard.", "lightgreen"),
+                createHelpCard("☯ Zen Mode", "Access Zen Mode from a section dashboard to focus on a single high-priority task. ", "red"),
+                createHelpCard("⏱ Focus Hub", "Designed to help you focus on tasks, track time for a task and quickly add your sudden ideas to a scratchpad.", "orange"),
+                createHelpCard("⚙" + " Custom Stat Creation", "Create and track your own personalized stat that you wish to improve on.", "pink"),
+                createHelpCard("✦" + " Sub-Tasks", "Create sub-tasks for any type of task. If a task has sub-tasks, the main completion button will lock until all sub-tasks are completed.", "navy"),
+                createHelpCard("✧" + " Optional Tasks", "Create Optional tasks that are only generated through templates. Ensure your optional tasks are meaningful.", "goldenrod"),
+                createHelpCard("📌" + " Notes & Links page", "Don't want tasks? Create your own page for notes or links.", "darkmagenta"),
+                createHelpCard("💎 Rewards Page", "Turn any section into a 'Rewards Page' via Section Manager. Assign cost points to items and 'Buy' them using your global score.", "#FFD700")
         );
 
         dialog.getDialogPane().setContent(scroll);
@@ -86,12 +91,13 @@ public class TaskDialogs {
         dialog.showAndWait();
     }
 
-    private static VBox createHelpCard(String title, String description) {
+    private static VBox createHelpCard(String title, String description, String titleColor) {
         VBox card = new VBox(5);
         card.setStyle("-fx-background-color: #2D2D30; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5; -fx-background-radius: 5;");
 
         Label tLabel = new Label(title);
-        tLabel.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: 14px;");
+        // Apply the specific color passed to the method
+        tLabel.setStyle("-fx-text-fill: " + titleColor + "; -fx-font-weight: bold; -fx-font-size: 14px;");
 
         Label dLabel = new Label(description);
         dLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 13px;");

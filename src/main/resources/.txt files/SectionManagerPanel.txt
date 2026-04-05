@@ -257,10 +257,10 @@ public class SectionManagerPanel extends VBox {
         CheckBox showTagsCheck = new CheckBox("Enable Dynamic Filter Tags");
         showTagsCheck.setSelected(config.isShowTags());
 
-        CheckBox enableScoreCheck = new CheckBox("Enable Point System (Reward/Penalty)");
+        CheckBox enableScoreCheck = new CheckBox("Enable Point System");
         enableScoreCheck.setSelected(config.isEnableScore());
 
-        CheckBox enableLinksCheck = new CheckBox("Enable Task Links");
+        CheckBox enableLinksCheck = new CheckBox("Enable Sub-Task Links");
         enableLinksCheck.setSelected(config.isEnableLinks());
 
         CheckBox rewardsPageCheck = new CheckBox("Enable Rewards Shop Mode");
@@ -273,7 +273,7 @@ public class SectionManagerPanel extends VBox {
         featuresGrid.add(createToggleWithDesc(showPrefixCheck, "Allows prefixing tags like [GYM] with custom colors."), 0, 3);
         featuresGrid.add(createToggleWithDesc(showTagsCheck, "Auto-generates clickable sorting buttons at the top of the page."), 0, 4);
         featuresGrid.add(createToggleWithDesc(enableScoreCheck, "Allows adding and earning score points for tasks."), 0, 5);
-        featuresGrid.add(createToggleWithDesc(enableLinksCheck, "Allows attaching clickable URLs to tasks."), 0, 6);
+        featuresGrid.add(createToggleWithDesc(enableLinksCheck, "Allows attaching clickable URLs to sub-tasks."), 0, 6);
         featuresGrid.add(createToggleWithDesc(rewardsPageCheck, "Turns this list into a shop where items cost points instead of giving them."), 0, 7);
 
         CheckBox streakCheck = new CheckBox("Enable Streak System");
@@ -301,7 +301,7 @@ public class SectionManagerPanel extends VBox {
         CheckBox enableIconsCheck = new CheckBox("Enable Task Icons");
         enableIconsCheck.setSelected(config.isEnableIcons());
 
-        CheckBox enableZenModeCheck = new CheckBox("Enable Zen Mode");
+        CheckBox enableZenModeCheck = new CheckBox("Allow Zen Mode");
         enableZenModeCheck.setSelected(config.isEnableZenMode());
 
         CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks");
@@ -345,7 +345,7 @@ public class SectionManagerPanel extends VBox {
         CheckBox enableStatsSystemCheck = new CheckBox("Enable Custom Stats");
         enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
 
-        CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards (Click to launch URL/App)");
+        CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards");
         enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
 
         CheckBox notesPageCheck = new CheckBox("Notes Page");
