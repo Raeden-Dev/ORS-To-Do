@@ -68,6 +68,10 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
 
+        CheckBox chkTextToTask = new CheckBox("Enable 'Text to Task' batch creation in context menu");
+        chkTextToTask.setSelected(appStats.isEnableTextToTask());
+        chkTextToTask.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+
         // --- NEW: Global Stats Toggle ---
         CheckBox chkGlobalStats = new CheckBox("Enable Global Custom Stats (RPG System)");
         chkGlobalStats.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold; -fx-font-size: 14px;");
@@ -84,8 +88,9 @@ public class GeneralSettingsPanel extends VBox {
         behaviorGrid.add(matchOutlineCheck, 0, 4, 2, 1);
         behaviorGrid.add(matchTitleColorCheck, 0, 5, 2, 1);
         behaviorGrid.add(alwaysOnTopCheck, 0, 6, 2, 1);
-        behaviorGrid.add(new Label("Zen Mode Task Paralysis Threshold:"), 0, 7); behaviorGrid.add(zenSpinner, 1, 7);
-        behaviorGrid.add(statsBox, 0, 8, 2, 1); // Add the stats box to the grid
+        behaviorGrid.add(chkTextToTask, 0,7, 2, 1);
+        behaviorGrid.add(new Label("Zen Mode Task Paralysis Threshold:"), 0, 8); behaviorGrid.add(zenSpinner, 1, 8);
+        behaviorGrid.add(statsBox, 0, 9, 2, 1); // Add the stats box to the grid
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");
         navHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
@@ -122,6 +127,7 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setAlwaysOnTop(alwaysOnTopCheck.isSelected());
             appStats.setZenModeThreshold(zenSpinner.getValue());
             appStats.setGlobalStatsEnabled(chkGlobalStats.isSelected()); // Save Stats Switch State
+            appStats.setEnableTextToTask(chkTextToTask.isSelected());
 
             appStats.setNavFocusText(focusNavField.getText().trim().isEmpty() ? "Focus Hub" : focusNavField.getText().trim());
             appStats.setNavArchiveText(archiveNavField.getText().trim().isEmpty() ? "Archived" : archiveNavField.getText().trim());
@@ -149,6 +155,7 @@ public class GeneralSettingsPanel extends VBox {
         matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
         chkGlobalStats.setOnAction(e -> autoSaveTrigger.run()); // Trigger save/refresh on toggle
+        chkTextToTask.setOnAction(e -> autoSaveTrigger.run());
 
         alwaysOnTopCheck.setOnAction(e -> {
             autoSaveTrigger.run();

@@ -84,7 +84,7 @@ public class SectionConfig implements Serializable {
     public void setTrackTime(boolean trackTime) { this.trackTime = trackTime; }
     public boolean isShowPrefix() { return showPrefix; }
     public void setShowPrefix(boolean showPrefix) { this.showPrefix = showPrefix; }
-    public boolean isShowWorkType() { return showWorkType; }
+    public boolean isShowTaskType() { return showWorkType; }
     public void setShowWorkType(boolean showWorkType) { this.showWorkType = showWorkType; }
     public boolean isAllowArchive() { return allowArchive; }
     public void setAllowArchive(boolean allowArchive) { this.allowArchive = allowArchive; }

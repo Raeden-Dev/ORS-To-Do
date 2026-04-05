@@ -179,7 +179,7 @@ public class DynamicModule extends StackPane {
             if (task.getSectionId() != null && task.getSectionId().equals(config.getId()) && !task.isArchived()) {
 
                 String tag = null;
-                if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty()) tag = task.getWorkType();
+                if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty()) tag = task.getTaskType();
                 else if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) tag = task.getPrefix();
 
                 if (tag != null) uniqueTags.add(tag);
@@ -290,7 +290,7 @@ public class DynamicModule extends StackPane {
                 newTask.setPrefixColor("#4EC9B0");
             }
         }
-        if (config.isShowWorkType() && !config.isNotesPage()) newTask.setWorkType("General");
+        if (config.isShowTaskType() && !config.isNotesPage()) newTask.setTaskType("General");
 
         globalDatabase.add(newTask);
 

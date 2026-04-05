@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter;
 
 public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
     private JPanel panel;
-    private JLabel dateLabel, starLabel, workTypeLabel, textLabel, priorityLabel, checkboxLabel;
+    private JLabel dateLabel, starLabel, taskTypeLabel, textLabel, priorityLabel, checkboxLabel;
     private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd");
 
     public TaskCellRenderer() {
@@ -17,7 +17,7 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
 
         dateLabel = new JLabel();
         starLabel = new JLabel();
-        workTypeLabel = new JLabel();
+        taskTypeLabel = new JLabel();
         textLabel = new JLabel();
         priorityLabel = new JLabel();
         checkboxLabel = new JLabel();
@@ -27,7 +27,7 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
 
         panel.add(dateLabel);
         panel.add(starLabel);
-        panel.add(workTypeLabel);
+        panel.add(taskTypeLabel);
         panel.add(textLabel);
         panel.add(priorityLabel);
         panel.add(checkboxLabel);
@@ -62,11 +62,11 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
 
         // 3. Module-Specific Formatting
         if (task.getOriginModule() == OriginModule.WORK) {
-            workTypeLabel.setVisible(true);
-            workTypeLabel.setText("[" + (task.getWorkType().isEmpty() ? "General" : task.getWorkType()) + "]");
+            taskTypeLabel.setVisible(true);
+            taskTypeLabel.setText("[" + (task.getTaskType().isEmpty() ? "General" : task.getTaskType()) + "]");
             // Optional: Add Start/Deadline logic here if dates are set
         } else {
-            workTypeLabel.setVisible(false); // Hide for Quick To-Do
+            taskTypeLabel.setVisible(false); // Hide for Quick To-Do
         }
 
         // Strikethrough for finished tasks

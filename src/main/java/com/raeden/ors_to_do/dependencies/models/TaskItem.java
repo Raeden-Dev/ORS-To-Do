@@ -20,7 +20,7 @@ public class TaskItem implements Serializable {
 
     private boolean isArchived = false;
     private boolean isFavorite = false;
-    private String workType = "";
+    private String taskType = "";
     private int timeSpentSeconds = 0;
 
     private List<SubTask> subTasks = new ArrayList<>();
@@ -164,8 +164,8 @@ public class TaskItem implements Serializable {
     public void addTimeSpent(int seconds) { this.timeSpentSeconds += seconds; }
     public boolean isFavorite() { return isFavorite; }
     public void setFavorite(boolean favorite) { this.isFavorite = favorite; }
-    public String getWorkType() { return workType; }
-    public void setWorkType(String workType) { this.workType = workType; }
+    public String getTaskType() { return taskType; }
+    public void setTaskType(String taskType) { this.taskType = taskType; }
     public String getId() { return id; }
     public String getTextContent() { return textContent; }
     public void setTextContent(String textContent) { this.textContent = textContent; }

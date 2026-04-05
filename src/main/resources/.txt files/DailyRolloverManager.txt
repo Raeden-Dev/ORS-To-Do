@@ -61,7 +61,7 @@ public class DailyRolloverManager {
                         if (section.isShowPriority() && template.getPriorityName() != null) {
                             appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
                         }
-                        if (section.isShowWorkType() && template.getWorkType() != null) newTask.setWorkType(template.getWorkType());
+                        if (section.isShowTaskType() && template.getTaskType() != null) newTask.setTaskType(template.getTaskType());
                         if (section.isEnableScore()) {
                             newTask.setRewardPoints(template.getRewardPoints());
                             newTask.setPenaltyPoints(template.getPenaltyPoints());

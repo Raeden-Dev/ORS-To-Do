@@ -59,7 +59,7 @@ public class SearchModule extends BorderPane {
             boolean match = false;
 
             if (task.getTextContent().toLowerCase().contains(q)) match = true;
-            else if (task.getWorkType() != null && task.getWorkType().toLowerCase().contains(q)) match = true;
+            else if (task.getTaskType() != null && task.getTaskType().toLowerCase().contains(q)) match = true;
             else if (task.getPrefix() != null && task.getPrefix().toLowerCase().contains(q)) match = true;
             else {
                 for (SubTask sub : task.getSubTasks()) {

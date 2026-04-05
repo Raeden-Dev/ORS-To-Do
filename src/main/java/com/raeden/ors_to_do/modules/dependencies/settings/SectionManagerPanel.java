@@ -179,9 +179,9 @@ public class SectionManagerPanel extends VBox {
         chkPrefix.setSelected(!isNew && config.isShowPrefix());
         grid.add(createToggleBox(chkPrefix, "Allows prefixing tags like [GYM] with custom colors."), 0, 5);
 
-        CheckBox chkWorkType = new CheckBox("Enable Work Types");
-        chkWorkType.setSelected(!isNew && config.isShowWorkType());
-        grid.add(createToggleBox(chkWorkType, "Displays an editable string box for categorization."), 1, 5);
+        CheckBox chkTaskType = new CheckBox("Enable Task Types");
+        chkTaskType.setSelected(!isNew && config.isShowTaskType());
+        grid.add(createToggleBox(chkTaskType, "Displays an editable string box for categorization."), 1, 5);
 
         CheckBox chkTags = new CheckBox("Enable Dynamic Filter Tags");
         chkTags.setSelected(!isNew && config.isShowTags());
@@ -252,7 +252,7 @@ public class SectionManagerPanel extends VBox {
                 target.setShowDate(chkDate.isSelected());
                 target.setTrackTime(chkTime.isSelected());
                 target.setShowPrefix(chkPrefix.isSelected());
-                target.setShowWorkType(chkWorkType.isSelected());
+                target.setShowWorkType(chkTaskType.isSelected());
                 target.setShowTags(chkTags.isSelected());
                 target.setEnableScore(chkScore.isSelected());
                 target.setEnableLinks(chkLinks.isSelected());

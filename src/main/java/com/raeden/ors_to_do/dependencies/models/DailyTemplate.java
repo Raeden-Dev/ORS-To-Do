@@ -24,7 +24,7 @@ public class DailyTemplate implements Serializable {
     private String priorityName;
     private int rewardPoints;
     private int penaltyPoints;
-    private String workType;
+    private String taskType;
     private List<String> subTaskLines;
 
     public DailyTemplate(String prefix, String text, String prefixColor, String bgColor) {
@@ -42,8 +42,8 @@ public class DailyTemplate implements Serializable {
     public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
     public int getPenaltyPoints() { return penaltyPoints; }
     public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
-    public String getWorkType() { return workType; }
-    public void setWorkType(String workType) { this.workType = workType; }
+    public String getTaskType() { return taskType; }
+    public void setTaskType(String taskType) { this.taskType = taskType; }
 
     public List<String> getSubTaskLines() {
         if (subTaskLines == null) subTaskLines = new ArrayList<>();

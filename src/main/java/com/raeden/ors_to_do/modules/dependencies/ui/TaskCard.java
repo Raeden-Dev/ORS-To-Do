@@ -18,8 +18,6 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 import java.time.LocalDateTime;
@@ -185,8 +183,8 @@ public class TaskCard extends VBox {
                 metaBox.getChildren().add(prefixLabel);
             }
 
-            if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty() && !isNoteMode) {
-                Label workTypeLabel = new Label("[" + task.getWorkType() + "]");
+            if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty() && !isNoteMode) {
+                Label workTypeLabel = new Label("[" + task.getTaskType() + "]");
                 workTypeLabel.getStyleClass().add("task-metadata");
                 metaBox.getChildren().add(workTypeLabel);
             }

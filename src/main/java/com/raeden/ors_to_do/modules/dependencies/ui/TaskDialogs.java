@@ -2,6 +2,7 @@ package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.*;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.ColumnConstraints;
@@ -73,6 +74,62 @@ public class TaskDialogs {
         dialog.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK && !textField.getText().trim().isEmpty()) {
                 subTask.setTextContent(textField.getText().trim());
+                StorageManager.saveTasks(globalDatabase);
+                onUpdate.run();
+            }
+        });
+    }
+
+    public static void showTextToTaskDialog(TaskItem sourceTask, List<TaskItem> globalDatabase, Runnable onUpdate) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Text to Task (Batch Create)");
+        dialog.setHeaderText("Paste text to generate tasks and sub-tasks.\n(Use '-', '*', or indent for sub-tasks)");
+        styleDialog(dialog);
+
+        TextArea textArea = new TextArea();
+        textArea.setPromptText("Main Task 1\n- Sub-task A\n- Sub-task B\nMain Task 2\n- Sub-task C");
+        textArea.setPrefRowCount(10);
+        textArea.setPrefWidth(400);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-control-inner-background: #2D2D30; -fx-text-fill: white; -fx-prompt-text-fill: #858585;");
+
+        dialog.getDialogPane().setContent(textArea);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // Auto-focus the text area for instant pasting
+        Platform.runLater(textArea::requestFocus);
+
+        dialog.showAndWait().ifPresent(res -> {
+            if (res == ButtonType.OK && !textArea.getText().trim().isEmpty()) {
+                String[] lines = textArea.getText().split("\\r?\\n");
+                TaskItem lastTask = null;
+
+                for (String line : lines) {
+                    if (line.trim().isEmpty()) continue;
+
+                    // Detect if the line is a sub-task based on common formatting
+                    boolean isSubTask = line.startsWith("-") || line.startsWith("*") || line.startsWith(" ") || line.startsWith("\t");
+                    String cleanText = line.replaceFirst("^[\\s\\-\\*]+", "").trim();
+
+                    if (isSubTask && lastTask != null) {
+                        // Add as a sub-task to the most recently created main task
+                        lastTask.getSubTasks().add(new SubTask(cleanText));
+                        lastTask.setExpanded(true);
+                    } else {
+                        // Create a brand new main task
+                        lastTask = new TaskItem(cleanText, sourceTask.getPriority(), sourceTask.getSectionId());
+
+                        // Inherit visual configuration from the task you right-clicked
+                        lastTask.setIconSymbol(sourceTask.getIconSymbol());
+                        lastTask.setIconColor(sourceTask.getIconColor());
+                        lastTask.setPrefix(sourceTask.getPrefix());
+                        lastTask.setPrefixColor(sourceTask.getPrefixColor());
+                        lastTask.setTaskType(sourceTask.getTaskType());
+
+                        globalDatabase.add(lastTask);
+                    }
+                }
+
                 StorageManager.saveTasks(globalDatabase);
                 onUpdate.run();
             }
@@ -224,11 +281,11 @@ public class TaskDialogs {
             grid.add(new Label(config.isRewardsPage() ? "Reward Tier:" : "Priority:"), 0, rowIdx); grid.add(prioBoxEdit, 1, rowIdx++);
         }
 
-        TextField workTypeField = null;
-        if (config.isShowWorkType()) {
-            workTypeField = new TextField(task.getWorkType());
-            workTypeField.setMaxWidth(Double.MAX_VALUE);
-            grid.add(new Label("Category:"), 0, rowIdx); grid.add(workTypeField, 1, rowIdx++);
+        TextField taskTypeField = null;
+        if (config.isShowTaskType()) {
+            taskTypeField = new TextField(task.getTaskType());
+            taskTypeField.setMaxWidth(Double.MAX_VALUE);
+            grid.add(new Label("Category:"), 0, rowIdx); grid.add(taskTypeField, 1, rowIdx++);
         }
 
         DatePicker datePicker = new DatePicker();
@@ -314,7 +371,7 @@ public class TaskDialogs {
         ColorPicker finalSideboxPicker = sideboxPicker;
 
         TextField finalPrefixFieldEdit = prefixFieldEdit; ColorPicker finalPreC = preC;
-        ComboBox<CustomPriority> finalPrioBoxEdit = prioBoxEdit; TextField finalWorkTypeField = workTypeField;
+        ComboBox<CustomPriority> finalPrioBoxEdit = prioBoxEdit; TextField finalTaskTypeField = taskTypeField;
         ComboBox<String> finalIconBox = iconBox; ColorPicker finalIconColorPicker = iconColorPicker;
 
         dialog.showAndWait().ifPresent(response -> {
@@ -382,7 +439,7 @@ public class TaskDialogs {
                     task.setPrefix(finalPrefixFieldEdit.getText().trim());
                     task.setPrefixColor(toHexString(finalPreC.getValue()));
                 }
-                if (config.isShowWorkType() && finalWorkTypeField != null) task.setWorkType(finalWorkTypeField.getText().trim());
+                if (config.isShowTaskType() && finalTaskTypeField != null) task.setTaskType(finalTaskTypeField.getText().trim());
 
                 StorageManager.saveTasks(globalDatabase); onUpdate.run();
             }

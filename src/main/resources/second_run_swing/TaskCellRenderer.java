@@ -77,7 +77,7 @@ public class TaskCellRenderer implements ListCellRenderer<TaskItem> {
 
         if (task.getOriginModule() == OriginModule.WORK) {
             workTypeLabel.setVisible(true);
-            workTypeLabel.setText("[" + (task.getWorkType().isEmpty() ? "General" : task.getWorkType()) + "]");
+            workTypeLabel.setText("[" + (task.getTaskType().isEmpty() ? "General" : task.getTaskType()) + "]");
         } else {
             workTypeLabel.setVisible(false);
         }

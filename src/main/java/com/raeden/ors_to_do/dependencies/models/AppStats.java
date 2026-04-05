@@ -63,6 +63,11 @@ public class AppStats implements Serializable {
     private String navArchiveColor = "#C586C0";
     private String navSettingsColor = "#858585";
 
+    private boolean enableTextToTask = true;
+
+    public boolean isEnableTextToTask() { return enableTextToTask; }
+    public void setEnableTextToTask(boolean enableTextToTask) { this.enableTextToTask = enableTextToTask; }
+
     private boolean globalStatsEnabled = false;
 
     private LocalDateTime analyticsResetTimestamp;

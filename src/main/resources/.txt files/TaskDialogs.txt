@@ -2,6 +2,8 @@ package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.*;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -14,7 +16,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TaskDialogs {
 
@@ -44,7 +48,7 @@ public class TaskDialogs {
                         task.getSubTasks().add(new SubTask(line.trim()));
                     }
                 }
-                task.setExpanded(true); // Auto-expand to show new tasks
+                task.setExpanded(true);
                 StorageManager.saveTasks(globalDatabase);
                 onUpdate.run();
             }
@@ -76,6 +80,62 @@ public class TaskDialogs {
         });
     }
 
+    public static void showTextToTaskDialog(TaskItem sourceTask, List<TaskItem> globalDatabase, Runnable onUpdate) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Text to Task (Batch Create)");
+        dialog.setHeaderText("Paste text to generate tasks and sub-tasks.\n(Use '-', '*', or indent for sub-tasks)");
+        styleDialog(dialog);
+
+        TextArea textArea = new TextArea();
+        textArea.setPromptText("Main Task 1\n- Sub-task A\n- Sub-task B\nMain Task 2\n- Sub-task C");
+        textArea.setPrefRowCount(10);
+        textArea.setPrefWidth(400);
+        textArea.setWrapText(true);
+        textArea.setStyle("-fx-control-inner-background: #2D2D30; -fx-text-fill: white; -fx-prompt-text-fill: #858585;");
+
+        dialog.getDialogPane().setContent(textArea);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // Auto-focus the text area for instant pasting
+        Platform.runLater(textArea::requestFocus);
+
+        dialog.showAndWait().ifPresent(res -> {
+            if (res == ButtonType.OK && !textArea.getText().trim().isEmpty()) {
+                String[] lines = textArea.getText().split("\\r?\\n");
+                TaskItem lastTask = null;
+
+                for (String line : lines) {
+                    if (line.trim().isEmpty()) continue;
+
+                    // Detect if the line is a sub-task based on common formatting
+                    boolean isSubTask = line.startsWith("-") || line.startsWith("*") || line.startsWith(" ") || line.startsWith("\t");
+                    String cleanText = line.replaceFirst("^[\\s\\-\\*]+", "").trim();
+
+                    if (isSubTask && lastTask != null) {
+                        // Add as a sub-task to the most recently created main task
+                        lastTask.getSubTasks().add(new SubTask(cleanText));
+                        lastTask.setExpanded(true);
+                    } else {
+                        // Create a brand new main task
+                        lastTask = new TaskItem(cleanText, sourceTask.getPriority(), sourceTask.getSectionId());
+
+                        // Inherit visual configuration from the task you right-clicked
+                        lastTask.setIconSymbol(sourceTask.getIconSymbol());
+                        lastTask.setIconColor(sourceTask.getIconColor());
+                        lastTask.setPrefix(sourceTask.getPrefix());
+                        lastTask.setPrefixColor(sourceTask.getPrefixColor());
+                        lastTask.setTaskType(sourceTask.getTaskType());
+
+                        globalDatabase.add(lastTask);
+                    }
+                }
+
+                StorageManager.saveTasks(globalDatabase);
+                onUpdate.run();
+            }
+        });
+    }
+
     public static void showEditDialog(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(config.isNotesPage() ? "Edit Note" : (config.isRewardsPage() ? "Edit Reward" : "Edit Task"));
@@ -91,11 +151,9 @@ public class TaskDialogs {
 
         int rowIdx = 0;
 
-        // --- FIXED: Switched TextField to TextArea for multi-line support ---
         TextArea contentField = new TextArea(task.getTextContent());
         contentField.setMaxWidth(Double.MAX_VALUE);
         contentField.setWrapText(true);
-        // Notes get a large box, standard tasks get a compact one
         contentField.setPrefRowCount(config.isNotesPage() ? 6 : 2);
 
         grid.add(new Label(config.isNotesPage() ? "Note Text:" : (config.isRewardsPage() ? "Reward Name:" : "Content:")), 0, rowIdx);
@@ -223,11 +281,11 @@ public class TaskDialogs {
             grid.add(new Label(config.isRewardsPage() ? "Reward Tier:" : "Priority:"), 0, rowIdx); grid.add(prioBoxEdit, 1, rowIdx++);
         }
 
-        TextField workTypeField = null;
-        if (config.isShowWorkType()) {
-            workTypeField = new TextField(task.getWorkType());
-            workTypeField.setMaxWidth(Double.MAX_VALUE);
-            grid.add(new Label("Category:"), 0, rowIdx); grid.add(workTypeField, 1, rowIdx++);
+        TextField taskTypeField = null;
+        if (config.isShowTaskType()) {
+            taskTypeField = new TextField(task.getTaskType());
+            taskTypeField.setMaxWidth(Double.MAX_VALUE);
+            grid.add(new Label("Category:"), 0, rowIdx); grid.add(taskTypeField, 1, rowIdx++);
         }
 
         DatePicker datePicker = new DatePicker();
@@ -236,6 +294,10 @@ public class TaskDialogs {
         TextField costField = new TextField(String.valueOf(task.getCostPoints()));
         TextField rewardField = new TextField(String.valueOf(task.getRewardPoints()));
         TextField penaltyField = new TextField(String.valueOf(task.getPenaltyPoints()));
+
+        // --- NEW: Maps to hold dynamically generated text fields for RPG Stats ---
+        Map<String, TextField> statRewardFields = new HashMap<>();
+        Map<String, TextField> statPenaltyFields = new HashMap<>();
 
         if (!config.isNotesPage()) {
             datePicker.setMaxWidth(Double.MAX_VALUE);
@@ -264,6 +326,41 @@ public class TaskDialogs {
                 grid.add(new Label("Reward Points:"), 0, rowIdx); grid.add(rewardField, 1, rowIdx++);
                 grid.add(new Label("Missed Penalty:"), 0, rowIdx); grid.add(penaltyField, 1, rowIdx++);
             }
+
+            // --- NEW: DYNAMIC RPG STATS GENERATOR ---
+            if (config.isEnableStatsSystem() && !appStats.getCustomStats().isEmpty()) {
+                grid.add(new Separator(), 0, rowIdx, 2, 1); rowIdx++;
+
+                Label statHeader = new Label("Custom Stat Rewards & Penalties:");
+                statHeader.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold;");
+                grid.add(statHeader, 0, rowIdx, 2, 1); rowIdx++;
+
+                for (CustomStat stat : appStats.getCustomStats()) {
+                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                    Label statLabel = new Label(icon + stat.getName() + ":");
+                    statLabel.setStyle("-fx-text-fill: " + (stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF") + ";");
+
+                    int currentReward = task.getStatRewards().getOrDefault(stat.getId(), 0);
+                    int currentPenalty = task.getStatPenalties().getOrDefault(stat.getId(), 0);
+
+                    TextField sRewardField = new TextField(currentReward > 0 ? String.valueOf(currentReward) : "");
+                    sRewardField.setPromptText("+XP");
+                    sRewardField.setPrefWidth(60);
+
+                    TextField sPenaltyField = new TextField(currentPenalty > 0 ? String.valueOf(currentPenalty) : "");
+                    sPenaltyField.setPromptText("-XP");
+                    sPenaltyField.setPrefWidth(60);
+
+                    HBox statBox = new HBox(10, new Label("+"), sRewardField, new Label("-"), sPenaltyField);
+                    statBox.setAlignment(Pos.CENTER_LEFT);
+
+                    grid.add(statLabel, 0, rowIdx);
+                    grid.add(statBox, 1, rowIdx++);
+
+                    statRewardFields.put(stat.getId(), sRewardField);
+                    statPenaltyFields.put(stat.getId(), sPenaltyField);
+                }
+            }
         }
 
         dialog.getDialogPane().setContent(grid);
@@ -274,7 +371,7 @@ public class TaskDialogs {
         ColorPicker finalSideboxPicker = sideboxPicker;
 
         TextField finalPrefixFieldEdit = prefixFieldEdit; ColorPicker finalPreC = preC;
-        ComboBox<CustomPriority> finalPrioBoxEdit = prioBoxEdit; TextField finalWorkTypeField = workTypeField;
+        ComboBox<CustomPriority> finalPrioBoxEdit = prioBoxEdit; TextField finalTaskTypeField = taskTypeField;
         ComboBox<String> finalIconBox = iconBox; ColorPicker finalIconColorPicker = iconColorPicker;
 
         dialog.showAndWait().ifPresent(response -> {
@@ -308,6 +405,30 @@ public class TaskDialogs {
                         try { task.setRewardPoints(Math.max(0, Integer.parseInt(rewardField.getText().trim()))); } catch (Exception ignore) {}
                         try { task.setPenaltyPoints(Math.max(0, Integer.parseInt(penaltyField.getText().trim()))); } catch (Exception ignore) {}
                     }
+
+                    // --- NEW: Save Dynamic Custom Stats ---
+                    if (config.isEnableStatsSystem()) {
+                        task.getStatRewards().clear();
+                        task.getStatPenalties().clear();
+
+                        for (CustomStat stat : appStats.getCustomStats()) {
+                            TextField rewField = statRewardFields.get(stat.getId());
+                            TextField penField = statPenaltyFields.get(stat.getId());
+
+                            if (rewField != null && !rewField.getText().trim().isEmpty()) {
+                                try {
+                                    int rew = Integer.parseInt(rewField.getText().trim());
+                                    if (rew > 0) task.getStatRewards().put(stat.getId(), rew);
+                                } catch (Exception ignore) {}
+                            }
+                            if (penField != null && !penField.getText().trim().isEmpty()) {
+                                try {
+                                    int pen = Integer.parseInt(penField.getText().trim());
+                                    if (pen > 0) task.getStatPenalties().put(stat.getId(), pen);
+                                } catch (Exception ignore) {}
+                            }
+                        }
+                    }
                 }
 
                 if (config.isEnableIcons() && finalIconBox != null) {
@@ -318,7 +439,7 @@ public class TaskDialogs {
                     task.setPrefix(finalPrefixFieldEdit.getText().trim());
                     task.setPrefixColor(toHexString(finalPreC.getValue()));
                 }
-                if (config.isShowWorkType() && finalWorkTypeField != null) task.setWorkType(finalWorkTypeField.getText().trim());
+                if (config.isShowTaskType() && finalTaskTypeField != null) task.setTaskType(finalTaskTypeField.getText().trim());
 
                 StorageManager.saveTasks(globalDatabase); onUpdate.run();
             }
@@ -412,7 +533,6 @@ public class TaskDialogs {
     }
 
     public static void styleDialog(Dialog<?> dialog) {
-        // --- FIXED: Injected .text-area CSS to ensure the multi-line input perfectly matches dark theme ---
         String css = ".dialog-pane { -fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; } " +
                 ".dialog-pane > *.content.label { -fx-text-fill: #E0E0E0; } " +
                 ".dialog-pane .header-panel { -fx-background-color: #2D2D30; -fx-border-bottom-color: #3E3E42; -fx-border-width: 0 0 1 0; } " +

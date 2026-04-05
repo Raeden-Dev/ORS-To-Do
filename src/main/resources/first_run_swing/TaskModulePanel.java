@@ -78,7 +78,7 @@ public class TaskModulePanel extends JPanel {
 
         TaskItem newTask = new TaskItem(text.trim(), TaskItem.Priority.MED, moduleType);
         if (moduleType == OriginModule.WORK) {
-            newTask.setWorkType("Studio Dev"); // Default example
+            newTask.setTaskType("Studio Dev"); // Default example
         }
 
         globalDatabase.add(newTask);

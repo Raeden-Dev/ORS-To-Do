@@ -32,7 +32,7 @@ public class AnalyticsExporter {
                     totalTimeSeconds += task.getTimeSpentSeconds();
 
                     String key = "Uncategorized";
-                    if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty()) key = task.getWorkType();
+                    if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty()) key = task.getTaskType();
                     else if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) key = task.getPrefix();
                     else if (config.isShowPriority() && task.getPriority() != null) key = task.getPriority().getName();
 

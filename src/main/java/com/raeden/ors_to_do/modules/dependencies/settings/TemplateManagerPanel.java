@@ -70,7 +70,7 @@ public class TemplateManagerPanel extends VBox {
                 if (selected.isShowPriority() && template.getPriorityName() != null) {
                     appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
                 }
-                if (selected.isShowWorkType() && template.getWorkType() != null) newTask.setWorkType(template.getWorkType());
+                if (selected.isShowTaskType() && template.getTaskType() != null) newTask.setTaskType(template.getTaskType());
                 if (selected.isEnableScore()) {
                     newTask.setRewardPoints(template.getRewardPoints());
                     newTask.setPenaltyPoints(template.getPenaltyPoints());
@@ -208,7 +208,7 @@ public class TemplateManagerPanel extends VBox {
                 clone.setIconSymbol(t.getIconSymbol());
                 clone.setIconColor(t.getIconColor());
                 clone.setPriorityName(t.getPriorityName());
-                clone.setWorkType(t.getWorkType());
+                clone.setTaskType(t.getTaskType());
                 clone.setRewardPoints(t.getRewardPoints());
                 clone.setPenaltyPoints(t.getPenaltyPoints());
                 if (t.getSubTaskLines() != null) {
@@ -289,9 +289,9 @@ public class TemplateManagerPanel extends VBox {
         }
 
         TextField workTypeField = null;
-        if (section.isShowWorkType()) {
-            workTypeField = new TextField(template != null && template.getWorkType() != null ? template.getWorkType() : "");
-            grid.add(new Label("Work Type:"), 0, rowIdx); grid.add(workTypeField, 1, rowIdx++);
+        if (section.isShowTaskType()) {
+            workTypeField = new TextField(template != null && template.getTaskType() != null ? template.getTaskType() : "");
+            grid.add(new Label("Task Type:"), 0, rowIdx); grid.add(workTypeField, 1, rowIdx++);
         }
 
         TextField rewardField = null; TextField penaltyField = null;
@@ -355,7 +355,7 @@ public class TemplateManagerPanel extends VBox {
                 if (section.isShowPriority() && finalPrioBox != null && finalPrioBox.getValue() != null) {
                     tToSave.setPriorityName(finalPrioBox.getValue().getName());
                 }
-                if (section.isShowWorkType() && finalWorkTypeField != null) tToSave.setWorkType(finalWorkTypeField.getText().trim());
+                if (section.isShowTaskType() && finalWorkTypeField != null) tToSave.setTaskType(finalWorkTypeField.getText().trim());
                 if (section.isEnableScore() && finalRewardField != null) {
                     try { tToSave.setRewardPoints(Integer.parseInt(finalRewardField.getText().trim())); } catch(Exception ignore){}
                     try { tToSave.setPenaltyPoints(Integer.parseInt(finalPenaltyField.getText().trim())); } catch(Exception ignore){}

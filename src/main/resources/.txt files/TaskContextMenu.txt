@@ -41,7 +41,7 @@ public class TaskContextMenu {
         copyItem.setOnAction(e -> {
             StringBuilder sb = new StringBuilder();
             if (config.isShowDate()) sb.append("[").append(task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))).append("] ");
-            if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty()) sb.append("[").append(task.getWorkType()).append("] ");
+            if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty()) sb.append("[").append(task.getTaskType()).append("] ");
             else if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) sb.append(task.getPrefix()).append(" ");
 
             sb.append(task.getTextContent());
@@ -77,7 +77,7 @@ public class TaskContextMenu {
             clone.setPrefixColor(task.getPrefixColor());
             clone.setIconSymbol(task.getIconSymbol());
             clone.setIconColor(task.getIconColor());
-            clone.setWorkType(task.getWorkType());
+            clone.setTaskType(task.getTaskType());
             clone.setRewardPoints(task.getRewardPoints());
             clone.setPenaltyPoints(task.getPenaltyPoints());
             clone.setCostPoints(task.getCostPoints());
@@ -120,6 +120,14 @@ public class TaskContextMenu {
                 onUpdate.run();
             });
             contextMenu.getItems().addAll(favItem, new SeparatorMenuItem());
+        }
+
+        if (appStats.isEnableTextToTask()) {
+            MenuItem textToTaskItem = new MenuItem("Text to Task");
+            textToTaskItem.setOnAction(e -> {
+                TaskDialogs.showTextToTaskDialog(task, globalDatabase, onUpdate);
+            });
+            contextMenu.getItems().add(textToTaskItem);
         }
 
         MenuItem editItem = new MenuItem("Edit Task");

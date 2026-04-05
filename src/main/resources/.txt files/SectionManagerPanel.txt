@@ -179,9 +179,9 @@ public class SectionManagerPanel extends VBox {
         chkPrefix.setSelected(!isNew && config.isShowPrefix());
         grid.add(createToggleBox(chkPrefix, "Allows prefixing tags like [GYM] with custom colors."), 0, 5);
 
-        CheckBox chkWorkType = new CheckBox("Enable Work Types");
-        chkWorkType.setSelected(!isNew && config.isShowWorkType());
-        grid.add(createToggleBox(chkWorkType, "Displays an editable string box for categorization."), 1, 5);
+        CheckBox chkTaskType = new CheckBox("Enable Task Types");
+        chkTaskType.setSelected(!isNew && config.isShowTaskType());
+        grid.add(createToggleBox(chkTaskType, "Displays an editable string box for categorization."), 1, 5);
 
         CheckBox chkTags = new CheckBox("Enable Dynamic Filter Tags");
         chkTags.setSelected(!isNew && config.isShowTags());
@@ -216,11 +216,23 @@ public class SectionManagerPanel extends VBox {
         chkZen.setSelected(!isNew && config.isEnableZenMode());
         grid.add(createToggleBox(chkZen, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 1, 9);
 
-        // --- FIXED: Safely check !isNew and actually ADD it to the layout Grid! ---
         CheckBox chkNotesPage = new CheckBox("Enable Notes Page Mode");
         chkNotesPage.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
         chkNotesPage.setSelected(!isNew && config.isNotesPage());
         grid.add(createToggleBox(chkNotesPage, "Turns this section into a pinned notes board (no tasks/scores)."), 0, 10);
+
+        // --- FIXED: Toggle disables itself if global stats are off ---
+        CheckBox chkStats = new CheckBox("Enable Custom Stats System");
+        if (appStats.isGlobalStatsEnabled()) {
+            chkStats.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold;");
+            chkStats.setSelected(!isNew && config.isEnableStatsSystem());
+            grid.add(createToggleBox(chkStats, "Allows tasks to grant custom RPG stat points (e.g., +5 Strength)."), 1, 10);
+        } else {
+            chkStats.setStyle("-fx-text-fill: #555555;");
+            chkStats.setDisable(true);
+            chkStats.setSelected(false);
+            grid.add(createToggleBox(chkStats, "⚠️ Disabled. Turn on Global Custom Stats in General Settings first."), 1, 10);
+        }
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -240,7 +252,7 @@ public class SectionManagerPanel extends VBox {
                 target.setShowDate(chkDate.isSelected());
                 target.setTrackTime(chkTime.isSelected());
                 target.setShowPrefix(chkPrefix.isSelected());
-                target.setShowWorkType(chkWorkType.isSelected());
+                target.setShowWorkType(chkTaskType.isSelected());
                 target.setShowTags(chkTags.isSelected());
                 target.setEnableScore(chkScore.isSelected());
                 target.setEnableLinks(chkLinks.isSelected());
@@ -249,9 +261,10 @@ public class SectionManagerPanel extends VBox {
                 target.setEnableIcons(chkIcons.isSelected());
                 target.setRewardsPage(chkRewards.isSelected());
                 target.setEnableZenMode(chkZen.isSelected());
-
-                // --- FIXED: Save correctly to the target object ---
                 target.setNotesPage(chkNotesPage.isSelected());
+
+                // Only save true if global is also true
+                target.setEnableStatsSystem(appStats.isGlobalStatsEnabled() && chkStats.isSelected());
 
                 if (isNew) {
                     appStats.getSections().add(target);
