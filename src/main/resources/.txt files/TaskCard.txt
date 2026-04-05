@@ -44,7 +44,6 @@ public class TaskCard extends VBox {
     }
 
     public TaskCard(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate, List<Timeline> activeTimelines, BiConsumer<String, String> onReorder, Consumer<TaskItem> onGoToPage) {
-        // Apply Dynamic Checkbox Theme
         String cbCss = TaskDialogs.getCheckboxThemeCss(appStats.getCheckboxTheme());
         this.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(cbCss.getBytes()));
 
@@ -73,14 +72,19 @@ public class TaskCard extends VBox {
         boolean isLocked = !blockingTaskNames.isEmpty();
         boolean isNoteMode = config.isNotesPage();
 
+        // --- STYLING FLAG ---
+        boolean allowStyling = isNoteMode || config.isEnableTaskStyling();
+
         String bgStyle = task.getColorHex() != null && !task.getColorHex().equals("transparent") ? "-fx-background-color: " + task.getColorHex() + "; " : "";
         String borderStyle = "";
 
-        // --- FIXED: Apply default Link Card styling ---
-        if (task.isLinkCard()) {
+        if (task.isOptional()) {
+            bgStyle = "-fx-background-color: #332B00; ";
+            borderStyle = "-fx-border-color: #FFD700; -fx-border-width: 1; -fx-border-radius: 4; ";
+        } else if (task.isLinkCard()) {
             bgStyle = "-fx-background-color: #1A3A4D; ";
             borderStyle = "-fx-border-color: #569CD6; -fx-border-width: 1; -fx-border-radius: 4; ";
-        } else if (isNoteMode && task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) {
+        } else if (allowStyling && task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) {
             borderStyle = "-fx-border-color: " + task.getCustomOutlineColor() + "; -fx-border-width: 1; -fx-border-radius: 4; ";
         } else if (!isLocked) {
             if (config.isAllowFavorite() && task.isFavorite()) {
@@ -124,12 +128,10 @@ public class TaskCard extends VBox {
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
-        // --- NEW: Visual indicator that it's clickable ---
         if (task.isLinkCard()) {
             mainRow.setCursor(javafx.scene.Cursor.HAND);
         }
 
-        // --- FIXED: Single click logic added for Link Cards ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
@@ -158,6 +160,14 @@ public class TaskCard extends VBox {
         HBox.setHgrow(textContainer, Priority.ALWAYS);
 
         if (!isLocked) {
+
+            // --- [OPTIONAL] TAG ---
+            if (task.isOptional()) {
+                Label optIndicator = new Label("[OPTIONAL]");
+                optIndicator.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + metaFontSize + "px; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
+                metaBox.getChildren().add(optIndicator);
+            }
+
             Region sideRect = new Region();
             sideRect.setMinWidth(5);
             sideRect.setPrefWidth(5);
@@ -170,7 +180,8 @@ public class TaskCard extends VBox {
             }
 
             String fillColor = "transparent";
-            if (isNoteMode && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) {
+
+            if (allowStyling && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) {
                 fillColor = task.getCustomSideboxColor();
             } else if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
                 fillColor = task.getPriority().getColorHex();
@@ -255,7 +266,6 @@ public class TaskCard extends VBox {
             else textLabel.setStyle(fontStyle + "-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
             textContainer.getChildren().add(textLabel);
 
-            // --- NEW: Add a small indicator for Link Cards next to the text ---
             if (task.isLinkCard()) {
                 Label linkIndicator = new Label("↗");
                 linkIndicator.setStyle("-fx-text-fill: #569CD6; -fx-font-size: " + metaFontSize + "px; -fx-padding: 0 0 0 5;");
@@ -275,7 +285,7 @@ public class TaskCard extends VBox {
                 task.setStatsExpanded(newVis);
                 statsMiniCard.setVisible(newVis);
                 statsMiniCard.setManaged(newVis);
-                eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (newVis ? "#569CD6" : "#AAAAAA") + ";");
+                eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -padding: 0 10 0 0; -fx-text-fill: " + (newVis ? "#569CD6" : "#AAAAAA") + ";");
                 StorageManager.saveTasks(globalDatabase);
             });
             mainRow.getChildren().add(eyeBtn);
@@ -329,7 +339,6 @@ public class TaskCard extends VBox {
             activeTimelines.add(deadlineTimer);
         }
 
-        // --- FIXED: Hide action components entirely for Link Cards ---
         if (!isLocked && !task.isLinkCard()) {
             if (deadlineLabel != null) mainRow.getChildren().add(deadlineLabel);
 
@@ -342,7 +351,8 @@ public class TaskCard extends VBox {
                 mainRow.getChildren().add(timeLabel);
             }
 
-            if (config.isShowPriority() && !isNoteMode) {
+            // Hide priority dropdown if Optional Task
+            if (config.isShowPriority() && !isNoteMode && !task.isOptional()) {
                 ComboBox<CustomPriority> localPrioBox = new ComboBox<>();
                 localPrioBox.getItems().addAll(appStats.getCustomPriorities());
                 localPrioBox.setValue(task.getPriority());
@@ -456,10 +466,14 @@ public class TaskCard extends VBox {
         getChildren().addAll(primaryCard, statsMiniCard);
 
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
-        primaryCard.setOnContextMenuRequested(e -> contextMenu.show(primaryCard, e.getScreenX(), e.getScreenY()));
+
+        // --- CONSUME THE EVENT TO PREVENT THE BACKGROUND MENU FROM SHOWING ---
+        this.setOnContextMenuRequested(e -> {
+            contextMenu.show(this, e.getScreenX(), e.getScreenY());
+            e.consume();
+        });
     }
 
-    // --- NEW: Desktop App / URL Launcher logic ---
     private void openActionPath(String path) {
         if (path == null || path.isEmpty()) return;
         new Thread(() -> {

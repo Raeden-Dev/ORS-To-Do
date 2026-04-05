@@ -47,3 +47,26 @@ CHANGES DONE AFTERWARD
   Add a "Randomize" button below text color which will randomly pick a color and background of similar contrast of score reward/penalty for the stat Im creating
 > Add a checkbox in "general configuration" section at settings page, that turns on "Custom Stats" on/off, if custom stats isn't turned on I cannot add anything to Stats Configuration or turn on "enable custom stats system" in edit section config dialog.
   Turning this on also adds a "Current Stats" section in analytics page where my total stats are being tracked.
+
+=======================
+NEW ADDITIONS FOR v1.39
+=======================
+> The custom stats I am able to add in stats configuration should be able to:
+    - Keep record of description of the stat
+    - Add max cap for the stat
+    - Time until stat atrophy
+> The Stats shown in "Current Stats" section in Analytics dashboard should
+    > Keep record of Total stat point earned in lifetime for that stat
+    > Keep record of Total stat point lost in lifetime for that stat
+    > Show current amount of the stat
+    > Show maximum level reached for that stat
+> I should be able to create a new type of page called "Stat page", which is available in "section config" in manage dynamic sections
+    - In stat page I'm able to add a new type of card called stat card, which is like any other card except with a counter with current/max amount of that stat
+    - The stat card style should be same as the bg color, outline color, text color and icon color as I created in the stat configuration
+> I should be able to create a new type of page called "Perk page", which is available in "section config" in manage dynamic sections
+    - In perk page I'm able to add a new type of card called perk card, which shows name of the perk and requirements to unlock it, I can also hook multiple task dependency for it to unlock. There is also description of the perk which shows similar to when I expand a sub-task
+    - I can hook multiple stat required to unlock it. Perks are lost if a certain stat decreases.
+    - A perk increases in glow the more I increase its level if Im able to maintain it every week (e.g. week 1 = level 1, week 2 = level 2, week 3 = level 3, if I dont lose the stats to maintain it), max glow is reached at level 5
+> A stat Atrophy (Passive Decay)
+    - If a user doesn't complete any tasks associated with a specific stat (like "Strength" or "Creativity") for 3 or 7 days, that stat begins to slowly drain.
+    This forces you to maintain a balanced routine to keep your highly-leveled Perks from de-leveling and losing their glow. This atrophy is configurable per stat

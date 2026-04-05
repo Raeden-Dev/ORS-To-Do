@@ -145,7 +145,7 @@ public class AnalyticsModule extends BorderPane {
             VBox rpgBox = new VBox(15);
             rpgBox.setPadding(new Insets(20, 0, 0, 0));
 
-            Label rpgHeader = new Label("Current RPG Stats");
+            Label rpgHeader = new Label("Current Stats");
             rpgHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
 
             FlowPane statsFlow = new FlowPane(15, 15);

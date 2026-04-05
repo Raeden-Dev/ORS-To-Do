@@ -11,11 +11,8 @@ public class SectionConfig implements Serializable {
     private String sidebarColor = "#569CD6";
 
     private int resetIntervalHours = 0;
-
-    // --- FIXED: Renamed to match exactly what SectionManagerPanel expects ---
     private boolean autoArchive = false;
     private boolean allowManualArchiving = false;
-
     private List<DailyTemplate> autoAddTemplates = new ArrayList<>();
 
     private boolean hasStreak = false;
@@ -36,6 +33,10 @@ public class SectionConfig implements Serializable {
     private boolean enableIcons = false;
     private boolean isRewardsPage = false;
     private boolean enableZenMode = false;
+    private boolean enableOptionalTasks = false;
+
+    // --- NEW: Enable Task Styling Flag ---
+    private boolean enableTaskStyling = false;
 
     public SectionConfig(String id, String name) {
         this.id = id;
@@ -52,7 +53,6 @@ public class SectionConfig implements Serializable {
     public int getResetIntervalHours() { return resetIntervalHours; }
     public void setResetIntervalHours(int resetIntervalHours) { this.resetIntervalHours = resetIntervalHours; }
 
-    // --- FIXED: Archiving Getters and Setters ---
     public boolean isAutoArchive() { return autoArchive; }
     public void setAutoArchive(boolean autoArchive) { this.autoArchive = autoArchive; }
 
@@ -100,4 +100,9 @@ public class SectionConfig implements Serializable {
     public void setRewardsPage(boolean isRewardsPage) { this.isRewardsPage = isRewardsPage; }
     public boolean isEnableZenMode() { return enableZenMode; }
     public void setEnableZenMode(boolean enableZenMode) { this.enableZenMode = enableZenMode; }
+    public boolean isEnableOptionalTasks() { return enableOptionalTasks; }
+    public void setEnableOptionalTasks(boolean enableOptionalTasks) { this.enableOptionalTasks = enableOptionalTasks; }
+
+    public boolean isEnableTaskStyling() { return enableTaskStyling; }
+    public void setEnableTaskStyling(boolean enableTaskStyling) { this.enableTaskStyling = enableTaskStyling; }
 }

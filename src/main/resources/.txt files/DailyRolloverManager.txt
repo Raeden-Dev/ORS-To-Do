@@ -72,6 +72,7 @@ public class DailyRolloverManager {
                             }
                         }
                         if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+                        newTask.setOptional(template.isOptional());
 
                         taskDatabase.add(newTask);
                     }

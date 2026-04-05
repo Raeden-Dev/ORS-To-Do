@@ -154,8 +154,7 @@ public class TaskContextMenu {
             onUpdate.run();
         });
 
-        // --- FIXED: Reset Task Style removes ALL visual overrides ---
-        MenuItem colorItem = new MenuItem("Reset Task Style");
+        MenuItem colorItem = new MenuItem(allowStyling ? "Reset Task Style" : "Clear Background Color");
         colorItem.setOnAction(e -> {
             task.setColorHex("transparent");
             task.setCustomOutlineColor("transparent");
@@ -204,8 +203,9 @@ public class TaskContextMenu {
             onUpdate.run();
         });
 
+        // --- FIXED: Removed 'config == null' so it correctly shows on Search/Dashboard pages ---
         MenuItem focusLinkItem = null;
-        if (onGoToPage != null && config == null && !task.isArchived()) {
+        if (onGoToPage != null && !task.isArchived()) {
             focusLinkItem = new MenuItem("Go to Original Page ↗");
             focusLinkItem.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
             focusLinkItem.setOnAction(e -> onGoToPage.accept(task));

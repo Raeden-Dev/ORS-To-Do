@@ -17,17 +17,19 @@ public class StatsManagerPanel extends VBox {
     private Runnable refreshCallback;
     private final double BUTTON_WIDTH = 200.0;
 
+    // --- FIXED: Extracted label to class level so we can update it dynamically ---
+    private Label descLabel;
+
     public StatsManagerPanel(AppStats appStats, Runnable refreshCallback) {
         super(15);
         this.appStats = appStats;
         this.refreshCallback = refreshCallback;
 
         setStyle("-fx-border-color: #B5CEA8; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
-        Label header = new Label("Stats Configuration (RPG System)");
+        Label header = new Label("Stats Configuration");
         header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
 
-        Label desc = new Label("Create custom stats (Strength, Focus, etc.) to attach to your tasks.");
-        desc.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 12px;");
+        descLabel = new Label();
 
         existingStatsBox = new VBox(10);
         renderExistingStats();
@@ -37,13 +39,22 @@ public class StatsManagerPanel extends VBox {
         createStatBtn.setStyle("-fx-background-color: #333333; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         createStatBtn.setOnAction(e -> showStatDialog(null));
 
-        getChildren().addAll(header, desc, existingStatsBox, new Separator(), createStatBtn);
+        getChildren().addAll(header, descLabel, existingStatsBox, new Separator(), createStatBtn);
 
-        // --- NEW: Disable entirely if Global Setting is OFF ---
+        // Run the initial state check
+        refreshState();
+    }
+
+    // --- NEW: Public method to update the UI instantly when settings change ---
+    public void refreshState() {
         if (!appStats.isGlobalStatsEnabled()) {
             this.setDisable(true);
-            desc.setText("⚠️ Custom Stats are disabled. Turn them on in General Configuration to use this feature.");
-            desc.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: 12px;");
+            descLabel.setText("⚠️ Custom Stats are disabled. Turn them on in General Configuration to use this feature.");
+            descLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: 12px;");
+        } else {
+            this.setDisable(false);
+            descLabel.setText("Create custom stats (Strength, Focus, etc.) to attach to your tasks.");
+            descLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 12px;");
         }
     }
 
@@ -91,7 +102,7 @@ public class StatsManagerPanel extends VBox {
             editBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand;");
             editBtn.setOnAction(e -> showStatDialog(stat));
 
-            Button removeBtn = new Button("Delete");
+            Button removeBtn = new Button("❌");
             removeBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-cursor: hand;");
             removeBtn.setOnAction(e -> {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Delete stat '" + stat.getName() + "'? This will remove it from future use.", ButtonType.YES, ButtonType.NO);

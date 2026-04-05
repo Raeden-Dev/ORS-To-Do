@@ -342,7 +342,7 @@ public class SectionManagerPanel extends VBox {
         content.getChildren().add(featuresGrid);
         content.getChildren().add(new Separator());
 
-        CheckBox enableStatsSystemCheck = new CheckBox("Enable RPG Custom Stats");
+        CheckBox enableStatsSystemCheck = new CheckBox("Enable Custom Stats");
         enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
 
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards (Click to launch URL/App)");

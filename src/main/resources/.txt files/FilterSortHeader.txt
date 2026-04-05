@@ -14,7 +14,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,7 +37,7 @@ public class FilterSortHeader extends VBox {
         super(10);
         this.config = config;
         this.appStats = appStats;
-        this.globalDatabase = globalDatabase; // Save database reference for counting
+        this.globalDatabase = globalDatabase;
 
         // --- DASHBOARD STRIP ---
         HBox dashboardStrip = new HBox(15);
@@ -45,16 +45,19 @@ public class FilterSortHeader extends VBox {
         dashboardStrip.setPadding(new Insets(15));
         dashboardStrip.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #3E3E42; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        // --- FIXED: Wrap titles in a VBox to allow the sub-task counter underneath ---
         VBox titleBox = new VBox(2);
         availableTasksLabel = new Label();
         String titleColor = appStats.isMatchTitleColor() ? config.getSidebarColor() : "#569CD6";
         availableTasksLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + titleColor + ";");
 
+        HBox subInfoBox = new HBox(10);
+        subInfoBox.setAlignment(Pos.CENTER_LEFT);
+
         activeSubTasksLabel = new Label();
         activeSubTasksLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #858585;");
 
-        titleBox.getChildren().addAll(availableTasksLabel, activeSubTasksLabel);
+        subInfoBox.getChildren().add(activeSubTasksLabel);
+        titleBox.getChildren().addAll(availableTasksLabel, subInfoBox);
         dashboardStrip.getChildren().add(titleBox);
 
         Region headerSpacer = new Region();
@@ -74,13 +77,40 @@ public class FilterSortHeader extends VBox {
         if (config.isHasStreak()) {
             Label streakLabel = new Label("🔥 " + appStats.getCurrentStreak() + " Day Streak");
             streakLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FF8C00; -fx-background-color: #331A00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FF8C00; -fx-border-radius: 15;");
+            badgesFlow.getChildren().add(streakLabel);
+        }
 
+        if (config.getResetIntervalHours() > 0) {
             Label countdownLabel = new Label();
-            countdownLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-background-color: #1E1E1E; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #555555; -fx-border-radius: 15;");
 
             Runnable updateClock = () -> {
-                java.time.Duration duration = java.time.Duration.between(LocalTime.now(), LocalTime.MAX);
-                countdownLabel.setText(String.format("Resets in: %02d:%02d:%02d", duration.toHours(), duration.toMinutesPart(), duration.toSecondsPart()));
+                long intervalHours = config.getResetIntervalHours();
+                if (intervalHours <= 0) return;
+
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
+
+                long totalMinutesSinceMidnight = java.time.Duration.between(startOfDay, now).toMinutes();
+                long intervalMinutes = intervalHours * 60;
+
+                long currentBlockIndex = totalMinutesSinceMidnight / intervalMinutes;
+                long minutesIntoCurrentBlock = totalMinutesSinceMidnight % intervalMinutes;
+
+                long nextBoundaryMinutes = (currentBlockIndex + 1) * intervalMinutes;
+                LocalDateTime nextBoundary = startOfDay.plusMinutes(nextBoundaryMinutes);
+                java.time.Duration duration = java.time.Duration.between(now, nextBoundary);
+
+                long hours = duration.toHours();
+                long minutes = duration.toMinutesPart();
+                long seconds = duration.toSecondsPart();
+
+                if (minutesIntoCurrentBlock < 10) {
+                    countdownLabel.setText(String.format("Resets in: %02d:%02d:%02d", hours, minutes, seconds));
+                    countdownLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-background-color: #1E1E1E; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #555555; -fx-border-radius: 15;");
+                } else {
+                    countdownLabel.setText(String.format("Starts in: %02dh %02dm %02ds", hours, minutes, seconds));
+                    countdownLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-background-color: #331A1A; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #8B0000; -fx-border-radius: 15;");
+                }
             };
             updateClock.run();
 
@@ -92,7 +122,7 @@ public class FilterSortHeader extends VBox {
                 if (newScene == null) clock.stop();
             });
 
-            badgesFlow.getChildren().addAll(streakLabel, countdownLabel);
+            badgesFlow.getChildren().add(countdownLabel);
         }
 
         if (config.isEnableZenMode()) {
@@ -103,6 +133,7 @@ public class FilterSortHeader extends VBox {
 
         if (config.isShowAnalytics()) {
             Button exportBtn = new Button("📊 Export");
+            // --- FIXED: Typo "-border-radius" changed to "-fx-border-radius" ---
             exportBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 5 15; -fx-background-radius: 15; -fx-border-color: #569CD6; -fx-border-radius: 15; -fx-font-size: 13px;");
             exportBtn.setOnAction(e -> AnalyticsExporter.exportSectionAnalytics(config, globalDatabase));
             badgesFlow.getChildren().add(exportBtn);
@@ -146,10 +177,26 @@ public class FilterSortHeader extends VBox {
     }
 
     public void updateBadges(int availableCount, int completedCount) {
+        int trueAvailable = 0;
+        int trueCompleted = 0;
+
+        if (globalDatabase != null) {
+            for (TaskItem task : globalDatabase) {
+                if (config.getId().equals(task.getSectionId()) && !task.isArchived()) {
+                    if (!task.isOptional()) {
+                        if (task.isFinished()) trueCompleted++;
+                        else trueAvailable++;
+                    }
+                }
+            }
+        } else {
+            trueAvailable = availableCount;
+            trueCompleted = completedCount;
+        }
+
         if (config.isHasStreak()) availableTasksLabel.setText(config.getName() + " (" + completedCount + "/" + (availableCount + completedCount) + ")");
         else availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
 
-        // --- NEW: Calculate and update Sub-Task count ---
         if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage()) {
             int activeSubTaskCount = 0;
             if (globalDatabase != null) {

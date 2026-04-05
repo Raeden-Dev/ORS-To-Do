@@ -24,8 +24,6 @@ public class SectionManagerPanel extends VBox {
     private Runnable refreshCallback;
     private Runnable onSectionChanged;
 
-    private final double BUTTON_WIDTH = 200.0;
-
     public SectionManagerPanel(AppStats appStats, List<TaskItem> globalDatabase, Runnable refreshCallback, Runnable onSectionChanged) {
         super(15);
         this.appStats = appStats;
@@ -41,29 +39,17 @@ public class SectionManagerPanel extends VBox {
         HBox topRow = new HBox(10);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        TextField newSectionNameField = new TextField();
-        newSectionNameField.setPromptText("New Section Name...");
-        newSectionNameField.setPrefWidth(BUTTON_WIDTH);
-        newSectionNameField.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3;");
+        Button addSectionBtn = new Button("+ Add Section");
+        addSectionBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 8 15;");
+        addSectionBtn.setPrefWidth(250);
 
-        Button addSectionBtn = new Button("Add Section");
-        addSectionBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
-
-        topRow.getChildren().addAll(newSectionNameField, addSectionBtn);
+        topRow.getChildren().add(addSectionBtn);
 
         existingSectionsBox = new VBox(10);
 
         addSectionBtn.setOnAction(e -> {
-            String name = newSectionNameField.getText().trim();
-            if (!name.isEmpty()) {
-                SectionConfig config = new SectionConfig(UUID.randomUUID().toString(), name);
-                appStats.getSections().add(config);
-                newSectionNameField.clear();
-                StorageManager.saveStats(appStats);
-                refreshList();
-                if(onSectionChanged != null) onSectionChanged.run();
-                refreshCallback.run();
-            }
+            SectionConfig newConfig = new SectionConfig(UUID.randomUUID().toString(), "");
+            showEditSectionDialog(newConfig, true);
         });
 
         getChildren().addAll(textHeader, topRow, new Separator(), existingSectionsBox);
@@ -86,12 +72,19 @@ public class SectionManagerPanel extends VBox {
             HBox nameBox = new HBox(10, colorIndicator, nameLabel);
             nameBox.setAlignment(Pos.CENTER_LEFT);
 
+            // --- FIXED: Visual Badge so the interval is visible directly on the Dashboard ---
+            if (config.getResetIntervalHours() > 0) {
+                Label intervalBadge = new Label("⏱ " + config.getResetIntervalHours() + "h Reset");
+                intervalBadge.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px; -fx-background-color: #2D2D30; -fx-padding: 3 8; -fx-background-radius: 10; -fx-border-color: #3E3E42; -fx-border-radius: 10;");
+                nameBox.getChildren().add(intervalBadge);
+            }
+
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
             Button editBtn = new Button("⚙ Edit Features");
             editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
-            editBtn.setOnAction(e -> showEditSectionDialog(config));
+            editBtn.setOnAction(e -> showEditSectionDialog(config, false));
 
             Button moveUpBtn = new Button("▲");
             moveUpBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
@@ -154,18 +147,15 @@ public class SectionManagerPanel extends VBox {
         return box;
     }
 
-    private void showEditSectionDialog(SectionConfig config) {
+    private void showEditSectionDialog(SectionConfig config, boolean isNew) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Edit Section: " + config.getName());
+        dialog.setTitle(isNew ? "Create New Section" : "Edit Section: " + config.getName());
         TaskDialogs.styleDialog(dialog);
 
         VBox content = new VBox(15);
         content.setPadding(new Insets(10));
         content.setPrefWidth(700);
 
-        // ==========================================
-        // 1. PRESET MANAGER ROW
-        // ==========================================
         HBox presetRow = new HBox(10);
         presetRow.setAlignment(Pos.CENTER_LEFT);
         presetRow.setStyle("-fx-background-color: #2D2D30; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5; -fx-background-radius: 5;");
@@ -203,9 +193,6 @@ public class SectionManagerPanel extends VBox {
         presetRow.getChildren().addAll(presetLabel, presetBox, presetSpacer, savePresetBtn);
         content.getChildren().add(presetRow);
 
-        // ==========================================
-        // 2. NAME & COLOR ROW
-        // ==========================================
         HBox basicInfoRow = new HBox(15);
         basicInfoRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -219,14 +206,32 @@ public class SectionManagerPanel extends VBox {
         Spinner<Integer> intervalSpinner = new Spinner<>(0, 8760, config.getResetIntervalHours());
         intervalSpinner.setEditable(true);
         intervalSpinner.setPrefWidth(80);
+
+        // --- FIXED: Intercept keystrokes instantly so the Editable Spinner bug never occurs ---
+        intervalSpinner.getEditor().textProperty().addListener((obs, oldText, newText) -> {
+            try {
+                int val = Integer.parseInt(newText.trim());
+                intervalSpinner.getValueFactory().setValue(val);
+            } catch (NumberFormatException ignored) {}
+        });
+
+        // Backup safeguard if they empty the text box entirely and click away
+        intervalSpinner.getEditor().focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                try {
+                    int val = Integer.parseInt(intervalSpinner.getEditor().getText().trim());
+                    intervalSpinner.getValueFactory().setValue(val);
+                } catch (NumberFormatException e) {
+                    intervalSpinner.getEditor().setText(String.valueOf(intervalSpinner.getValue()));
+                }
+            }
+        });
+
         VBox intervalBox = new VBox(5, new Label("Reset Interval (Hours):"), intervalSpinner);
 
         basicInfoRow.getChildren().addAll(nameBox, colorBox, intervalBox);
         content.getChildren().addAll(basicInfoRow, new Separator());
 
-        // ==========================================
-        // 3. FEATURE TOGGLES (2 COLUMN GRID)
-        // ==========================================
         GridPane featuresGrid = new GridPane();
         featuresGrid.setHgap(20);
         featuresGrid.setVgap(15);
@@ -237,7 +242,6 @@ public class SectionManagerPanel extends VBox {
         col2.setPercentWidth(50);
         featuresGrid.getColumnConstraints().addAll(col1, col2);
 
-        // --- Column 1 Variables ---
         CheckBox allowManualArchiveCheck = new CheckBox("Allow Manual Archiving");
         allowManualArchiveCheck.setSelected(config.isAllowManualArchiving());
 
@@ -272,20 +276,9 @@ public class SectionManagerPanel extends VBox {
         featuresGrid.add(createToggleWithDesc(enableLinksCheck, "Allows attaching clickable URLs to tasks."), 0, 6);
         featuresGrid.add(createToggleWithDesc(rewardsPageCheck, "Turns this list into a shop where items cost points instead of giving them."), 0, 7);
 
-        // --- Column 2 Variables ---
-        // --- RESTORED: Streak System with dependency logic ---
         CheckBox streakCheck = new CheckBox("Enable Streak System");
         streakCheck.setSelected(config.isHasStreak());
         streakCheck.setDisable(config.getResetIntervalHours() <= 0);
-
-        intervalSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal == null || newVal <= 0) {
-                streakCheck.setDisable(true);
-                streakCheck.setSelected(false);
-            } else {
-                streakCheck.setDisable(false);
-            }
-        });
 
         CheckBox autoArchiveCheck = new CheckBox("Auto-Archive Completed");
         autoArchiveCheck.setSelected(config.isAutoArchive());
@@ -311,6 +304,29 @@ public class SectionManagerPanel extends VBox {
         CheckBox enableZenModeCheck = new CheckBox("Enable Zen Mode");
         enableZenModeCheck.setSelected(config.isEnableZenMode());
 
+        CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks");
+        enableOptionalTasksCheck.setSelected(config.isEnableOptionalTasks());
+        enableOptionalTasksCheck.setDisable(config.getResetIntervalHours() <= 0 || !config.isEnableScore());
+
+        CheckBox enableTaskStylingCheck = new CheckBox("Enable Task Styling");
+        enableTaskStylingCheck.setSelected(config.isEnableTaskStyling());
+
+        // Because we added the textProperty listener above, this logic now correctly fires instantly when typing!
+        intervalSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+            boolean hasInterval = newVal != null && newVal > 0;
+            streakCheck.setDisable(!hasInterval);
+            if (!hasInterval) streakCheck.setSelected(false);
+
+            enableOptionalTasksCheck.setDisable(!hasInterval || !enableScoreCheck.isSelected());
+            if (!hasInterval || !enableScoreCheck.isSelected()) enableOptionalTasksCheck.setSelected(false);
+        });
+
+        enableScoreCheck.setOnAction(e -> {
+            boolean hasInterval = intervalSpinner.getValue() != null && intervalSpinner.getValue() > 0;
+            enableOptionalTasksCheck.setDisable(!hasInterval || !enableScoreCheck.isSelected());
+            if (!hasInterval || !enableScoreCheck.isSelected()) enableOptionalTasksCheck.setSelected(false);
+        });
+
         featuresGrid.add(createToggleWithDesc(streakCheck, "Tracks consecutive completions. Requires a reset interval."), 1, 0);
         featuresGrid.add(createToggleWithDesc(autoArchiveCheck, "Tasks are sent to archive the moment they are checked off."), 1, 1);
         featuresGrid.add(createToggleWithDesc(showPriorityCheck, "Adds a priority ranking dropdown to each task."), 1, 2);
@@ -320,12 +336,13 @@ public class SectionManagerPanel extends VBox {
         featuresGrid.add(createToggleWithDesc(showAnalyticsCheck, "Displays a button to export an HTML graph of completed tasks."), 1, 6);
         featuresGrid.add(createToggleWithDesc(enableIconsCheck, "Allows attaching custom color-coded symbols to tasks."), 1, 7);
         featuresGrid.add(createToggleWithDesc(enableZenModeCheck, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 0, 8);
+        featuresGrid.add(createToggleWithDesc(enableOptionalTasksCheck, "Allows tasks that grant bonus points but do not count toward required daily totals."), 1, 8);
+        featuresGrid.add(createToggleWithDesc(enableTaskStylingCheck, "Allows custom background, outline, and sidebox colors for individual tasks."), 0, 9);
 
         content.getChildren().add(featuresGrid);
         content.getChildren().add(new Separator());
 
-        // --- EXTRA TOGGLES ---
-        CheckBox enableStatsSystemCheck = new CheckBox("Enable RPG Custom Stats");
+        CheckBox enableStatsSystemCheck = new CheckBox("Enable Custom Stats");
         enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
 
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards (Click to launch URL/App)");
@@ -339,11 +356,6 @@ public class SectionManagerPanel extends VBox {
         extraBox.getChildren().addAll(enableStatsSystemCheck, enableLinkCardsCheck, notesPageCheck);
         content.getChildren().add(extraBox);
 
-        // ==========================================
-        // 4. ACTION HANDLERS
-        // ==========================================
-
-        // Load Preset Action
         presetBox.setOnAction(e -> {
             SectionConfig loadedPreset = presetBox.getValue();
             if (loadedPreset != null) {
@@ -368,10 +380,11 @@ public class SectionManagerPanel extends VBox {
                 enableStatsSystemCheck.setSelected(loadedPreset.isEnableStatsSystem());
                 enableLinkCardsCheck.setSelected(loadedPreset.isEnableLinkCards());
                 notesPageCheck.setSelected(loadedPreset.isNotesPage());
+                enableOptionalTasksCheck.setSelected(loadedPreset.isEnableOptionalTasks());
+                enableTaskStylingCheck.setSelected(loadedPreset.isEnableTaskStyling());
             }
         });
 
-        // Save Preset Action
         savePresetBtn.setOnAction(e -> {
             TextInputDialog nameDialog = new TextInputDialog("Custom Preset");
             nameDialog.setTitle("Save Preset");
@@ -402,6 +415,8 @@ public class SectionManagerPanel extends VBox {
                 newPreset.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
                 newPreset.setEnableLinkCards(enableLinkCardsCheck.isSelected());
                 newPreset.setNotesPage(notesPageCheck.isSelected());
+                newPreset.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected());
+                newPreset.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
 
                 appStats.getSectionPresets().add(newPreset);
                 presetBox.getItems().add(newPreset);
@@ -415,11 +430,15 @@ public class SectionManagerPanel extends VBox {
 
         dialog.showAndWait().ifPresent(res -> {
             if (res == ButtonType.OK) {
-                config.setName(((TextField)nameBox.getChildren().get(1)).getText().trim());
+                String typedName = ((TextField)nameBox.getChildren().get(1)).getText().trim();
+
+                if (isNew && typedName.isEmpty()) return;
+
+                config.setName(typedName.isEmpty() ? "Unnamed Section" : typedName);
                 config.setSidebarColor(toHexString(colorPicker.getValue()));
                 config.setResetIntervalHours(intervalSpinner.getValue());
 
-                config.setHasStreak(streakCheck.isSelected()); // SAVED
+                config.setHasStreak(streakCheck.isSelected());
                 config.setAllowManualArchiving(allowManualArchiveCheck.isSelected());
                 config.setEnableSubTasks(enableSubTasksCheck.isSelected());
                 config.setShowDate(showDateCheck.isSelected());
@@ -441,6 +460,12 @@ public class SectionManagerPanel extends VBox {
                 config.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
                 config.setEnableLinkCards(enableLinkCardsCheck.isSelected());
                 config.setNotesPage(notesPageCheck.isSelected());
+                config.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected());
+                config.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
+
+                if (isNew) {
+                    appStats.getSections().add(config);
+                }
 
                 StorageManager.saveStats(appStats);
                 refreshList();

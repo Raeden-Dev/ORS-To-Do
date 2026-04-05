@@ -112,8 +112,13 @@ Also make the import data dialog box dark
     - Batch to Task (Remove the current batch to Task option in context menu from right clicking a task)
 > In "manage dynamic sections" at settings page, remove the New Section Name textfield and instead just keep the "Add Section" button, widen it a bit more and add a '+' before the text
 > In "Manage priorities" section at settings page, widen the priority name textbox, move the add priority button beside the dropdown and keep everything in 1 row to add a new priority. Also turn the theme of textbox and dropdown to dark theme
-
-
 > The reset interval doesn't show in the dashboard of sections if I remove and add it back or just add it newly. Fix it
+
+> Notification system that shows the following notifications:
+    - I can toggle notifications on/off in general configuration section
+    - Any task that has reached <24h, <12h, <4h, <2h deadline left recently.
+    - If I havent used the application for over 4 hours, shows the most amount of tasks I have left in a certain configuration
+    - If I have any task left to do in any timed section, notification shows when time left is 75%, 50%, 25% and 10% in that certain page until reset
+
 
 

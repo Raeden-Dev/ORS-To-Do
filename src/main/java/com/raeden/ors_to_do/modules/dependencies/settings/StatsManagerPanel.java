@@ -26,7 +26,7 @@ public class StatsManagerPanel extends VBox {
         this.refreshCallback = refreshCallback;
 
         setStyle("-fx-border-color: #B5CEA8; -fx-border-width: 1; -fx-padding: 15; -fx-border-radius: 5;");
-        Label header = new Label("Stats Configuration (RPG System)");
+        Label header = new Label("Stats Configuration");
         header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
 
         descLabel = new Label();

@@ -176,7 +176,7 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Always on Top", "Pins the Task Tracker window above all other applications.", alwaysOnTopCheck, "#C586C0"),
                 createSettingRow("Enable 'Text to Task'", "Allows pasting bulk text in the context menu to automatically generate multiple tasks.", chkTextToTask, "#C586C0"),
                 createSettingRow("Show Sidebar Active Count", "Displays the number of unfinished tasks directly on the sidebar buttons.", chkSidebarCount, "#C586C0"),
-                createSettingRow("Enable RPG Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8")
+                createSettingRow("Enable Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8")
         );
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");

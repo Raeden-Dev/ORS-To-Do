@@ -24,6 +24,7 @@ public class TaskContextMenu {
         ContextMenu contextMenu = new ContextMenu();
         boolean isNoteMode = config != null && config.isNotesPage();
 
+        boolean allowStyling = config != null && (config.isNotesPage() || config.isEnableTaskStyling());
         boolean isLinkCard = task.isLinkCard();
 
         MenuItem editItem = new MenuItem(isNoteMode ? "Edit Note" : "Edit Task");
@@ -47,7 +48,6 @@ public class TaskContextMenu {
         });
 
         MenuItem addSubTaskItem = null;
-        MenuItem textToTaskItem = null;
         if ((config == null || config.isEnableSubTasks()) && !isNoteMode) {
             addSubTaskItem = new MenuItem("Add Sub-tasks");
             addSubTaskItem.setOnAction(e -> showAddSubTaskDialog(task, globalDatabase, onUpdate));
@@ -55,11 +55,6 @@ public class TaskContextMenu {
             if (isLinkCard) {
                 addSubTaskItem.setDisable(true);
                 addSubTaskItem.setText("Add Sub-tasks (Disabled on Link Cards)");
-            }
-
-            if (appStats.isEnableTextToTask()) {
-                textToTaskItem = new MenuItem("Batch Text to Task");
-                textToTaskItem.setOnAction(e -> showTextToTaskDialog(task, globalDatabase, onUpdate));
             }
         }
 
@@ -159,11 +154,15 @@ public class TaskContextMenu {
             onUpdate.run();
         });
 
-        MenuItem colorItem = new MenuItem(isNoteMode ? "Reset Colors" : "Clear Background Color");
+        MenuItem colorItem = new MenuItem(allowStyling ? "Reset Task Style" : "Clear Background Color");
         colorItem.setOnAction(e -> {
             task.setColorHex("transparent");
             task.setCustomOutlineColor("transparent");
             task.setCustomSideboxColor("transparent");
+            task.setIconSymbol("None");
+            task.setIconColor("#FFFFFF");
+            task.setPrefix("");
+            task.setPrefixColor("#4EC9B0");
             StorageManager.saveTasks(globalDatabase);
             onUpdate.run();
         });
@@ -189,7 +188,7 @@ public class TaskContextMenu {
             moveMenu.getItems().add(emptyInfo);
         }
 
-        MenuItem toggleFavoriteItem = new MenuItem(task.isFavorite() ? "Remove Star" : "Star / Favorite");
+        MenuItem toggleFavoriteItem = new MenuItem(task.isFavorite() ? "Remove Favorite" : "Favorite Task");
         if (config != null && !config.isAllowFavorite()) toggleFavoriteItem.setDisable(true);
         toggleFavoriteItem.setOnAction(e -> {
             task.setFavorite(!task.isFavorite());
@@ -204,8 +203,9 @@ public class TaskContextMenu {
             onUpdate.run();
         });
 
+        // --- FIXED: Removed 'config == null' so it correctly shows on Search/Dashboard pages ---
         MenuItem focusLinkItem = null;
-        if (onGoToPage != null && config == null && !task.isArchived()) {
+        if (onGoToPage != null && !task.isArchived()) {
             focusLinkItem = new MenuItem("Go to Original Page ↗");
             focusLinkItem.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
             focusLinkItem.setOnAction(e -> onGoToPage.accept(task));
@@ -249,7 +249,6 @@ public class TaskContextMenu {
         if (focusLinkItem != null) contextMenu.getItems().addAll(focusLinkItem, new SeparatorMenuItem());
 
         if (addSubTaskItem != null) contextMenu.getItems().add(addSubTaskItem);
-        if (textToTaskItem != null) contextMenu.getItems().add(textToTaskItem);
         if (addLinkItem != null) contextMenu.getItems().add(addLinkItem);
         if (linksMenu != null) contextMenu.getItems().add(linksMenu);
 
