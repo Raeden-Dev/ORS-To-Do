@@ -40,19 +40,51 @@ public class ArchivedModule extends BorderPane {
         Button clearArchiveBtn = new Button("Empty Archive");
         clearArchiveBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         clearArchiveBtn.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Permanently delete ALL archived tasks?", ButtonType.YES, ButtonType.NO);
-            alert.setHeaderText(null);
-            alert.showAndWait().ifPresent(res -> {
-                if (res == ButtonType.YES) {
-                    int toDelete = (int) globalDatabase.stream().filter(TaskItem::isArchived).count();
-                    globalDatabase.removeIf(TaskItem::isArchived);
-                    appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + toDelete);
+            // --- NEW: 3-way Export & Delete Prompt ---
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Would you like to export your archived tasks to a text file before deleting them permanently?", ButtonType.YES, ButtonType.NO, ButtonType.CANCEL);
+            alert.setHeaderText("Export Archive Data?");
 
-                    StorageManager.saveTasks(globalDatabase);
-                    StorageManager.saveStats(appStats);
-                    refreshList();
-                    onStateChangedCallback.run();
+            // Inject dark theme
+            com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.styleDialog(alert);
+
+            alert.showAndWait().ifPresent(res -> {
+                if (res == ButtonType.CANCEL) return;
+
+                if (res == ButtonType.YES) {
+                    javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+                    fileChooser.setTitle("Export Archive Data");
+                    fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Text Files", "*.txt"));
+                    fileChooser.setInitialFileName("Archived_Tasks.txt");
+                    java.io.File file = fileChooser.showSaveDialog(null);
+
+                    if (file != null) {
+                        try (java.io.PrintWriter writer = new java.io.PrintWriter(file)) {
+                            writer.println("--- ARCHIVED TASKS EXPORT ---");
+                            for (TaskItem t : globalDatabase) {
+                                if (t.isArchived()) {
+                                    String dateStr = t.getDateCreated().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                                    writer.println("[" + dateStr + "] " + t.getTextContent());
+                                }
+                            }
+                            com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager.pushNotification("Export Successful", "Archive exported to " + file.getName());
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        // Abort deletion if the user cancelled the file save dialog
+                        return;
+                    }
                 }
+
+                // Proceed with deletion
+                int toDelete = (int) globalDatabase.stream().filter(TaskItem::isArchived).count();
+                globalDatabase.removeIf(TaskItem::isArchived);
+                appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + toDelete);
+
+                StorageManager.saveTasks(globalDatabase);
+                StorageManager.saveStats(appStats);
+                refreshList();
+                onStateChangedCallback.run();
             });
         });
 
@@ -106,9 +138,8 @@ public class ArchivedModule extends BorderPane {
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
-        // --- DYNAMIC: Cross-reference Section Name and Sidebar Color ---
         String sectionName = "Unknown List";
-        String sectionColor = "#C586C0"; // Default Fallback Color
+        String sectionColor = "#C586C0";
 
         if (task.getSectionId() != null) {
             Optional<SectionConfig> config = appStats.getSections().stream()
@@ -146,7 +177,6 @@ public class ArchivedModule extends BorderPane {
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
-        // --- NEW: Add Points Badge to Archived Task ---
         if (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0) {
             String badgeStr = "";
             if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
@@ -158,7 +188,6 @@ public class ArchivedModule extends BorderPane {
             mainRow.getChildren().add(ptsLabel);
         }
 
-        // --- NEW: Add Time Tracked Badge to Archived Task ---
         if (task.getTimeSpentSeconds() > 0) {
             int mins = task.getTimeSpentSeconds() / 60;
             Label timeLabel = new Label("⏱ " + mins + "m");
@@ -167,7 +196,6 @@ public class ArchivedModule extends BorderPane {
             mainRow.getChildren().add(timeLabel);
         }
 
-        // Render Subtasks
         if (!task.getSubTasks().isEmpty()) {
             VBox subTaskBox = new VBox(5);
             subTaskBox.setPadding(new Insets(0, 10, 10, 40));
@@ -197,14 +225,14 @@ public class ArchivedModule extends BorderPane {
             task.setArchived(false);
             StorageManager.saveTasks(globalDatabase);
             refreshList();
-            onStateChangedCallback.run(); // Refreshes the sidebar/dynamic modules
+            onStateChangedCallback.run();
         });
 
         MenuItem deleteItem = new MenuItem("Permanently Delete");
         deleteItem.setStyle("-fx-text-fill: #FF6666;");
         deleteItem.setOnAction(e -> {
             globalDatabase.remove(task);
-            appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + 1); // --- TRACK DELETIONS ---
+            appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + 1);
             StorageManager.saveTasks(globalDatabase);
             StorageManager.saveStats(appStats);
             refreshList();

@@ -51,6 +51,9 @@ public class BackupManager {
                 alert.setHeaderText("How would you like to import this backup?");
                 alert.setContentText("- REPLACE: Wipes current data and loads the backup entirely.\n- MERGE: Adds missing tasks/sections and keeps your highest stats.");
 
+                // --- NEW: Inject dark theme styling ---
+                com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.styleDialog(alert);
+
                 ButtonType replaceBtn = new ButtonType("Replace All");
                 ButtonType mergeBtn = new ButtonType("Merge Data");
                 ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
@@ -110,6 +113,9 @@ public class BackupManager {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
+
+        // --- NEW: Inject dark theme styling to errors too ---
+        com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.styleDialog(alert);
         alert.show();
     }
 }

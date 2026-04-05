@@ -4,18 +4,19 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class DangerZonePanel extends VBox {
-    private GridPane wipeGrid;
     private AppStats appStats;
     private List<TaskItem> globalDatabase;
     private Runnable refreshCallback;
     private final double BUTTON_WIDTH = 200.0;
+
+    // --- FIXED: Switched from GridPane to FlowPane to dynamically fill the right side ---
+    private FlowPane wipePane;
 
     public DangerZonePanel(AppStats appStats, List<TaskItem> globalDatabase, Runnable refreshCallback) {
         super(15);
@@ -27,71 +28,68 @@ public class DangerZonePanel extends VBox {
         Label dangerLabel = new Label("Danger Zone");
         dangerLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 16px; -fx-font-weight: bold;");
 
-        wipeGrid = new GridPane();
-        wipeGrid.setHgap(15); wipeGrid.setVgap(15);
-        refreshDangerZone();
+        // Set gap between buttons (horizontal and vertical)
+        wipePane = new FlowPane(15, 15);
 
-        getChildren().addAll(dangerLabel, wipeGrid);
+        getChildren().addAll(dangerLabel, wipePane);
+        refreshDangerZone();
     }
 
     public void refreshDangerZone() {
-        wipeGrid.getChildren().clear();
-        int col = 0; int row = 0;
+        wipePane.getChildren().clear();
 
+        // 1. Dynamic Section Wipe Buttons
         for (SectionConfig section : appStats.getSections()) {
             Button wipeBtn = createDangerButton("Wipe " + section.getName());
             wipeBtn.setOnAction(e -> wipeList(globalDatabase, section.getId(), refreshCallback));
-            wipeGrid.add(wipeBtn, col, row);
-            col++;
-            if (col > 1) { col = 0; row++; }
+            wipePane.getChildren().add(wipeBtn);
         }
 
+        // 2. Wipe Archive Button
+        Button wipeArchiveBtn = createDangerButton("Empty Archive");
+        wipeArchiveBtn.setOnAction(e -> wipeList(globalDatabase, "ARCHIVED_FLAG", refreshCallback));
+        wipePane.getChildren().add(wipeArchiveBtn);
+
+        // 3. Wipe ALL Tasks Button (from your screenshot)
         Button wipeAllBtn = new Button("Wipe ALL Tasks");
         wipeAllBtn.setPrefWidth(BUTTON_WIDTH);
-        wipeAllBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        wipeAllBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 3; -fx-background-radius: 3; -fx-cursor: hand;");
         wipeAllBtn.setOnAction(e -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to permanently delete ALL tasks?", ButtonType.YES, ButtonType.NO);
-            alert.setHeaderText(null);
+            alert.setHeaderText("Wipe ALL Tasks");
+            TaskDialogs.styleDialog(alert);
             alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) { globalDatabase.clear(); StorageManager.saveTasks(globalDatabase); refreshCallback.run(); }
+                if (response == ButtonType.YES) {
+                    globalDatabase.clear();
+                    StorageManager.saveTasks(globalDatabase);
+                    refreshCallback.run();
+                }
             });
         });
-        wipeGrid.add(wipeAllBtn, col, row);
-        col++; if (col > 1) { col = 0; row++; }
+        wipePane.getChildren().add(wipeAllBtn);
 
-        Button resetStreakBtn = createDangerButton("Reset Daily Streak");
-        resetStreakBtn.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to reset your daily streak to 0?", ButtonType.YES, ButtonType.NO);
-            alert.setHeaderText(null);
-            alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) { appStats.setCurrentStreak(0); StorageManager.saveStats(appStats); refreshCallback.run(); }
-            });
-        });
-        wipeGrid.add(resetStreakBtn, col, row);
+        // 4. Reset Analytics Button
         Button resetAnalyticsBtn = createDangerButton("Reset Global Analytics");
         resetAnalyticsBtn.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Reset all global analytics (Score, Streaks, Lifetime Focus, Lifetime Tasks, Section Progress)?", ButtonType.YES, ButtonType.NO);
-            alert.setHeaderText(null);
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to permanently reset all analytics?", ButtonType.YES, ButtonType.NO);
+            alert.setHeaderText("Reset Analytics");
+            TaskDialogs.styleDialog(alert);
             alert.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) {
                     appStats.setGlobalScore(0);
-                    appStats.setHighestStreak(0);
                     appStats.setCurrentStreak(0);
+                    appStats.setHighestStreak(0);
                     appStats.setLifetimeDeletedTasks(0);
                     appStats.getHistoryLog().clear();
                     appStats.getAdvancedHistoryLog().clear();
-                    appStats.setAnalyticsResetTimestamp(LocalDateTime.now());
-                    for(TaskItem t : globalDatabase) {
-                        t.setTimeSpentSeconds(0);
-                    }
-
+                    for(TaskItem t : globalDatabase) t.setTimeSpentSeconds(0);
                     StorageManager.saveStats(appStats);
                     StorageManager.saveTasks(globalDatabase);
                     refreshCallback.run();
                 }
             });
         });
-        wipeGrid.add(resetAnalyticsBtn, 0, row);
+        wipePane.getChildren().add(resetAnalyticsBtn);
     }
 
     private Button createDangerButton(String text) {
@@ -103,10 +101,14 @@ public class DangerZonePanel extends VBox {
 
     private void wipeList(List<TaskItem> db, String targetSectionId, Runnable refresh) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to clear this list?", ButtonType.YES, ButtonType.NO);
-        alert.setHeaderText(null);
+        alert.setHeaderText("Wipe Section");
+        TaskDialogs.styleDialog(alert);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                db.removeIf(task -> targetSectionId.equals(task.getSectionId()));
+                db.removeIf(task -> {
+                    if ("ARCHIVED_FLAG".equals(targetSectionId)) return task.isArchived();
+                    return targetSectionId.equals(task.getSectionId()) && !task.isArchived();
+                });
                 StorageManager.saveTasks(db);
                 refresh.run();
             }

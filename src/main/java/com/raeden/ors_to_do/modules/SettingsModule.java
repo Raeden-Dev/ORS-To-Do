@@ -2,7 +2,6 @@ package com.raeden.ors_to_do.modules;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
-import com.raeden.ors_to_do.modules.dependencies.settings.DataManagementPanel;
 import com.raeden.ors_to_do.modules.dependencies.settings.*;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
@@ -18,18 +17,18 @@ public class SettingsModule extends ScrollPane {
         setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         setBorder(Border.EMPTY);
 
-        VBox contentBox = new VBox(30);
+        VBox contentBox = new VBox(20); // Changed spacing to 20 to match your design goals
         contentBox.setPadding(new Insets(20));
 
+        // --- NEW: Help & About Panel ---
+        HelpAboutPanel helpPanel = new HelpAboutPanel(appStats);
+
+        // --- Existing Control Center ---
         Label header = new Label("Control Center");
         header.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
 
-        // Instantiate the isolated UI Components
         GeneralSettingsPanel generalPanel = new GeneralSettingsPanel(appStats, refreshCallback);
-
-        // --- UPDATED: Passing globalDatabase into the Template Panel ---
         TemplateManagerPanel templatePanel = new TemplateManagerPanel(appStats, globalDatabase, refreshCallback);
-
         PriorityManagerPanel priorityPanel = new PriorityManagerPanel(appStats, refreshCallback);
         DataManagementPanel dataPanel = new DataManagementPanel(appStats, globalDatabase, refreshCallback);
         DangerZonePanel dangerPanel = new DangerZonePanel(appStats, globalDatabase, refreshCallback);
@@ -39,10 +38,11 @@ public class SettingsModule extends ScrollPane {
             dangerPanel.refreshDangerZone();
             refreshCallback.run();
         };
-
         SectionManagerPanel sectionPanel = new SectionManagerPanel(appStats, globalDatabase, refreshCallback, onSectionChanged);
 
+        // Add to view
         contentBox.getChildren().addAll(
+                helpPanel,
                 header,
                 sectionPanel,
                 generalPanel,

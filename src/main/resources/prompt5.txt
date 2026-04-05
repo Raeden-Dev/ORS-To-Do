@@ -54,19 +54,28 @@ Create SubTaskRenderer.java: Extract the VBox generation for TaskLink and SubTas
 WRITTEN BY ME FOR v1.4 Update
 =============================
 
-> Implement a help section above "Control Center" in settings page, where add cards like analytics that describes how to use the application
-> Also add a credits button below that shows credit for the app.
-> Should be able to rearrange tasks added in auto task generator
-> Should be able to add multiple sub-task when the add sub task dialog opens
-> Should be able to edit sub tasks
+> Implement a help section above "Control Center" in settings page, where add cards like analytics that describes how to use the application. Also add a credits button below that shows credit for the app.
+There will be 2 buttons in that section that opens two dialogs which is the help dialog and credit dialog respectively. Use button style like the given image. Make credit button lime and help button cyan.
+
+> Add ability (move up and down buttons) to re-arrange tasks added in auto task generator
+> Should be able to add multiple sub-task when the add sub task dialog opens and should be able to edit sub tasks (edit icon before the 'x')
 > Add a function in right click context menu to duplicate the task
 > Should be able to create duplicate of tasks in auto-generation section at settings page
 > Organize buttons in Danger zone, there is enough space in right side to do so
+> Expand the buttons in data management so they're both in 1 row but stretches to the end of the container and centered (both same width distributed according to container width)
+Also make the import data dialog box dark
 > A "Random" button that randomly picks an icon + its color and a prefix color in tasks with icon + prefix enabled. This Random button is present in Edit Task dialog. Color of icon is always lighter than prefix and they both are of same color just different shades
 > Should be able to set task background color in auto-generate task at settings
 > When I click "Empty Archive" button at archives, I should be prompted if I want to export my archive data or not. (As .txt file)
-> Add page type where there are no tasks but notes only. For note tasks, I can set bg, outline and sidebox color and also make sidebox stretch for how many lines the note has. Also have ability to pin notes
-> Make the penalty point color red instead of being same as yellow (light red)
+> Add page type (in section config) where there are no tasks but notes only. For note tasks, I can set bg, outline and sidebox color and also make sidebox stretch for how many lines the note has. Also have ability to pin notes in the page that always appear on top. This is a page only feature,
+I cannot turn a button into note entry. A note entry doesnt have a checkbox, priority, timer or score system added.
+
+- I have a score & score penalty system (point system), I should be able to create my own systems on the fly (with a reward / penalty) at settings in a new section called "Stats Configuration".
+I can create stats like strength, focus, intelligence etc. you get the idea. I should be able to edit the icon and name of each stats also the button style (colors) when I add the stat to a page. In "Edit Section" for dynamic sections,
+I should have an additional "Enable Stats System" to use my custom stats. Point system stays separate. Since I can add multiple stat reward / penalty to task entires after this system is created,
+I want a smaller card attached with the main card (it appears below it but is not same as sub task which expands the size of card, its an entirely new card but very less in height),
+all my stats rewards / penalty will be displayed there including points which used to show inside the card before. I should be able to hide this or using an "Eye" icon that will be in place of where the score/penalty used to show.
+
 > Optional Tasks that can only be created in pages with a reset and point system. Optional tasks don't account into total tasks. You also can toggle this on/off in section config.
 > A "Text to Task" function in context menu (toggle-able in general configuration at settings) where I can input texts that will create tasks or tasks with subtasks similar to the copy task information function that is present already.
 > A small number beside each of the section button (to the left side before the rectangle) that shows how many tasks are there in that section. I can toggle this on/off in general configuration
@@ -85,62 +94,3 @@ WRITTEN BY ME FOR v1.4 Update
 > Starting to have a lot of tasks added, in focus hub its difficult to find a task from dropdown. Now add the option to search a task that filters with keywords
 > Task Tracker Icon should show in System Tray
 > New "Link" type task card that doesn't have a completion checkbox, rather when clicked I will open a link / folder / application that I hook into it
-
-=============================
-PHASES BY AI FOR v1.4 Update
-=============================
-
-🚀 Phase 1: Data Models & General Settings (The Foundation)
-Before we can build the UI, we must prepare your data blueprints (AppStats, SectionConfig, TaskItem) to hold the new toggles and metadata. We will also overhaul the General Settings page.
-
-The Toggles: Add data fields for Auto-startup, Checkbox styles, Sidebar task counts, Text-to-Task, and Confirmation Dialog tracking.
-
-The New Fields: Rename "Work Type" to "Type" and add a "Type Color" string. Add a flag for "Optional" tasks and "Note/Link" task types.
-
-General Settings UI: Implement the toggles for auto-start, task confirmation dropdowns (All or specific sections), and the 5 checkbox themes (Default, Dark, Green, Blue, Purple).
-
-System Tray: Ensure the icon properly hooks into the system tray on startup.
-
-🛠️ Phase 2: The Settings Page Revamp (Templates, Danger, Help)
-We will completely upgrade the SettingsModule and its sub-panels.
-
-Help & Credits: Add the tutorial cards section at the very top and the credits button at the bottom.
-
-Template Manager upgrades: Add functionality to Rearrange, Duplicate, and set the Background Color of auto-generated tasks.
-
-Danger Zone upgrades: Reorganize the grid layout using the right-side space. Add a scrollable "Deleted Task History" log and a button to wipe it.
-
-Dark Theme Dropdowns: Inject global CSS to force all ComboBox dropdowns to follow the dark theme.
-
-⚡ Phase 3: Supercharging Tasks & Dialogs (The Core Engine)
-This phase focuses entirely on the creation, editing, and right-click management of tasks.
-
-Sub-Task Overhaul: Update the dialog to allow adding multiple sub-tasks at once, and implement the ability to click and Edit existing sub-tasks on the card.
-
-Context Menu Additions: Add "Duplicate Task" and the "Text to Task" parser.
-
-The "Random" Button: Add the smart randomizer in the Edit Task dialog that picks a random icon + color and pairs it with a slightly darker prefix color.
-
-Dependency Hiding: Write logic in SubTaskRenderer to completely hide the sub-task dropdown if a dependency lock is active.
-
-Visual Tweaks: Make penalty points strictly red, and link metadata (Dates, Type) to the global task font size slider.
-
-📝 Phase 4: New Card Types & Archive (Notes, Links, Optional)
-We will implement the brand-new task behaviors that don't use standard checkboxes.
-
-Note-Only Cards: Implement tasks with no checkboxes. Add logic to stretch the side color-box based on the note's height, and add a "Pin" feature.
-
-Link Cards: Implement tasks that act as execution buttons to open URLs, folders, or local applications.
-
-Optional Tasks: Write the logic to exclude "Optional" tasks from the total task count (e.g., active task labels) and enable the section toggle.
-
-Archive Export: Intercept the "Empty Archive" button to trigger a .txt FileSaver dialog.
-
-🎨 Phase 5: Dashboard & Layout Polish (The QoL Upgrades)
-The final phase focuses on the main dashboard, sidebar, and Focus Hub.
-
-Sidebar Upgrades: Add a Scrollpane so dynamic buttons don't push the layout off-screen. Implement the animated, collapsible separator with the hover arrow. Add the small task count numbers next to section buttons.
-
-Dashboard Tweaks: Add the "Active sub-tasks: X" label under the main header. Ensure the dynamic Filter pills (All, tags, etc.) visually highlight when selected.
-
-Focus Hub: Upgrade the task selection dropdown into a searchable/filterable combo box so you can easily find tasks.

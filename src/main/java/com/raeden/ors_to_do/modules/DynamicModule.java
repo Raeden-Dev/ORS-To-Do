@@ -46,9 +46,20 @@ public class DynamicModule extends StackPane {
         mainContent = new BorderPane();
         mainContent.setPadding(new Insets(15));
 
-        // --- INJECT EXTRACTED COMPONENTS ---
-        zenOverlay = new ZenModeOverlay(config, appStats, globalDatabase, this::toggleZenMode, syncCallback, activeTimelines, this::reorderTasks);
-        filterSortHeader = new FilterSortHeader(config, appStats, globalDatabase, this::toggleZenMode, this::refreshList);
+        // --- NEW: Hide Zen Mode on Notes Pages ---
+        Runnable zenToggleAction = config.isNotesPage() ? () -> {} : this::toggleZenMode;
+
+        zenOverlay = new ZenModeOverlay(config, appStats, globalDatabase, zenToggleAction, syncCallback, activeTimelines, this::reorderTasks);
+        filterSortHeader = new FilterSortHeader(config, appStats, globalDatabase, zenToggleAction, this::refreshList);
+
+        if (config.isNotesPage()) {
+            // Hide the Zen Mode button from the header entirely if it's a notes page
+            filterSortHeader.getChildren().forEach(node -> {
+                if (node instanceof HBox) {
+                    ((HBox) node).getChildren().removeIf(n -> n instanceof Button && ((Button) n).getText().contains("Zen Mode"));
+                }
+            });
+        }
 
         getChildren().addAll(mainContent, zenOverlay);
         mainContent.setTop(filterSortHeader);
@@ -69,7 +80,8 @@ public class DynamicModule extends StackPane {
         inputPanel.setAlignment(Pos.CENTER);
         inputPanel.setPadding(new Insets(15, 0, 0, 0));
 
-        if (config.isShowPrefix()) {
+        // --- NEW: Hide Prefix on Notes Pages ---
+        if (config.isShowPrefix() && !config.isNotesPage()) {
             prefixField = new TextField();
             prefixField.setPromptText("[PREFIX]");
             prefixField.setPrefWidth(80);
@@ -78,12 +90,22 @@ public class DynamicModule extends StackPane {
         }
 
         inputField = new TextField();
-        inputField.setPromptText(config.isRewardsPage() ? "Enter new reward..." : "Enter new task for " + config.getName() + "...");
+
+        // --- NEW: Custom Prompt for Notes Pages ---
+        if (config.isNotesPage()) {
+            inputField.setPromptText("Enter new note for " + config.getName() + "...");
+        } else if (config.isRewardsPage()) {
+            inputField.setPromptText("Enter new reward...");
+        } else {
+            inputField.setPromptText("Enter new task for " + config.getName() + "...");
+        }
+
         inputField.getStyleClass().add("input-field");
         HBox.setHgrow(inputField, Priority.ALWAYS);
         inputPanel.getChildren().add(inputField);
 
-        if (config.isShowPriority()) {
+        // --- NEW: Hide Priority on Notes Pages ---
+        if (config.isShowPriority() && !config.isNotesPage()) {
             priorityBox = new ComboBox<>();
             priorityBox.getItems().addAll(appStats.getCustomPriorities());
             if (!appStats.getCustomPriorities().isEmpty()) priorityBox.setValue(appStats.getCustomPriorities().get(1));
@@ -108,9 +130,10 @@ public class DynamicModule extends StackPane {
     }
 
     private void toggleZenMode() {
+        if (config.isNotesPage()) return; // Failsafe
+
         isZenMode = !isZenMode;
 
-        // Traverse to root to hide Sidebar
         if (getScene() != null && getScene().getRoot() instanceof BorderPane) {
             Node sidebar = ((BorderPane) getScene().getRoot()).getLeft();
             if (sidebar != null) {
@@ -171,9 +194,15 @@ public class DynamicModule extends StackPane {
             }
         }
 
+        // --- NEW: Force Pinned Items to the top on Notes Pages ---
         String sortMode = filterSortHeader.getSortMode();
         if (!sortMode.equals("Custom Order")) {
             tasksToDisplay.sort((t1, t2) -> {
+                if (config.isNotesPage()) {
+                    if (t1.isPinned() && !t2.isPinned()) return -1;
+                    if (!t1.isPinned() && t2.isPinned()) return 1;
+                }
+
                 switch (sortMode) {
                     case "Oldest First": return t1.getDateCreated().compareTo(t2.getDateCreated());
                     case "Alphabetical": return t1.getTextContent().compareToIgnoreCase(t2.getTextContent());
@@ -183,13 +212,24 @@ public class DynamicModule extends StackPane {
                     default: return t2.getDateCreated().compareTo(t1.getDateCreated());
                 }
             });
+        } else if (config.isNotesPage()) {
+            // Even in custom order, force pins to the top
+            tasksToDisplay.sort((t1, t2) -> {
+                if (t1.isPinned() && !t2.isPinned()) return -1;
+                if (!t1.isPinned() && t2.isPinned()) return 1;
+                return 0; // Maintain existing custom order for non-pinned items
+            });
         }
 
-        // DELEGATE UI UPDATES TO HEADER
         filterSortHeader.updateBadges(availableCount, completedCount);
 
         if (tasksToDisplay.isEmpty()) {
-            Label emptyLabel = new Label(config.isRewardsPage() ? "Add a reward to your shop!" : "Add a task to get started!");
+            // --- NEW: Custom empty state text ---
+            String emptyText = "Add a task to get started!";
+            if (config.isNotesPage()) emptyText = "Add a note to your board!";
+            else if (config.isRewardsPage()) emptyText = "Add a reward to your shop!";
+
+            Label emptyLabel = new Label(emptyText);
             emptyLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
             emptyLabel.setMaxWidth(Double.MAX_VALUE);
             emptyLabel.setAlignment(Pos.CENTER);
@@ -236,12 +276,12 @@ public class DynamicModule extends StackPane {
         if (text.isEmpty()) return;
 
         CustomPriority defaultPrio = null;
-        if (config.isShowPriority() && priorityBox != null) defaultPrio = priorityBox.getValue();
-        else if (config.isShowPriority() && !appStats.getCustomPriorities().isEmpty()) defaultPrio = appStats.getCustomPriorities().get(0);
+        if (config.isShowPriority() && !config.isNotesPage() && priorityBox != null) defaultPrio = priorityBox.getValue();
+        else if (config.isShowPriority() && !config.isNotesPage() && !appStats.getCustomPriorities().isEmpty()) defaultPrio = appStats.getCustomPriorities().get(0);
 
         TaskItem newTask = new TaskItem(text, defaultPrio, config.getId());
 
-        if (config.isShowPrefix() && prefixField != null) {
+        if (config.isShowPrefix() && !config.isNotesPage() && prefixField != null) {
             String pText = prefixField.getText().trim();
             if (!pText.isEmpty()) {
                 if (!pText.startsWith("[")) pText = "[" + pText;
@@ -250,7 +290,7 @@ public class DynamicModule extends StackPane {
                 newTask.setPrefixColor("#4EC9B0");
             }
         }
-        if (config.isShowWorkType()) newTask.setWorkType("General");
+        if (config.isShowWorkType() && !config.isNotesPage()) newTask.setWorkType("General");
 
         globalDatabase.add(newTask);
 

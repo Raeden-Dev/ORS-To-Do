@@ -28,6 +28,12 @@ public class SectionConfig implements Serializable {
     private boolean enableScore = false;
     private boolean enableLinks = false;
 
+    // --- NEW: NOTES MODE FLAG ---
+    private boolean isNotesPage = false;
+
+    public boolean isNotesPage() { return isNotesPage; }
+    public void setNotesPage(boolean isNotesPage) { this.isNotesPage = isNotesPage; }
+
     private boolean enableIcons;
     public boolean isEnableIcons() { return enableIcons; }
     public void setEnableIcons(boolean enableIcons) { this.enableIcons = enableIcons; }

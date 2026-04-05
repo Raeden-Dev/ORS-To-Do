@@ -1,7 +1,12 @@
 package com.raeden.ors_to_do.modules.dependencies.settings;
 
-import com.raeden.ors_to_do.dependencies.models.*;
+import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.models.SectionConfig;
+import com.raeden.ors_to_do.dependencies.models.DailyTemplate;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
+import com.raeden.ors_to_do.dependencies.models.CustomPriority;
+import com.raeden.ors_to_do.dependencies.models.SubTask;
 import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
 import com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager;
 import javafx.geometry.Pos;
@@ -10,6 +15,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class TemplateManagerPanel extends VBox {
@@ -84,6 +90,9 @@ public class TemplateManagerPanel extends VBox {
             SystemTrayManager.pushNotification("Tasks Generated", "Manually generated " + selected.getAutoAddTemplates().size() + " tasks for " + selected.getName());
         });
 
+        HBox.setHgrow(sectionBox, Priority.ALWAYS);
+        sectionBox.setMaxWidth(Double.MAX_VALUE);
+
         controlBox.getChildren().addAll(new Label("Select Section:"), sectionBox, addBtn, generateBtn);
 
         templateList = new VBox(10);
@@ -125,10 +134,18 @@ public class TemplateManagerPanel extends VBox {
         if (selected == null) { templateList.getChildren().add(new Label("No auto-reset sections available.")); return; }
         if (selected.getAutoAddTemplates().isEmpty()) { templateList.getChildren().add(new Label("No templates for this section.")); return; }
 
-        for (DailyTemplate t : selected.getAutoAddTemplates()) {
+        List<DailyTemplate> templates = selected.getAutoAddTemplates();
+
+        for (int i = 0; i < templates.size(); i++) {
+            DailyTemplate t = templates.get(i);
+            int index = i;
+
             HBox row = new HBox(10);
             row.setAlignment(Pos.CENTER_LEFT);
-            row.setStyle("-fx-background-color: #2D2D30; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5;");
+
+            // --- FIXED: Read the dynamic background color, fallback to #2D2D30 if none/transparent ---
+            String bgColor = (t.getBgColor() != null && !t.getBgColor().equals("transparent")) ? t.getBgColor() : "#2D2D30";
+            row.setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5;");
 
             HBox textContainer = new HBox(5);
             textContainer.setAlignment(Pos.CENTER_LEFT);
@@ -150,11 +167,58 @@ public class TemplateManagerPanel extends VBox {
             HBox.setHgrow(textContainer, Priority.ALWAYS);
 
             StringBuilder daysStr = new StringBuilder("Days: ");
-            if (t.getActiveDays().size() == 7) daysStr.append("Everyday");
-            else for (DayOfWeek d : t.getActiveDays()) daysStr.append(d.name().substring(0, 3)).append(" ");
+            if (t.getActiveDays().size() == 7) {
+                daysStr.append("Everyday");
+            } else {
+                DayOfWeek[] order = {DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY};
+                String[] letters = {"S", "M", "T", "W", "T", "F", "S"};
+                for (int j = 0; j < order.length; j++) {
+                    if (t.getActiveDays().contains(order[j])) {
+                        daysStr.append(letters[j]).append(" ");
+                    }
+                }
+            }
 
             Label daysLbl = new Label(daysStr.toString().trim());
             daysLbl.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 12px;");
+
+            Button upBtn = new Button("▲");
+            upBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 5 8;");
+            upBtn.setDisable(index == 0);
+            upBtn.setOnAction(e -> {
+                Collections.swap(templates, index, index - 1);
+                StorageManager.saveStats(appStats);
+                refreshList();
+            });
+
+            Button downBtn = new Button("▼");
+            downBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 5 8;");
+            downBtn.setDisable(index == templates.size() - 1);
+            downBtn.setOnAction(e -> {
+                Collections.swap(templates, index, index + 1);
+                StorageManager.saveStats(appStats);
+                refreshList();
+            });
+
+            Button copyBtn = new Button("📋");
+            copyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 5 8; -fx-font-size: 12px;");
+            copyBtn.setOnAction(e -> {
+                DailyTemplate clone = new DailyTemplate(t.getPrefix(), t.getText() + " (Copy)", t.getPrefixColor(), t.getBgColor());
+                clone.setActiveDays(new ArrayList<>(t.getActiveDays()));
+                clone.setIconSymbol(t.getIconSymbol());
+                clone.setIconColor(t.getIconColor());
+                clone.setPriorityName(t.getPriorityName());
+                clone.setWorkType(t.getWorkType());
+                clone.setRewardPoints(t.getRewardPoints());
+                clone.setPenaltyPoints(t.getPenaltyPoints());
+                if (t.getSubTaskLines() != null) {
+                    clone.setSubTaskLines(new ArrayList<>(t.getSubTaskLines()));
+                }
+
+                templates.add(index + 1, clone);
+                StorageManager.saveStats(appStats);
+                refreshList();
+            });
 
             Button editBtn = new Button("Edit");
             editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
@@ -168,7 +232,7 @@ public class TemplateManagerPanel extends VBox {
                 refreshList();
             });
 
-            row.getChildren().addAll(textContainer, daysLbl, editBtn, delBtn);
+            row.getChildren().addAll(textContainer, daysLbl, upBtn, downBtn, copyBtn, editBtn, delBtn);
             templateList.getChildren().add(row);
         }
     }
@@ -185,7 +249,14 @@ public class TemplateManagerPanel extends VBox {
         TextField textField = new TextField(template != null ? template.getText() : "");
         grid.add(new Label("Task Text:"), 0, rowIdx); grid.add(textField, 1, rowIdx++);
 
-        // --- NEW: Icon Picker ---
+        ColorPicker bgColorPicker = new ColorPicker();
+        if (template != null && template.getBgColor() != null && !template.getBgColor().equals("transparent")) {
+            bgColorPicker.setValue(Color.web(template.getBgColor()));
+        } else {
+            bgColorPicker.setValue(Color.TRANSPARENT);
+        }
+        grid.add(new Label("Background Color:"), 0, rowIdx); grid.add(bgColorPicker, 1, rowIdx++);
+
         ComboBox<String> iconBox = null; ColorPicker iconColorPicker = null;
         if (section.isEnableIcons()) {
             iconBox = new ComboBox<>();
@@ -255,6 +326,7 @@ public class TemplateManagerPanel extends VBox {
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        ColorPicker finalBgColorPicker = bgColorPicker;
         ComboBox<String> finalIconBox = iconBox; ColorPicker finalIconColorPicker = iconColorPicker;
         TextField finalPrefixField = prefixField; ColorPicker finalPrefixColor = prefixColor;
         ComboBox<CustomPriority> finalPrioBox = prioBox; TextField finalWorkTypeField = workTypeField;
@@ -269,6 +341,8 @@ public class TemplateManagerPanel extends VBox {
 
                 tToSave.setText(textField.getText().trim());
                 tToSave.setActiveDays(selectedDays);
+
+                tToSave.setBgColor(toHexString(finalBgColorPicker.getValue()));
 
                 if (section.isEnableIcons() && finalIconBox != null) {
                     tToSave.setIconSymbol(finalIconBox.getValue());
@@ -300,7 +374,7 @@ public class TemplateManagerPanel extends VBox {
     }
 
     private String toHexString(Color color) {
-        if (color == null) return null;
+        if (color == null || color.getOpacity() == 0.0) return "transparent";
         return String.format("#%02X%02X%02X", (int) (color.getRed() * 255), (int) (color.getGreen() * 255), (int) (color.getBlue() * 255));
     }
 }

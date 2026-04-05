@@ -44,6 +44,20 @@ public class TaskItem implements Serializable {
     private List<String> links = new ArrayList<>();
     private List<TaskLink> taskLinks = new ArrayList<>();
 
+    // --- NEW: NOTES Specific Variables ---
+    private boolean isPinned = false;
+    private String customOutlineColor = null;
+    private String customSideboxColor = null;
+
+    public boolean isPinned() { return isPinned; }
+    public void setPinned(boolean pinned) { isPinned = pinned; }
+
+    public String getCustomOutlineColor() { return customOutlineColor; }
+    public void setCustomOutlineColor(String color) { this.customOutlineColor = color; }
+
+    public String getCustomSideboxColor() { return customSideboxColor; }
+    public void setCustomSideboxColor(String color) { this.customSideboxColor = color; }
+
     private int costPoints = 0;
     public int getCostPoints() { return costPoints; }
     public void setCostPoints(int costPoints) { this.costPoints = costPoints; }

@@ -67,6 +67,51 @@ public class TaskContextMenu {
         });
         contextMenu.getItems().addAll(copyItem, new SeparatorMenuItem());
 
+        // --- NEW: Duplicate Task Functionality ---
+        MenuItem duplicateItem = new MenuItem("Duplicate Task");
+        duplicateItem.setOnAction(e -> {
+            // Create base clone
+            TaskItem clone = new TaskItem(task.getTextContent() + " (Copy)", task.getPriority(), task.getSectionId());
+            clone.setColorHex(task.getColorHex());
+            clone.setPrefix(task.getPrefix());
+            clone.setPrefixColor(task.getPrefixColor());
+            clone.setIconSymbol(task.getIconSymbol());
+            clone.setIconColor(task.getIconColor());
+            clone.setWorkType(task.getWorkType());
+            clone.setRewardPoints(task.getRewardPoints());
+            clone.setPenaltyPoints(task.getPenaltyPoints());
+            clone.setCostPoints(task.getCostPoints());
+
+            if (task.isCounterMode()) {
+                clone.setCounterMode(true);
+                clone.setMaxCount(task.getMaxCount());
+            }
+
+            // Deep copy Sub-Tasks
+            for (SubTask st : task.getSubTasks()) {
+                clone.getSubTasks().add(new SubTask(st.getTextContent()));
+            }
+
+            // Deep copy Links
+            if (task.getTaskLinks() != null) {
+                for (TaskLink tl : task.getTaskLinks()) {
+                    clone.getTaskLinks().add(new TaskLink(tl.getName(), tl.getUrl()));
+                }
+            }
+
+            // Insert exactly below the original task
+            int idx = globalDatabase.indexOf(task);
+            if (idx != -1) {
+                globalDatabase.add(idx + 1, clone);
+            } else {
+                globalDatabase.add(clone);
+            }
+
+            StorageManager.saveTasks(globalDatabase);
+            onUpdate.run();
+        });
+        contextMenu.getItems().addAll(duplicateItem, new SeparatorMenuItem());
+
         if (config.isAllowFavorite()) {
             MenuItem favItem = new MenuItem(task.isFavorite() ? "Remove Favorite" : "Mark as Favorite");
             favItem.setOnAction(e -> {
@@ -77,33 +122,9 @@ public class TaskContextMenu {
             contextMenu.getItems().addAll(favItem, new SeparatorMenuItem());
         }
 
-        MenuItem editItem = new MenuItem(appStats.getEditMenuText());
+        MenuItem editItem = new MenuItem("Edit Task");
         editItem.setOnAction(e -> TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate));
-
-        Menu colorMenu = new Menu("Set Background Color");
-        for (String hex : DARK_PASTELS) {
-            MenuItem colorItem = new MenuItem("");
-            Rectangle colorIcon = new Rectangle(14, 14, Color.web(hex));
-            colorIcon.setStroke(Color.BLACK);
-            colorItem.setGraphic(colorIcon);
-            colorItem.setOnAction(e -> { task.setColorHex(hex); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
-            colorMenu.getItems().add(colorItem);
-        }
-        MenuItem resetColor = new MenuItem("Reset Background");
-        resetColor.setOnAction(e -> { task.setColorHex(null); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
-        colorMenu.getItems().addAll(new SeparatorMenuItem(), resetColor);
-
-        MenuItem deleteItem = new MenuItem(appStats.getDeleteMenuText());
-        deleteItem.setStyle("-fx-text-fill: #FF6666;");
-        deleteItem.setOnAction(e -> {
-            globalDatabase.remove(task);
-            appStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks() + 1);
-            StorageManager.saveTasks(globalDatabase);
-            StorageManager.saveStats(appStats);
-            onUpdate.run();
-        });
-
-        contextMenu.getItems().addAll(editItem);
+        contextMenu.getItems().add(editItem);
 
         if (config.isEnableLinks()) {
             MenuItem addLinkItem = new MenuItem("Add Link");
@@ -117,10 +138,22 @@ public class TaskContextMenu {
             contextMenu.getItems().add(addSubItem);
         }
 
+        Menu colorMenu = new Menu("Set Background Color");
+        for (String hex : DARK_PASTELS) {
+            MenuItem colorItem = new MenuItem("");
+            Rectangle colorIcon = new Rectangle(14, 14, Color.web(hex));
+            colorIcon.setStroke(Color.BLACK);
+            colorItem.setGraphic(colorIcon);
+            colorItem.setOnAction(e -> { task.setColorHex(hex); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
+            colorMenu.getItems().add(colorItem);
+        }
+        MenuItem resetColor = new MenuItem("Reset Background");
+        resetColor.setOnAction(e -> { task.setColorHex(null); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
+        colorMenu.getItems().addAll(new SeparatorMenuItem(), resetColor);
         contextMenu.getItems().add(colorMenu);
 
         if (config.isAllowArchive() && !task.isCounterMode()) {
-            MenuItem archiveItem = new MenuItem(appStats.getArchiveMenuText());
+            MenuItem archiveItem = new MenuItem("Archive");
             archiveItem.setOnAction(e -> {
                 if(!task.isFinished()) task.setFinished(true);
                 task.setArchived(true);
@@ -129,6 +162,14 @@ public class TaskContextMenu {
             contextMenu.getItems().add(new SeparatorMenuItem());
             contextMenu.getItems().add(archiveItem);
         }
+
+        MenuItem deleteItem = new MenuItem("Delete");
+        deleteItem.setStyle("-fx-text-fill: #FF6666;");
+        deleteItem.setOnAction(e -> {
+            globalDatabase.remove(task);
+            StorageManager.saveTasks(globalDatabase);
+            onUpdate.run();
+        });
 
         contextMenu.getItems().add(new SeparatorMenuItem());
         contextMenu.getItems().add(deleteItem);

@@ -21,6 +21,7 @@ import java.util.List;
 
 public class SubTaskRenderer extends VBox {
 
+    // --- FIXED: Removed the 'isLocked' parameter so it expects exactly 5 arguments again ---
     public SubTaskRenderer(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {
         super(8);
         setPadding(new Insets(0, 10, 15, 60));
@@ -28,13 +29,13 @@ public class SubTaskRenderer extends VBox {
         boolean hasLinks = config.isEnableLinks() && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty();
         boolean hasSubTasks = config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
 
-        if (hasLinks || hasSubTasks) {
-            setVisible(task.isExpanded());
-            setManaged(task.isExpanded());
-        } else {
+        if (!hasLinks && !hasSubTasks) {
             setVisible(false);
             setManaged(false);
-            return; // Nothing to render!
+            return;
+        } else {
+            setVisible(task.isExpanded());
+            setManaged(task.isExpanded());
         }
 
         if (hasLinks) {
@@ -54,7 +55,10 @@ public class SubTaskRenderer extends VBox {
                 hyper.setStyle("-fx-text-fill: #569CD6; -fx-font-size: " + Math.max(10, appStats.getTaskFontSize() - 2) + "px;");
                 hyper.setOnAction(e -> {
                     try { java.awt.Desktop.getDesktop().browse(new java.net.URI(linkObj.getUrl())); }
-                    catch (Exception ex) { ex.printStackTrace(); }
+                    catch (Exception ex) {
+                        try { java.awt.Desktop.getDesktop().open(new java.io.File(linkObj.getUrl())); }
+                        catch (Exception ex2) { ex2.printStackTrace(); }
+                    }
                 });
 
                 HBox hyperContainer = new HBox(hyper);
@@ -99,12 +103,19 @@ public class SubTaskRenderer extends VBox {
                 subTextContainer.setAlignment(Pos.CENTER_LEFT);
                 HBox.setHgrow(subTextContainer, Priority.ALWAYS);
 
+                // --- NEW: Edit Sub-task Button ---
+                Button editSubBtn = new Button("✏️");
+                editSubBtn.setMinWidth(Region.USE_PREF_SIZE);
+                editSubBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-padding: 0;");
+                editSubBtn.setOnAction(e -> TaskDialogs.showEditSubTaskDialog(sub, globalDatabase, onUpdate));
+
                 Button delSubBtn = new Button("❌");
                 delSubBtn.setMinWidth(Region.USE_PREF_SIZE);
                 delSubBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #FF6666; -fx-cursor: hand; -fx-padding: 0;");
                 delSubBtn.setOnAction(e -> { task.getSubTasks().remove(sub); StorageManager.saveTasks(globalDatabase); onUpdate.run(); });
 
-                subRow.getChildren().addAll(subCheck, subTextContainer, delSubBtn);
+                // Injected the editSubBtn right before the delSubBtn
+                subRow.getChildren().addAll(subCheck, subTextContainer, editSubBtn, delSubBtn);
                 getChildren().add(subRow);
             }
         }

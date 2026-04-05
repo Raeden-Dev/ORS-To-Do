@@ -65,11 +65,14 @@ public class TaskCard extends VBox {
             }
         }
         boolean isLocked = !blockingTaskNames.isEmpty();
+        boolean isNoteMode = config.isNotesPage();
 
-        String bgStyle = task.getColorHex() != null ? "-fx-background-color: " + task.getColorHex() + "; " : "";
+        String bgStyle = task.getColorHex() != null && !task.getColorHex().equals("transparent") ? "-fx-background-color: " + task.getColorHex() + "; " : "";
         String borderStyle = "";
 
-        if (!isLocked) {
+        if (isNoteMode && task.getCustomOutlineColor() != null && !task.getCustomOutlineColor().equals("transparent")) {
+            borderStyle = "-fx-border-color: " + task.getCustomOutlineColor() + "; -fx-border-width: 1; -fx-border-radius: 4; ";
+        } else if (!isLocked) {
             if (config.isAllowFavorite() && task.isFavorite()) {
                 borderStyle = "-fx-border-color: #FFD700; -fx-border-width: 2; -fx-border-radius: 4; ";
             } else if (appStats.isMatchPriorityOutline() && config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
@@ -122,16 +125,33 @@ public class TaskCard extends VBox {
         metaBox.setAlignment(Pos.CENTER_LEFT);
         metaBox.getChildren().add(expandBtn);
 
+        HBox textContainer = new HBox(5);
+        HBox.setHgrow(textContainer, Priority.ALWAYS);
+
         if (!isLocked) {
-            Rectangle sideRect = new Rectangle(5, 25);
-            sideRect.setArcWidth(3); sideRect.setArcHeight(3);
-            if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
-                sideRect.setFill(Color.web(task.getPriority().getColorHex()));
-            } else if (config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) {
-                sideRect.setFill(Color.web(task.getPrefixColor()));
+            Region sideRect = new Region();
+            sideRect.setMinWidth(5);
+            sideRect.setPrefWidth(5);
+
+            if (isNoteMode) {
+                sideRect.minHeightProperty().bind(textContainer.heightProperty());
             } else {
-                sideRect.setFill(Color.WHITE);
+                sideRect.setPrefHeight(25);
+                sideRect.setMaxHeight(25);
             }
+
+            String fillColor = "transparent";
+            if (isNoteMode && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) {
+                fillColor = task.getCustomSideboxColor();
+            } else if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) {
+                fillColor = task.getPriority().getColorHex();
+            } else if (config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) {
+                fillColor = task.getPrefixColor();
+            } else {
+                fillColor = "#FFFFFF";
+            }
+            sideRect.setStyle("-fx-background-color: " + fillColor + "; -fx-background-radius: 3;");
+
 
             if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
                 Label customIcon = new Label(task.getIconSymbol());
@@ -142,13 +162,13 @@ public class TaskCard extends VBox {
 
             metaBox.getChildren().add(sideRect);
 
-            if (config.isAllowFavorite() && task.isFavorite()) {
+            if (config.isAllowFavorite() && task.isFavorite() && !isNoteMode) {
                 Label starLabel = new Label("[⭐]");
                 starLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + appStats.getTaskFontSize() + "px; -fx-font-weight: bold;");
                 metaBox.getChildren().add(starLabel);
             }
 
-            if (config.isShowDate()) {
+            if (config.isShowDate() && !isNoteMode) {
                 Label dateLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
                 dateLabel.getStyleClass().add("task-metadata");
                 metaBox.getChildren().add(dateLabel);
@@ -162,14 +182,13 @@ public class TaskCard extends VBox {
                 metaBox.getChildren().add(prefixLabel);
             }
 
-            if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty()) {
+            if (config.isShowWorkType() && task.getWorkType() != null && !task.getWorkType().isEmpty() && !isNoteMode) {
                 Label workTypeLabel = new Label("[" + task.getWorkType() + "]");
                 workTypeLabel.getStyleClass().add("task-metadata");
                 metaBox.getChildren().add(workTypeLabel);
             }
         }
 
-        HBox textContainer = new HBox(5);
         String fontStyle = "-fx-font-size: " + appStats.getTaskFontSize() + "px; ";
 
         if (isLocked) {
@@ -187,16 +206,15 @@ public class TaskCard extends VBox {
             textContainer.setAlignment(Pos.CENTER_LEFT);
             Label textLabel = new Label(task.getTextContent());
             textLabel.setWrapText(true);
-            if (task.isFinished()) textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
+            if (task.isFinished() && !isNoteMode) textLabel.setStyle(fontStyle + "-fx-strikethrough: true; -fx-text-fill: #E0E0E0;");
             else textLabel.setStyle(fontStyle + "-fx-strikethrough: false; -fx-text-fill: #E0E0E0;");
             textContainer.getChildren().add(textLabel);
         }
-        HBox.setHgrow(textContainer, Priority.ALWAYS);
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
         Label deadlineLabel = null;
-        if (task.getDeadline() != null) {
+        if (task.getDeadline() != null && !isNoteMode) {
             deadlineLabel = new Label();
             deadlineLabel.setPadding(new Insets(0, 10, 0, 0));
             deadlineLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: 13px;");
@@ -237,14 +255,14 @@ public class TaskCard extends VBox {
         }
 
         if (!isLocked) {
-            if (config.isRewardsPage()) {
+            if (config.isRewardsPage() && !isNoteMode) {
                 if (task.getCostPoints() > 0) {
                     Label ptsLabel = new Label("💎 -" + task.getCostPoints() + " Pts");
                     ptsLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-weight: bold; -fx-font-size: 12px;");
                     ptsLabel.setPadding(new Insets(0, 10, 0, 0));
                     mainRow.getChildren().add(ptsLabel);
                 }
-            } else if (config.isEnableScore() && (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0)) {
+            } else if (config.isEnableScore() && (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0) && !isNoteMode) {
                 String badgeStr = "";
                 if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
                 if (task.getPenaltyPoints() > 0) badgeStr += "💀 -" + task.getPenaltyPoints();
@@ -257,7 +275,7 @@ public class TaskCard extends VBox {
 
             if (deadlineLabel != null) mainRow.getChildren().add(deadlineLabel);
 
-            if (config.isTrackTime()) {
+            if (config.isTrackTime() && !isNoteMode) {
                 int mins = task.getTimeSpentSeconds() / 60;
                 Label timeLabel = new Label("⏱ " + mins + "m");
                 timeLabel.setPadding(new Insets(0, 10, 0, 0));
@@ -266,7 +284,7 @@ public class TaskCard extends VBox {
                 mainRow.getChildren().add(timeLabel);
             }
 
-            if (config.isShowPriority()) {
+            if (config.isShowPriority() && !isNoteMode) {
                 ComboBox<CustomPriority> localPrioBox = new ComboBox<>();
                 localPrioBox.getItems().addAll(appStats.getCustomPriorities());
                 localPrioBox.setValue(task.getPriority());
@@ -283,14 +301,25 @@ public class TaskCard extends VBox {
             HBox actionContainer = new HBox(5);
             actionContainer.setAlignment(Pos.CENTER);
 
-            if (config.isRewardsPage()) {
+            if (isNoteMode) {
+                // --- FIXED: Red when pinned, faded white when unpinned ---
+                Button pinBtn = new Button("📌");
+                String pinColor = task.isPinned() ? "#FF6666" : "#FFFFFF";
+                double opacity = task.isPinned() ? 1.0 : 0.5;
+                pinBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 16px; -fx-text-fill: " + pinColor + "; -fx-opacity: " + opacity + ";");
+                pinBtn.setOnAction(e -> {
+                    task.setPinned(!task.isPinned());
+                    StorageManager.saveTasks(globalDatabase);
+                    onUpdate.run();
+                });
+                actionContainer.getChildren().add(pinBtn);
+            } else if (config.isRewardsPage()) {
                 Button buyBtn = new Button(task.isCounterMode() ? "Buy (" + task.getCurrentCount() + "/" + task.getMaxCount() + ")" : "Buy");
                 buyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
                 if (task.isFinished()) buyBtn.setDisable(true);
                 buyBtn.setOnAction(e -> handleRewardPurchase());
                 actionContainer.getChildren().add(buyBtn);
-            }
-            else if (task.isCounterMode()) {
+            } else if (task.isCounterMode()) {
                 Button minusBtn = new Button("-");
                 minusBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
                 if (task.isPointsClaimed() || task.isFinished()) minusBtn.setDisable(true);
@@ -344,7 +373,7 @@ public class TaskCard extends VBox {
 
             boolean hasUnfinishedSubTasks = !task.isFinished() && config.isEnableSubTasks() && !task.getSubTasks().isEmpty() && task.getSubTasks().stream().anyMatch(sub -> !sub.isFinished());
 
-            if (hasUnfinishedSubTasks) {
+            if (hasUnfinishedSubTasks && !isNoteMode) {
                 for (javafx.scene.Node n : actionContainer.getChildren()) {
                     n.setDisable(true);
                 }
@@ -363,12 +392,10 @@ public class TaskCard extends VBox {
             mainRow.getChildren().add(actionContainer);
         }
 
-        // --- EXTRACTED: Renders SubTasks and Links ---
         SubTaskRenderer subTaskBox = new SubTaskRenderer(task, config, appStats, globalDatabase, onUpdate);
 
         getChildren().addAll(mainRow, subTaskBox);
 
-        // --- EXTRACTED: Renders the Context Menu ---
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
         setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
     }

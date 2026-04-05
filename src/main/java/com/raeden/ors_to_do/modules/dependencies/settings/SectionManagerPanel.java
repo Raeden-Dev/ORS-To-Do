@@ -212,10 +212,15 @@ public class SectionManagerPanel extends VBox {
         chkRewards.setStyle("-fx-text-fill: #9CDCFE; -fx-font-weight: bold;");
         grid.add(createToggleBox(chkRewards, "Turns this list into a shop where items cost points instead of giving them."), 0, 9);
 
-        // --- NEW: Zen Mode Toggle Checkbox ---
         CheckBox chkZen = new CheckBox("Enable Zen Mode");
         chkZen.setSelected(!isNew && config.isEnableZenMode());
         grid.add(createToggleBox(chkZen, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 1, 9);
+
+        // --- FIXED: Safely check !isNew and actually ADD it to the layout Grid! ---
+        CheckBox chkNotesPage = new CheckBox("Enable Notes Page Mode");
+        chkNotesPage.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
+        chkNotesPage.setSelected(!isNew && config.isNotesPage());
+        grid.add(createToggleBox(chkNotesPage, "Turns this section into a pinned notes board (no tasks/scores)."), 0, 10);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -243,9 +248,10 @@ public class SectionManagerPanel extends VBox {
                 target.setShowAnalytics(chkAnalytics.isSelected());
                 target.setEnableIcons(chkIcons.isSelected());
                 target.setRewardsPage(chkRewards.isSelected());
-
-                // --- Save Zen Mode State ---
                 target.setEnableZenMode(chkZen.isSelected());
+
+                // --- FIXED: Save correctly to the target object ---
+                target.setNotesPage(chkNotesPage.isSelected());
 
                 if (isNew) {
                     appStats.getSections().add(target);
