@@ -65,9 +65,17 @@ public class GeneralSettingsPanel extends VBox {
         alwaysOnTopCheck.setSelected(appStats.isAlwaysOnTop());
         alwaysOnTopCheck.setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
 
-        // --- NEW: Zen Mode Threshold Spinner ---
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
+
+        // --- NEW: Global Stats Toggle ---
+        CheckBox chkGlobalStats = new CheckBox("Enable Global Custom Stats (RPG System)");
+        chkGlobalStats.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold; -fx-font-size: 14px;");
+        chkGlobalStats.setSelected(appStats.isGlobalStatsEnabled());
+
+        Label statsDesc = new Label("Turns on the RPG points system across the entire application and tracks them in Analytics.");
+        statsDesc.setStyle("-fx-text-fill: #858585; -fx-font-size: 12px;");
+        VBox statsBox = new VBox(2, chkGlobalStats, statsDesc);
 
         behaviorGrid.add(new Label("Task Font Size:"), 0, 0); behaviorGrid.add(fontSizeSpinner, 1, 0);
         behaviorGrid.add(sliderLabel, 0, 1); behaviorGrid.add(sliderBox, 1, 1);
@@ -77,6 +85,7 @@ public class GeneralSettingsPanel extends VBox {
         behaviorGrid.add(matchTitleColorCheck, 0, 5, 2, 1);
         behaviorGrid.add(alwaysOnTopCheck, 0, 6, 2, 1);
         behaviorGrid.add(new Label("Zen Mode Task Paralysis Threshold:"), 0, 7); behaviorGrid.add(zenSpinner, 1, 7);
+        behaviorGrid.add(statsBox, 0, 8, 2, 1); // Add the stats box to the grid
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");
         navHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
@@ -111,7 +120,8 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setMatchPriorityOutline(matchOutlineCheck.isSelected());
             appStats.setMatchTitleColor(matchTitleColorCheck.isSelected());
             appStats.setAlwaysOnTop(alwaysOnTopCheck.isSelected());
-            appStats.setZenModeThreshold(zenSpinner.getValue()); // Save Zen Threshold
+            appStats.setZenModeThreshold(zenSpinner.getValue());
+            appStats.setGlobalStatsEnabled(chkGlobalStats.isSelected()); // Save Stats Switch State
 
             appStats.setNavFocusText(focusNavField.getText().trim().isEmpty() ? "Focus Hub" : focusNavField.getText().trim());
             appStats.setNavArchiveText(archiveNavField.getText().trim().isEmpty() ? "Archived" : archiveNavField.getText().trim());
@@ -127,7 +137,7 @@ public class GeneralSettingsPanel extends VBox {
         };
 
         fontSizeSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
-        zenSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run()); // Hook Listener
+        zenSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
 
         streakSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
             if (!isChanging) autoSaveTrigger.run();
@@ -138,6 +148,7 @@ public class GeneralSettingsPanel extends VBox {
         matchRectCheck.setOnAction(e -> autoSaveTrigger.run());
         matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
+        chkGlobalStats.setOnAction(e -> autoSaveTrigger.run()); // Trigger save/refresh on toggle
 
         alwaysOnTopCheck.setOnAction(e -> {
             autoSaveTrigger.run();

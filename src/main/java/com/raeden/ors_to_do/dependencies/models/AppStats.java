@@ -63,10 +63,20 @@ public class AppStats implements Serializable {
     private String navArchiveColor = "#C586C0";
     private String navSettingsColor = "#858585";
 
+    private boolean globalStatsEnabled = false;
+
     private LocalDateTime analyticsResetTimestamp;
+
+    private List<CustomStat> customStats = new ArrayList<>();
+
+    // Map storing <StatID, CurrentXP>
+    private Map<String, Integer> statXpMap = new HashMap<>();
 
     public LocalDateTime getAnalyticsResetTimestamp() { return analyticsResetTimestamp; }
     public void setAnalyticsResetTimestamp(LocalDateTime analyticsResetTimestamp) { this.analyticsResetTimestamp = analyticsResetTimestamp; }
+
+    public boolean isGlobalStatsEnabled() { return globalStatsEnabled; }
+    public void setGlobalStatsEnabled(boolean globalStatsEnabled) { this.globalStatsEnabled = globalStatsEnabled; }
 
     private List<SectionConfig> sections = new ArrayList<>();
 
@@ -102,6 +112,24 @@ public class AppStats implements Serializable {
     public List<SectionConfig> getSections() {
         if (sections == null) sections = new ArrayList<>();
         return sections;
+    }
+
+    public List<CustomStat> getCustomStats() {
+        if (customStats == null) customStats = new ArrayList<>();
+        return customStats;
+    }
+    public void setCustomStats(List<CustomStat> customStats) { this.customStats = customStats; }
+
+    public Map<String, Integer> getStatXpMap() {
+        if (statXpMap == null) statXpMap = new HashMap<>();
+        return statXpMap;
+    }
+    public void setStatXpMap(Map<String, Integer> statXpMap) { this.statXpMap = statXpMap; }
+
+    // Helper method to safely add or deduct XP
+    public void addStatXp(String statId, int amount) {
+        if (statXpMap == null) statXpMap = new HashMap<>();
+        statXpMap.put(statId, statXpMap.getOrDefault(statId, 0) + amount);
     }
 
     public int getMinDailyCompletionPercent() { return minDailyCompletionPercent < 10 ? 100 : minDailyCompletionPercent; }

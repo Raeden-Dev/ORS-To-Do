@@ -1,6 +1,7 @@
 package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
@@ -54,7 +55,8 @@ public class TaskCard extends VBox {
         this.activeTimelines = activeTimelines;
         this.onGoToPage = onGoToPage;
 
-        getStyleClass().add("task-row");
+        VBox primaryCard = new VBox();
+        primaryCard.getStyleClass().add("task-row");
 
         List<String> blockingTaskNames = new ArrayList<>();
         if (task.getDependsOnTaskIds() != null && !task.getDependsOnTaskIds().isEmpty()) {
@@ -81,7 +83,7 @@ public class TaskCard extends VBox {
         }
 
         String originalStyle = bgStyle + borderStyle;
-        setStyle(originalStyle);
+        primaryCard.setStyle(originalStyle);
 
         setOnDragDetected(event -> {
             Dragboard db = startDragAndDrop(TransferMode.MOVE);
@@ -95,9 +97,10 @@ public class TaskCard extends VBox {
             event.consume();
         });
         setOnDragEntered(event -> {
-            if (event.getGestureSource() != this && event.getDragboard().hasString()) setStyle(originalStyle + " -fx-border-color: #569CD6; -fx-border-width: 2;");
+            if (event.getGestureSource() != this && event.getDragboard().hasString())
+                primaryCard.setStyle(originalStyle + " -fx-border-color: #569CD6; -fx-border-width: 2;");
         });
-        setOnDragExited(event -> setStyle(originalStyle));
+        setOnDragExited(event -> primaryCard.setStyle(originalStyle));
         setOnDragDropped(event -> {
             Dragboard db = event.getDragboard();
             boolean success = false;
@@ -213,6 +216,81 @@ public class TaskCard extends VBox {
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
+        // --- FIXED: RPG Stats Mini-Card Full Width & State Memory ---
+        FlowPane statsMiniCard = new FlowPane(8, 8);
+        statsMiniCard.setPadding(new Insets(8, 12, 8, 12));
+        statsMiniCard.setStyle("-fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+
+        // Let the box span the full width
+        statsMiniCard.setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(statsMiniCard, new Insets(4, 0, 0, 0)); // No left indent, exactly matching top width
+
+        // Grab the saved state so it doesn't close on refresh
+        boolean isStatsVis = task.isStatsExpanded();
+        statsMiniCard.setVisible(isStatsVis);
+        statsMiniCard.setManaged(isStatsVis);
+
+        boolean hasAnyStats = false;
+
+        if (config.isRewardsPage() && task.getCostPoints() > 0) {
+            Label pLabel = new Label("💎 -" + task.getCostPoints() + " Cost");
+            pLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-size: 11px; -fx-background-color: #1A3A4D; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+            statsMiniCard.getChildren().add(pLabel);
+            hasAnyStats = true;
+        } else if (config.isEnableScore()) {
+            if (task.getRewardPoints() > 0) {
+                Label pLabel = new Label("🏆 +" + task.getRewardPoints() + " Pts");
+                pLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 11px; -fx-background-color: #332B00; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                statsMiniCard.getChildren().add(pLabel);
+                hasAnyStats = true;
+            }
+            if (task.getPenaltyPoints() > 0) {
+                Label pLabel = new Label("💀 -" + task.getPenaltyPoints() + " Pts");
+                pLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 11px; -fx-background-color: #330000; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                statsMiniCard.getChildren().add(pLabel);
+                hasAnyStats = true;
+            }
+        }
+
+        if (config.isEnableStatsSystem()) {
+            for (CustomStat stat : appStats.getCustomStats()) {
+                int rew = task.getStatRewards().getOrDefault(stat.getId(), 0);
+                if (rew > 0) {
+                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+                    String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
+                    Label sLabel = new Label(icon + "+" + rew + " " + stat.getName());
+                    sLabel.setStyle("-fx-text-fill: " + txtC + "; -fx-background-color: " + bgC + "; -fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
+                    statsMiniCard.getChildren().add(sLabel);
+                    hasAnyStats = true;
+                }
+                int pen = task.getStatPenalties().getOrDefault(stat.getId(), 0);
+                if (pen > 0) {
+                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+                    Label sLabel = new Label(icon + "-" + pen + " " + stat.getName());
+                    sLabel.setStyle("-fx-text-fill: #FF6666; -fx-background-color: " + bgC + "; -fx-font-size: 11px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold; -fx-border-color: #FF6666; -fx-border-radius: 4;");
+                    statsMiniCard.getChildren().add(sLabel);
+                    hasAnyStats = true;
+                }
+            }
+        }
+
+        // --- FIXED: Toggle saves state silently without causing refresh blur ---
+        if (hasAnyStats && !isNoteMode) {
+            Button eyeBtn = new Button("👁");
+            eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
+            eyeBtn.setOnAction(e -> {
+                boolean newVis = !task.isStatsExpanded();
+                task.setStatsExpanded(newVis);
+                statsMiniCard.setVisible(newVis);
+                statsMiniCard.setManaged(newVis);
+                eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (newVis ? "#569CD6" : "#AAAAAA") + ";");
+                StorageManager.saveTasks(globalDatabase); // Save so state survives the next refreshList()
+            });
+            mainRow.getChildren().add(eyeBtn);
+        }
+
         Label deadlineLabel = null;
         if (task.getDeadline() != null && !isNoteMode) {
             deadlineLabel = new Label();
@@ -225,14 +303,21 @@ public class TaskCard extends VBox {
                 if (dur.isNegative() || dur.isZero()) {
                     finalDeadlineLabel.setText("🚨 OVERDUE");
 
-                    if (!task.isFinished() && task.getPenaltyPoints() > 0 && !task.isPenaltyApplied()) {
+                    boolean hasAnyPenalty = task.getPenaltyPoints() > 0 || (config.isEnableStatsSystem() && !task.getStatPenalties().isEmpty());
+
+                    if (!task.isFinished() && hasAnyPenalty && !task.isPenaltyApplied()) {
                         task.setPenaltyApplied(true);
                         appStats.setGlobalScore(appStats.getGlobalScore() - task.getPenaltyPoints());
+
+                        if (config.isEnableStatsSystem()) {
+                            task.getStatPenalties().forEach((statId, amount) -> appStats.addStatXp(statId, -amount));
+                        }
+
                         StorageManager.saveStats(appStats);
                         StorageManager.saveTasks(globalDatabase);
                         Platform.runLater(() -> {
                             onUpdate.run();
-                            pushNotification("Deadline Missed!", "Penalty applied: -" + task.getPenaltyPoints() + " points for task: " + task.getTextContent());
+                            pushNotification("Deadline Missed!", "Penalties applied for task: " + task.getTextContent());
                         });
                     }
 
@@ -255,24 +340,6 @@ public class TaskCard extends VBox {
         }
 
         if (!isLocked) {
-            if (config.isRewardsPage() && !isNoteMode) {
-                if (task.getCostPoints() > 0) {
-                    Label ptsLabel = new Label("💎 -" + task.getCostPoints() + " Pts");
-                    ptsLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-weight: bold; -fx-font-size: 12px;");
-                    ptsLabel.setPadding(new Insets(0, 10, 0, 0));
-                    mainRow.getChildren().add(ptsLabel);
-                }
-            } else if (config.isEnableScore() && (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0) && !isNoteMode) {
-                String badgeStr = "";
-                if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
-                if (task.getPenaltyPoints() > 0) badgeStr += "💀 -" + task.getPenaltyPoints();
-
-                Label ptsLabel = new Label(badgeStr.trim());
-                ptsLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold; -fx-font-size: 12px;");
-                ptsLabel.setPadding(new Insets(0, 10, 0, 0));
-                mainRow.getChildren().add(ptsLabel);
-            }
-
             if (deadlineLabel != null) mainRow.getChildren().add(deadlineLabel);
 
             if (config.isTrackTime() && !isNoteMode) {
@@ -302,7 +369,6 @@ public class TaskCard extends VBox {
             actionContainer.setAlignment(Pos.CENTER);
 
             if (isNoteMode) {
-                // --- FIXED: Red when pinned, faded white when unpinned ---
                 Button pinBtn = new Button("📌");
                 String pinColor = task.isPinned() ? "#FF6666" : "#FFFFFF";
                 double opacity = task.isPinned() ? 1.0 : 0.5;
@@ -394,10 +460,12 @@ public class TaskCard extends VBox {
 
         SubTaskRenderer subTaskBox = new SubTaskRenderer(task, config, appStats, globalDatabase, onUpdate);
 
-        getChildren().addAll(mainRow, subTaskBox);
+        primaryCard.getChildren().addAll(mainRow, subTaskBox);
+
+        getChildren().addAll(primaryCard, statsMiniCard);
 
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
-        setOnContextMenuRequested(e -> contextMenu.show(this, e.getScreenX(), e.getScreenY()));
+        primaryCard.setOnContextMenuRequested(e -> contextMenu.show(primaryCard, e.getScreenX(), e.getScreenY()));
     }
 
     private void handleRewardPurchase() {
@@ -435,9 +503,22 @@ public class TaskCard extends VBox {
     }
 
     private void handleTaskCompletion(CheckBox optCheckBox) {
-        if (task.getRewardPoints() > 0 && !task.isPointsClaimed()) {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Claim " + task.getRewardPoints() + " points? This will permanently lock the task.", ButtonType.YES, ButtonType.NO);
-            alert.setHeaderText("Complete Task & Claim Points");
+        boolean hasRewards = task.getRewardPoints() > 0 || (config.isEnableStatsSystem() && !task.getStatRewards().isEmpty());
+
+        if (hasRewards && !task.isPointsClaimed()) {
+
+            StringBuilder rewardStr = new StringBuilder();
+            if (task.getRewardPoints() > 0) rewardStr.append("+").append(task.getRewardPoints()).append(" Global Points\n");
+
+            if (config.isEnableStatsSystem()) {
+                for (CustomStat stat : appStats.getCustomStats()) {
+                    int amt = task.getStatRewards().getOrDefault(stat.getId(), 0);
+                    if (amt > 0) rewardStr.append("+").append(amt).append(" ").append(stat.getName()).append(" XP\n");
+                }
+            }
+
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Claim the following rewards?\n\n" + rewardStr.toString().trim() + "\n\nThis will permanently lock the task.", ButtonType.YES, ButtonType.NO);
+            alert.setHeaderText("Complete Task & Claim Rewards");
             TaskDialogs.styleDialog(alert);
             alert.showAndWait().ifPresent(res -> {
                 if (res == ButtonType.YES) {
@@ -447,6 +528,10 @@ public class TaskCard extends VBox {
                     for (SubTask sub : task.getSubTasks()) sub.setFinished(true);
 
                     appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
+                    if (config.isEnableStatsSystem()) {
+                        task.getStatRewards().forEach((statId, amount) -> appStats.addStatXp(statId, amount));
+                    }
+
                     StorageManager.saveStats(appStats);
                     StorageManager.saveTasks(globalDatabase);
                     onUpdate.run();

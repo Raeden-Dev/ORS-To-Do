@@ -2,6 +2,7 @@ package com.raeden.ors_to_do.modules.dependencies.ui;
 
 import com.raeden.ors_to_do.dependencies.models.*;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -14,7 +15,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TaskDialogs {
 
@@ -44,7 +47,7 @@ public class TaskDialogs {
                         task.getSubTasks().add(new SubTask(line.trim()));
                     }
                 }
-                task.setExpanded(true); // Auto-expand to show new tasks
+                task.setExpanded(true);
                 StorageManager.saveTasks(globalDatabase);
                 onUpdate.run();
             }
@@ -91,11 +94,9 @@ public class TaskDialogs {
 
         int rowIdx = 0;
 
-        // --- FIXED: Switched TextField to TextArea for multi-line support ---
         TextArea contentField = new TextArea(task.getTextContent());
         contentField.setMaxWidth(Double.MAX_VALUE);
         contentField.setWrapText(true);
-        // Notes get a large box, standard tasks get a compact one
         contentField.setPrefRowCount(config.isNotesPage() ? 6 : 2);
 
         grid.add(new Label(config.isNotesPage() ? "Note Text:" : (config.isRewardsPage() ? "Reward Name:" : "Content:")), 0, rowIdx);
@@ -237,6 +238,10 @@ public class TaskDialogs {
         TextField rewardField = new TextField(String.valueOf(task.getRewardPoints()));
         TextField penaltyField = new TextField(String.valueOf(task.getPenaltyPoints()));
 
+        // --- NEW: Maps to hold dynamically generated text fields for RPG Stats ---
+        Map<String, TextField> statRewardFields = new HashMap<>();
+        Map<String, TextField> statPenaltyFields = new HashMap<>();
+
         if (!config.isNotesPage()) {
             datePicker.setMaxWidth(Double.MAX_VALUE);
             if (task.getDeadline() != null) datePicker.setValue(task.getDeadline().toLocalDate());
@@ -263,6 +268,41 @@ public class TaskDialogs {
             } else if (config.isEnableScore()) {
                 grid.add(new Label("Reward Points:"), 0, rowIdx); grid.add(rewardField, 1, rowIdx++);
                 grid.add(new Label("Missed Penalty:"), 0, rowIdx); grid.add(penaltyField, 1, rowIdx++);
+            }
+
+            // --- NEW: DYNAMIC RPG STATS GENERATOR ---
+            if (config.isEnableStatsSystem() && !appStats.getCustomStats().isEmpty()) {
+                grid.add(new Separator(), 0, rowIdx, 2, 1); rowIdx++;
+
+                Label statHeader = new Label("Custom Stat Rewards & Penalties:");
+                statHeader.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold;");
+                grid.add(statHeader, 0, rowIdx, 2, 1); rowIdx++;
+
+                for (CustomStat stat : appStats.getCustomStats()) {
+                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                    Label statLabel = new Label(icon + stat.getName() + ":");
+                    statLabel.setStyle("-fx-text-fill: " + (stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF") + ";");
+
+                    int currentReward = task.getStatRewards().getOrDefault(stat.getId(), 0);
+                    int currentPenalty = task.getStatPenalties().getOrDefault(stat.getId(), 0);
+
+                    TextField sRewardField = new TextField(currentReward > 0 ? String.valueOf(currentReward) : "");
+                    sRewardField.setPromptText("+XP");
+                    sRewardField.setPrefWidth(60);
+
+                    TextField sPenaltyField = new TextField(currentPenalty > 0 ? String.valueOf(currentPenalty) : "");
+                    sPenaltyField.setPromptText("-XP");
+                    sPenaltyField.setPrefWidth(60);
+
+                    HBox statBox = new HBox(10, new Label("+"), sRewardField, new Label("-"), sPenaltyField);
+                    statBox.setAlignment(Pos.CENTER_LEFT);
+
+                    grid.add(statLabel, 0, rowIdx);
+                    grid.add(statBox, 1, rowIdx++);
+
+                    statRewardFields.put(stat.getId(), sRewardField);
+                    statPenaltyFields.put(stat.getId(), sPenaltyField);
+                }
             }
         }
 
@@ -307,6 +347,30 @@ public class TaskDialogs {
                     } else if (config.isEnableScore()) {
                         try { task.setRewardPoints(Math.max(0, Integer.parseInt(rewardField.getText().trim()))); } catch (Exception ignore) {}
                         try { task.setPenaltyPoints(Math.max(0, Integer.parseInt(penaltyField.getText().trim()))); } catch (Exception ignore) {}
+                    }
+
+                    // --- NEW: Save Dynamic Custom Stats ---
+                    if (config.isEnableStatsSystem()) {
+                        task.getStatRewards().clear();
+                        task.getStatPenalties().clear();
+
+                        for (CustomStat stat : appStats.getCustomStats()) {
+                            TextField rewField = statRewardFields.get(stat.getId());
+                            TextField penField = statPenaltyFields.get(stat.getId());
+
+                            if (rewField != null && !rewField.getText().trim().isEmpty()) {
+                                try {
+                                    int rew = Integer.parseInt(rewField.getText().trim());
+                                    if (rew > 0) task.getStatRewards().put(stat.getId(), rew);
+                                } catch (Exception ignore) {}
+                            }
+                            if (penField != null && !penField.getText().trim().isEmpty()) {
+                                try {
+                                    int pen = Integer.parseInt(penField.getText().trim());
+                                    if (pen > 0) task.getStatPenalties().put(stat.getId(), pen);
+                                } catch (Exception ignore) {}
+                            }
+                        }
                     }
                 }
 
@@ -412,7 +476,6 @@ public class TaskDialogs {
     }
 
     public static void styleDialog(Dialog<?> dialog) {
-        // --- FIXED: Injected .text-area CSS to ensure the multi-line input perfectly matches dark theme ---
         String css = ".dialog-pane { -fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; } " +
                 ".dialog-pane > *.content.label { -fx-text-fill: #E0E0E0; } " +
                 ".dialog-pane .header-panel { -fx-background-color: #2D2D30; -fx-border-bottom-color: #3E3E42; -fx-border-width: 0 0 1 0; } " +

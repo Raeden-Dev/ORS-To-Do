@@ -32,6 +32,7 @@ public class SettingsModule extends ScrollPane {
         PriorityManagerPanel priorityPanel = new PriorityManagerPanel(appStats, refreshCallback);
         DataManagementPanel dataPanel = new DataManagementPanel(appStats, globalDatabase, refreshCallback);
         DangerZonePanel dangerPanel = new DangerZonePanel(appStats, globalDatabase, refreshCallback);
+        StatsManagerPanel statsManagerPanel = new StatsManagerPanel(appStats, refreshCallback);
 
         Runnable onSectionChanged = () -> {
             templatePanel.refreshSectionSelector();
@@ -47,6 +48,7 @@ public class SettingsModule extends ScrollPane {
                 sectionPanel,
                 generalPanel,
                 templatePanel,
+                statsManagerPanel,
                 priorityPanel,
                 dataPanel,
                 dangerPanel

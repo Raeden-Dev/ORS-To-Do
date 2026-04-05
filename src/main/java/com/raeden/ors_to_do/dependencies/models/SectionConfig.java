@@ -27,6 +27,7 @@ public class SectionConfig implements Serializable {
     private boolean allowFavorite = false;
     private boolean enableScore = false;
     private boolean enableLinks = false;
+    private boolean enableStatsSystem = false;
 
     // --- NEW: NOTES MODE FLAG ---
     private boolean isNotesPage = false;
@@ -95,4 +96,6 @@ public class SectionConfig implements Serializable {
     public void setEnableScore(boolean enableScore) { this.enableScore = enableScore; }
     public boolean isEnableLinks() { return enableLinks; }
     public void setEnableLinks(boolean enableLinks) { this.enableLinks = enableLinks; }
+    public boolean isEnableStatsSystem() { return enableStatsSystem; }
+    public void setEnableStatsSystem(boolean enableStatsSystem) { this.enableStatsSystem = enableStatsSystem; }
 }

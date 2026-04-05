@@ -68,15 +68,13 @@ Also make the import data dialog box dark
 > Should be able to set task background color in auto-generate task at settings
 > When I click "Empty Archive" button at archives, I should be prompted if I want to export my archive data or not. (As .txt file)
 > Add page type (in section config) where there are no tasks but notes only. For note tasks, I can set bg, outline and sidebox color and also make sidebox stretch for how many lines the note has. Also have ability to pin notes in the page that always appear on top. This is a page only feature,
-I cannot turn a button into note entry. A note entry doesnt have a checkbox, priority, timer or score system added.
+    I cannot turn a button into note entry. A note entry doesnt have a checkbox, priority, timer or score system added.
+> I have a score & score penalty system (point system), I should be able to create my own systems on the fly (with a reward / penalty) at settings in a new section called "Stats Configuration".
+    I can create stats like strength, focus, intelligence etc. you get the idea. I should be able to edit the icon and name of each stats also the button style (colors) when I add the stat to a page. In "Edit Section" for dynamic sections,
+    I should have an additional "Enable Stats System" to use my custom stats. Point system stays separate. Since I can add multiple stat reward / penalty to task entires after this system is created,
+    I want a smaller card attached with the main card (it appears below it but is not same as sub task which expands the size of card, its an entirely new card but very less in height),
+    all my stats rewards / penalty will be displayed there including points which used to show inside the card before. I should be able to hide this or using an "Eye" icon that will be in place of where the score/penalty used to show.
 
-- I have a score & score penalty system (point system), I should be able to create my own systems on the fly (with a reward / penalty) at settings in a new section called "Stats Configuration".
-I can create stats like strength, focus, intelligence etc. you get the idea. I should be able to edit the icon and name of each stats also the button style (colors) when I add the stat to a page. In "Edit Section" for dynamic sections,
-I should have an additional "Enable Stats System" to use my custom stats. Point system stays separate. Since I can add multiple stat reward / penalty to task entires after this system is created,
-I want a smaller card attached with the main card (it appears below it but is not same as sub task which expands the size of card, its an entirely new card but very less in height),
-all my stats rewards / penalty will be displayed there including points which used to show inside the card before. I should be able to hide this or using an "Eye" icon that will be in place of where the score/penalty used to show.
-
-> Optional Tasks that can only be created in pages with a reset and point system. Optional tasks don't account into total tasks. You also can toggle this on/off in section config.
 > A "Text to Task" function in context menu (toggle-able in general configuration at settings) where I can input texts that will create tasks or tasks with subtasks similar to the copy task information function that is present already.
 > A small number beside each of the section button (to the left side before the rectangle) that shows how many tasks are there in that section. I can toggle this on/off in general configuration
 > The Dynamic filter buttons doesnt highlight which one is selected at the given moment. Add this functionality
@@ -84,13 +82,16 @@ all my stats rewards / penalty will be displayed there including points which us
 > I can see that I have a confirmation window pop-up if I want to complete a task and it has points. I should be able to add confirmation to other type of tasks as well. This settings should be available at "General configuration" section of settings page. All dynamic buttons and a "ALL" button, I can select multiple button that creates confirmation dialog when I finish task.
 > There is a separator between the 4 buttons (focus hub, analytics, archived, settings) and my dynamic pages. I should be able to click the separator to hide those 4 buttons and unhide them again (could add a simple slide down hide animation here) & an arrow pops up above the separator if I hover it.
 > If I have a lot of dynamic buttons, it pushes down the separator and the buttons below it instead of creating a scroll bar for the section.
-> Add in danger zone a button that shows history of deleted tasks. (I can also wipe this history from that page)
+> Add a new button in danger zone, that shows history of deleted tasks in a new dialog. (I can also wipe this history from that page)
 > Below the "Active Tasks: X" text in dashboard, there should be a smaller label below it called "Active sub-tasks: X", X is the number of tasks active.
 > An option in "General Configuration" which can toggle on/off the auto startup of Task Tracker when windows starts up.
-> Ability to set checkbox style from "general configuration" section, 5 themes to choose from: default, dark, green, blue, purple
+> Ability to set checkbox style from "general configuration" section, five themes to choose from: default, dark, green, blue, purple
 > Make the dropdowns all dark theme. Right now they are white default theme.
 > When I increase task font size in settings, all fonts in task should increase in size which includes dates, work types
 > Instead of "Work Types", name it as "Type", I can also set color for this additional prefix in the task
 > Starting to have a lot of tasks added, in focus hub its difficult to find a task from dropdown. Now add the option to search a task that filters with keywords
-> Task Tracker Icon should show in System Tray
+> Task Tracker Icon should show in System Tray (right now it shows a blue circle)
 > New "Link" type task card that doesn't have a completion checkbox, rather when clicked I will open a link / folder / application that I hook into it
+> Organize the "Edit Section" dialog of dynamic sections. Add a dropdown for presets that I quickly select to create a custom section with settings of that preset. I should be able to create new presets as well.
+> New "Optional Tasks" that can only be created in pages with a reset interval and point system. Optional tasks don't account into total tasks. You also can toggle this on/off in section config.
+  Optional Tasks can only be created through "Auto-Generating Tasks" section at settings page inside "Edit Template" where there is a checkbox called "Optional Task". Optional tasks always have a yellow outline and dark yellow background similar to "Score" tracker

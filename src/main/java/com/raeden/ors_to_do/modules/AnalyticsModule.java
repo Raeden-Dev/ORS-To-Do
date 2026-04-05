@@ -50,13 +50,11 @@ public class AnalyticsModule extends BorderPane {
         int lifetimeCompletedTasks = 0;
         int lifetimeFocusSeconds = 0;
 
-        // --- NEW TRACKERS ---
         int highPriorityCompleted = 0;
         int penaltiesSuffered = 0;
         int subTasksCrushed = 0;
-        int[] dayCounts = new int[7]; // Indexes 0-6 for Mon-Sun
+        int[] dayCounts = new int[7];
 
-        // Identify the "Highest" priority currently set in the user's config
         CustomPriority highestPrio = null;
         if (!appStats.getCustomPriorities().isEmpty()) {
             highestPrio = appStats.getCustomPriorities().get(appStats.getCustomPriorities().size() - 1);
@@ -67,10 +65,8 @@ public class AnalyticsModule extends BorderPane {
 
         for (TaskItem task : globalDatabase) {
 
-            // Track Penalties (Missed Deadlines)
             if (task.isPenaltyApplied()) penaltiesSuffered++;
 
-            // Track Sub-Tasks Completed
             for (SubTask sub : task.getSubTasks()) {
                 if (sub.isFinished()) subTasksCrushed++;
             }
@@ -86,14 +82,12 @@ public class AnalyticsModule extends BorderPane {
                 String secId = task.getSectionId() != null ? task.getSectionId() : "Unknown";
                 sectionTasksMap.put(secId, sectionTasksMap.getOrDefault(secId, 0) + 1);
 
-                // Track High Priority Tasks
                 if (highestPrio != null && highestPrio.equals(task.getPriority())) {
                     highPriorityCompleted++;
                 }
 
-                // Track Most Productive Day
                 if (task.getDateCompleted() != null) {
-                    int dayIdx = task.getDateCompleted().getDayOfWeek().getValue() - 1; // Monday = 1 -> 0
+                    int dayIdx = task.getDateCompleted().getDayOfWeek().getValue() - 1;
                     dayCounts[dayIdx]++;
                 }
             }
@@ -105,7 +99,6 @@ public class AnalyticsModule extends BorderPane {
             }
         }
 
-        // --- CALCULATE NEW METRICS ---
         String[] dayNames = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
         int maxDayIdx = 0;
         int maxDayCount = 0;
@@ -138,8 +131,6 @@ public class AnalyticsModule extends BorderPane {
                 createHeroCard("✅ Lifetime Tasks", String.valueOf(lifetimeCompletedTasks), "#4EC9B0"),
                 createHeroCard("⏱ Lifetime Focus", String.format("%dh %dm", hours, mins), "#569CD6"),
                 createHeroCard("🗑 Tasks Deleted", String.valueOf(appStats.getLifetimeDeletedTasks()), "#FF6666"),
-
-                // --- NEW CARDS ---
                 createHeroCard("🎯 High Prio Crushed", String.valueOf(highPriorityCompleted), "#C586C0"),
                 createHeroCard("💀 Missed Deadlines", String.valueOf(penaltiesSuffered), "#FF4444"),
                 createHeroCard("🧩 Sub-Tasks Done", String.valueOf(subTasksCrushed), "#9CDCFE"),
@@ -148,6 +139,40 @@ public class AnalyticsModule extends BorderPane {
         );
 
         dashboardContent.getChildren().add(heroFlow);
+
+        // --- NEW: Render Custom RPG Stats ---
+        if (appStats.isGlobalStatsEnabled() && !appStats.getCustomStats().isEmpty()) {
+            VBox rpgBox = new VBox(15);
+            rpgBox.setPadding(new Insets(20, 0, 0, 0));
+
+            Label rpgHeader = new Label("Current RPG Stats");
+            rpgHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
+
+            FlowPane statsFlow = new FlowPane(15, 15);
+
+            for (CustomStat stat : appStats.getCustomStats()) {
+                int currentXp = appStats.getStatXpMap().getOrDefault(stat.getId(), 0);
+
+                VBox badge = new VBox(5);
+                badge.setAlignment(Pos.CENTER);
+                String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+                badge.setStyle("-fx-background-color: " + bgC + "; -fx-padding: 15 25; -fx-background-radius: 8; -fx-border-color: #3E3E42; -fx-border-radius: 8;");
+
+                String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
+                Label nameLbl = new Label(icon + stat.getName());
+                String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
+                nameLbl.setStyle("-fx-text-fill: " + txtC + "; -fx-font-weight: bold; -fx-font-size: 14px;");
+
+                Label xpLbl = new Label(currentXp + "");
+                xpLbl.setStyle("-fx-text-fill: " + txtC + "; -fx-font-size: 18px; -fx-font-weight: bold;");
+
+                badge.getChildren().addAll(nameLbl, xpLbl);
+                statsFlow.getChildren().add(badge);
+            }
+
+            rpgBox.getChildren().addAll(rpgHeader, statsFlow);
+            dashboardContent.getChildren().add(rpgBox);
+        }
 
         // Build Section-by-Section Breakdown
         Label breakdownLabel = new Label("Section Breakdown");

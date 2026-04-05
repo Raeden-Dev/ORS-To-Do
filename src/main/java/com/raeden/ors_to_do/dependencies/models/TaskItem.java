@@ -2,9 +2,7 @@ package com.raeden.ors_to_do.dependencies.models;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class TaskItem implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -41,8 +39,16 @@ public class TaskItem implements Serializable {
     private boolean pointsClaimed = false;
     private boolean penaltyApplied = false;
 
+    private boolean statsExpanded = false;
+
     private List<String> links = new ArrayList<>();
     private List<TaskLink> taskLinks = new ArrayList<>();
+
+    private Map<String, Integer> statRewards = new HashMap<>();
+    private Map<String, Integer> statPenalties = new HashMap<>();
+
+    public boolean isStatsExpanded() { return statsExpanded; }
+    public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
 
     // --- NEW: NOTES Specific Variables ---
     private boolean isPinned = false;
@@ -69,6 +75,18 @@ public class TaskItem implements Serializable {
     public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
     public String getIconColor() { return iconColor; }
     public void setIconColor(String iconColor) { this.iconColor = iconColor; }
+
+    public Map<String, Integer> getStatRewards() {
+        if (statRewards == null) statRewards = new HashMap<>();
+        return statRewards;
+    }
+    public void setStatRewards(Map<String, Integer> statRewards) { this.statRewards = statRewards; }
+
+    public Map<String, Integer> getStatPenalties() {
+        if (statPenalties == null) statPenalties = new HashMap<>();
+        return statPenalties;
+    }
+    public void setStatPenalties(Map<String, Integer> statPenalties) { this.statPenalties = statPenalties; }
 
     public TaskItem(String textContent, CustomPriority priority, OriginModule legacyModule) {
         this.id = UUID.randomUUID().toString();
