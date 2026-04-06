@@ -272,7 +272,6 @@ public class SectionManagerPanel extends VBox {
 
         CheckBox streakCheck = new CheckBox("Enable Streak System");
         streakCheck.setSelected(config.isHasStreak());
-        streakCheck.setDisable(config.getResetIntervalHours() <= 0);
 
         CheckBox autoArchiveCheck = new CheckBox("Auto-Archive Completed");
         autoArchiveCheck.setSelected(config.isAutoArchive());
@@ -297,7 +296,6 @@ public class SectionManagerPanel extends VBox {
 
         CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks");
         enableOptionalTasksCheck.setSelected(config.isEnableOptionalTasks());
-        enableOptionalTasksCheck.setDisable(config.getResetIntervalHours() <= 0 || !config.isEnableScore());
 
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards");
         enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
@@ -326,25 +324,10 @@ public class SectionManagerPanel extends VBox {
         featuresGrid.add(createToggleWithDesc(enableOptionalTasksCheck, "Allows tasks that grant bonus points but do not count to totals."), 1, 8);
         featuresGrid.add(createToggleWithDesc(enableLinkCardsCheck, "Allows creating tasks that act purely as clickable shortcuts."), 1, 9);
 
-        intervalSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
-            boolean hasInterval = newVal != null && newVal > 0;
-            streakCheck.setDisable(!hasInterval);
-            if (!hasInterval) streakCheck.setSelected(false);
-
-            enableOptionalTasksCheck.setDisable(!hasInterval || !enableScoreCheck.isSelected());
-            if (!hasInterval || !enableScoreCheck.isSelected()) enableOptionalTasksCheck.setSelected(false);
-        });
-
-        enableScoreCheck.setOnAction(e -> {
-            boolean hasInterval = intervalSpinner.getValue() != null && intervalSpinner.getValue() > 0;
-            enableOptionalTasksCheck.setDisable(!hasInterval || !enableScoreCheck.isSelected());
-            if (!hasInterval || !enableScoreCheck.isSelected()) enableOptionalTasksCheck.setSelected(false);
-        });
-
         content.getChildren().add(featuresGrid);
         content.getChildren().add(new Separator());
 
-        // --- NEW: Dedicated Box for Special Page Modes ---
+        // --- Dedicated Box for Special Page Modes ---
         VBox specialModesBox = new VBox(10);
         specialModesBox.setStyle("-fx-border-color: #555555; -fx-border-radius: 5; -fx-padding: 10; -fx-background-color: #252526; -fx-background-radius: 5;");
 
@@ -371,13 +354,98 @@ public class SectionManagerPanel extends VBox {
 
         modeToggles.getChildren().addAll(notesPageCheck, statPageCheck, perkPageCheck, rewardsPageCheck);
         specialModesBox.getChildren().addAll(modeHeader, modeToggles);
-
-        rewardsPageCheck.setOnAction(e -> { if(rewardsPageCheck.isSelected()) { notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } });
-        notesPageCheck.setOnAction(e -> { if(notesPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } });
-        statPageCheck.setOnAction(e -> { if(statPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); perkPageCheck.setSelected(false); } });
-        perkPageCheck.setOnAction(e -> { if(perkPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); statPageCheck.setSelected(false); } });
-
         content.getChildren().add(specialModesBox);
+
+        // ========================================================================
+        // --- MASTER STATE ENGINE: Disables/Unchecks Conflicting UI Elements ---
+        // ========================================================================
+        Runnable updateUIState = () -> {
+            boolean isNotes = notesPageCheck.isSelected();
+            boolean isStat = statPageCheck.isSelected();
+            boolean isPerk = perkPageCheck.isSelected();
+            boolean isReward = rewardsPageCheck.isSelected();
+            boolean isSpecial = isNotes || isStat || isPerk || isReward;
+
+            // 1. Reset Interval Logic
+            if (isStat || isPerk || isReward) {
+                intervalSpinner.setDisable(true);
+                if (intervalSpinner.getValue() != 0) {
+                    intervalSpinner.getValueFactory().setValue(0);
+                }
+            } else {
+                intervalSpinner.setDisable(false);
+            }
+            boolean hasInterval = intervalSpinner.getValue() != null && intervalSpinner.getValue() > 0;
+
+            // 2. Auto-Archive Logic
+            if (isStat || isPerk || isReward) {
+                autoArchiveCheck.setDisable(true);
+                autoArchiveCheck.setSelected(false);
+            } else {
+                autoArchiveCheck.setDisable(false);
+            }
+
+            // 3. Sub-Tasks, Link Cards, and Focus Time Hierarchy
+            if (isSpecial) {
+                enableSubTasksCheck.setDisable(true); enableSubTasksCheck.setSelected(false);
+                if(!isNotes) enableLinkCardsCheck.setDisable(true); if(!isNotes) enableLinkCardsCheck.setSelected(false);
+                trackTimeCheck.setDisable(true); trackTimeCheck.setSelected(false);
+                enableZenModeCheck.setDisable(true); enableZenModeCheck.setSelected(false);
+
+                if (!isReward) { // Rewards shop uses priority to define "Tiers"
+                    showPriorityCheck.setDisable(true); showPriorityCheck.setSelected(false);
+                } else {
+                    showPriorityCheck.setDisable(false);
+                }
+            } else {
+                boolean subTasks = enableSubTasksCheck.isSelected();
+                boolean links = enableLinkCardsCheck.isSelected();
+                boolean focus = trackTimeCheck.isSelected();
+
+                enableSubTasksCheck.setDisable(links);
+                enableLinkCardsCheck.setDisable(subTasks || focus);
+                trackTimeCheck.setDisable(links);
+
+                enableZenModeCheck.setDisable(false);
+                showPriorityCheck.setDisable(false);
+            }
+
+            // 4. Streak System Logic
+            streakCheck.setDisable(!hasInterval);
+            if (!hasInterval) streakCheck.setSelected(false);
+
+            // 5. Optional Tasks Logic
+            boolean hasPoints = enableScoreCheck.isSelected() || enableStatsSystemCheck.isSelected();
+            enableOptionalTasksCheck.setDisable(!hasInterval || !hasPoints);
+            if (!hasInterval || !hasPoints) {
+                enableOptionalTasksCheck.setSelected(false);
+            }
+        };
+
+        // --- Attach Listeners to fire the Master State Engine ---
+        intervalSpinner.valueProperty().addListener((obs, oldVal, newVal) -> updateUIState.run());
+        enableSubTasksCheck.setOnAction(e -> updateUIState.run());
+        enableLinkCardsCheck.setOnAction(e -> updateUIState.run());
+        trackTimeCheck.setOnAction(e -> updateUIState.run());
+        enableScoreCheck.setOnAction(e -> updateUIState.run());
+        enableStatsSystemCheck.setOnAction(e -> updateUIState.run());
+
+        rewardsPageCheck.setOnAction(e -> {
+            if(rewardsPageCheck.isSelected()) { notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); }
+            updateUIState.run();
+        });
+        notesPageCheck.setOnAction(e -> {
+            if(notesPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); }
+            updateUIState.run();
+        });
+        statPageCheck.setOnAction(e -> {
+            if(statPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); perkPageCheck.setSelected(false); }
+            updateUIState.run();
+        });
+        perkPageCheck.setOnAction(e -> {
+            if(perkPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); statPageCheck.setSelected(false); }
+            updateUIState.run();
+        });
 
         presetBox.setOnAction(e -> {
             SectionConfig loadedPreset = presetBox.getValue();
@@ -407,6 +475,9 @@ public class SectionManagerPanel extends VBox {
                 perkPageCheck.setSelected(loadedPreset.isPerkPage());
                 enableOptionalTasksCheck.setSelected(loadedPreset.isEnableOptionalTasks());
                 enableTaskStylingCheck.setSelected(loadedPreset.isEnableTaskStyling());
+
+                // Run engine after loading preset to enforce rules
+                updateUIState.run();
             }
         });
 
@@ -451,6 +522,9 @@ public class SectionManagerPanel extends VBox {
                 StorageManager.saveStats(appStats);
             });
         });
+
+        // Initialize UI State on first load
+        updateUIState.run();
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);

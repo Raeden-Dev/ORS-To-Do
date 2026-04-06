@@ -11,6 +11,8 @@ import com.raeden.ors_to_do.modules.dependencies.services.DailyRolloverManager;
 import com.raeden.ors_to_do.modules.dependencies.services.QuickCaptureManager;
 import com.raeden.ors_to_do.modules.dependencies.services.SingleInstanceManager;
 import com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager;
+// --- NEW: Added NotificationManager Import ---
+import com.raeden.ors_to_do.modules.dependencies.services.NotificationManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.GlobalSearchBar;
 import com.raeden.ors_to_do.modules.dependencies.ui.SidebarManager;
 import javafx.application.Application;
@@ -181,6 +183,9 @@ public class TaskTrackerApp extends Application {
 
         if (!appStats.getSections().isEmpty()) navigateToModule(appStats.getSections().get(0).getId());
         else navigateToModule("SETTINGS");
+
+        // --- NEW: Start Background Notification Engine ---
+        NotificationManager.start(appStats, taskDatabase, primaryStage);
     }
 
     private void shutdownApp() {

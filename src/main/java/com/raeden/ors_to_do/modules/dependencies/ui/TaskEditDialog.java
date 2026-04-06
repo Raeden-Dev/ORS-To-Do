@@ -75,7 +75,6 @@ public class TaskEditDialog {
         grid.add(linkCardCheck, 0, rowIdx);
         grid.add(linkPathField, 1, rowIdx++);
 
-        // --- FIXED: Visual grouping and Separator for Styling Options ---
         boolean allowStyling = config != null && (config.isNotesPage() || config.isEnableTaskStyling());
         boolean allowIcons = config == null || config.isEnableIcons();
         boolean allowPrefix = config == null || config.isShowPrefix();
@@ -150,7 +149,6 @@ public class TaskEditDialog {
             ColorPicker finalRndIconColor = iconColorPicker;
             ColorPicker finalRndPrefixColor = preC;
 
-            // --- FIXED: Expanded Randomizer to target BG, Outline, and Sidebox ---
             randomBtn.setOnAction(e -> {
                 java.util.Random rand = new java.util.Random();
                 double hue = rand.nextDouble() * 360.0;
@@ -250,8 +248,12 @@ public class TaskEditDialog {
             timePicker.setPromptText("HH:mm (24h)");
             if (task.getDeadline() != null) timePicker.setText(task.getDeadline().toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")));
 
+            // --- FIXED: Disable Exact Time box if no deadline date is selected ---
+            timePicker.setDisable(datePicker.getValue() == null);
+            datePicker.valueProperty().addListener((obs, oldVal, newVal) -> timePicker.setDisable(newVal == null));
+
             grid.add(new Label((config != null && config.isRewardsPage()) ? "Available Until:" : "Deadline Date:"), 0, rowIdx); grid.add(datePicker, 1, rowIdx++);
-            grid.add(new Label("Time:"), 0, rowIdx); grid.add(timePicker, 1, rowIdx++);
+            grid.add(new Label("Exact Time:"), 0, rowIdx); grid.add(timePicker, 1, rowIdx++);
 
             grid.add(new Separator(), 0, rowIdx, 2, 1); rowIdx++;
 
@@ -308,8 +310,6 @@ public class TaskEditDialog {
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        // Required re-capturing because these references are needed inside the OK button listener
-        // after being potentially initialized inside the styling block
         ColorPicker okBgColorPicker = bgColorPicker;
         ColorPicker okOutlinePicker = outlinePicker;
         ColorPicker okSideboxPicker = sideboxPicker;

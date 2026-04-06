@@ -1,121 +1,209 @@
 package com.raeden.ors_to_do.modules.dependencies.services;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
-import com.raeden.ors_to_do.dependencies.models.CustomPriority;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
 import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.stage.FileChooser;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 public class BackupManager {
 
-    public static void exportData(AppStats appStats, List<TaskItem> taskDatabase) {
+    /**
+     * Exports ALL current application data to a backup file.
+     */
+    public static void exportData(AppStats appStats, List<TaskItem> globalDatabase) {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Export ORS Data Backup");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("ORS Backup File", "*.orsb"));
-        fileChooser.setInitialFileName("ORS_Backup.orsb");
-
+        fileChooser.setTitle("Export Full Backup");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Task Tracker Backup", "*.bak", "*.dat"));
         File file = fileChooser.showSaveDialog(null);
 
         if (file != null) {
-            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-                oos.writeObject(new BackupBundle(appStats, taskDatabase));
-                SystemTrayManager.pushNotification("Export Successful", "All data safely exported to: " + file.getName());
-            } catch (Exception e) {
-                e.printStackTrace();
-                showError("Export Failed", "Could not write to the selected file.");
-            }
-        }
-    }
-
-    public static void importData(AppStats currentStats, List<TaskItem> currentTasks, Runnable onComplete) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Import ORS Data Backup");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("ORS Backup File", "*.orsb"));
-
-        File file = fileChooser.showOpenDialog(null);
-
-        if (file != null) {
-            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-                BackupBundle bundle = (BackupBundle) ois.readObject();
-
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setTitle("Import Data");
-                alert.setHeaderText("How would you like to import this backup?");
-                alert.setContentText("- REPLACE: Wipes current data and loads the backup entirely.\n- MERGE: Adds missing tasks/sections and keeps your highest stats.");
-
-                // --- NEW: Inject dark theme styling ---
-                com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.styleDialog(alert);
-
-                ButtonType replaceBtn = new ButtonType("Replace All");
-                ButtonType mergeBtn = new ButtonType("Merge Data");
-                ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-
-                alert.getButtonTypes().setAll(replaceBtn, mergeBtn, cancelBtn);
-                Optional<ButtonType> result = alert.showAndWait();
-
-                if (result.isPresent() && result.get() != cancelBtn) {
-                    if (result.get() == replaceBtn) {
-                        currentStats.copyFrom(bundle.getAppStats());
-                        currentTasks.clear();
-                        currentTasks.addAll(bundle.getTaskDatabase());
-                    } else if (result.get() == mergeBtn) {
-                        mergeData(currentStats, currentTasks, bundle.getAppStats(), bundle.getTaskDatabase());
-                    }
-
-                    StorageManager.saveStats(currentStats);
-                    StorageManager.saveTasks(currentTasks);
-                    onComplete.run();
-                    SystemTrayManager.pushNotification("Import Successful", "Your data has been loaded.");
+            try {
+                BackupBundle bundle = new BackupBundle(appStats, globalDatabase);
+                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+                    oos.writeObject(bundle);
                 }
 
-            } catch (Exception e) {
-                e.printStackTrace();
-                showError("Import Failed", "The selected file is invalid or corrupted.");
+                Alert success = new Alert(Alert.AlertType.INFORMATION, "Full backup exported successfully to:\n" + file.getAbsolutePath());
+                success.setHeaderText("Export Successful");
+                TaskDialogs.styleDialog(success);
+                success.show();
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Alert error = new Alert(Alert.AlertType.ERROR, "Failed to export data:\n" + ex.getMessage());
+                error.setHeaderText("Export Error");
+                TaskDialogs.styleDialog(error);
+                error.show();
             }
         }
     }
 
-    private static void mergeData(AppStats currentStats, List<TaskItem> currentTasks, AppStats importedStats, List<TaskItem> importedTasks) {
-        // Merge missing tasks
-        for (TaskItem importedTask : importedTasks) {
-            boolean exists = currentTasks.stream().anyMatch(t -> t.getId().equals(importedTask.getId()));
-            if (!exists) currentTasks.add(importedTask);
-        }
+    /**
+     * Exports only specific slices of data based on the user's checkbox selections.
+     */
+    public static void exportCustomData(AppStats appStats, List<TaskItem> globalDatabase, Map<String, Boolean> exportFlags, List<String> selectedSectionIds) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Custom Backup");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Task Tracker Backup", "*.bak", "*.dat"));
+        File file = fileChooser.showSaveDialog(null);
 
-        // Merge missing sections
-        for (SectionConfig importedSec : importedStats.getSections()) {
-            boolean exists = currentStats.getSections().stream().anyMatch(s -> s.getId().equals(importedSec.getId()));
-            if (!exists) currentStats.getSections().add(importedSec);
-        }
+        if (file != null) {
+            try {
+                AppStats exportStats = new AppStats();
 
-        // Merge missing priorities
-        for (CustomPriority importedPrio : importedStats.getCustomPriorities()) {
-            boolean exists = currentStats.getCustomPriorities().stream().anyMatch(p -> p.getName().equals(importedPrio.getName()));
-            if (!exists) currentStats.getCustomPriorities().add(importedPrio);
-        }
+                // 1. Analytics & Stats
+                if (exportFlags.getOrDefault("globalAnalytics", false)) {
+                    exportStats.setGlobalScore(appStats.getGlobalScore());
+                    exportStats.setCurrentStreak(appStats.getCurrentStreak());
+                    exportStats.setHighestStreak(appStats.getHighestStreak());
+                    exportStats.setLifetimeDeletedTasks(appStats.getLifetimeDeletedTasks());
+                    exportStats.setLifetimePointsSpent(appStats.getLifetimePointsSpent());
+                    exportStats.setRewardsClaimed(appStats.getRewardsClaimed());
 
-        // Take highest stats
-        currentStats.setGlobalScore(Math.max(currentStats.getGlobalScore(), importedStats.getGlobalScore()));
-        currentStats.setHighestStreak(Math.max(currentStats.getHighestStreak(), importedStats.getHighestStreak()));
-        currentStats.setLifetimeDeletedTasks(currentStats.getLifetimeDeletedTasks() + importedStats.getLifetimeDeletedTasks());
+                    // Use get().putAll() instead of missing setters
+                    exportStats.getHistoryLog().clear();
+                    exportStats.getHistoryLog().putAll(appStats.getHistoryLog());
+
+                    exportStats.getAdvancedHistoryLog().clear();
+                    exportStats.getAdvancedHistoryLog().putAll(appStats.getAdvancedHistoryLog());
+                }
+
+                if (exportFlags.getOrDefault("currentStats", false)) {
+                    exportStats.setCustomStats(new ArrayList<>(appStats.getCustomStats()));
+
+                    exportStats.getLastStatGainDates().clear();
+                    exportStats.getLastStatGainDates().putAll(appStats.getLastStatGainDates());
+                }
+
+                // 2. Settings & Configurations
+                if (exportFlags.getOrDefault("dynamicSectionsConfig", false)) {
+                    exportStats.getSections().clear();
+                    exportStats.getSections().addAll(appStats.getSections());
+
+                    exportStats.setSectionPresets(new ArrayList<>(appStats.getSectionPresets()));
+                } else if (!selectedSectionIds.isEmpty()) {
+                    // Safety Fallback: Export required section configs for exported tasks
+                    List<SectionConfig> requiredSections = new ArrayList<>();
+                    for (SectionConfig sc : appStats.getSections()) {
+                        if (selectedSectionIds.contains(sc.getId())) {
+                            requiredSections.add(sc);
+                        }
+                    }
+                    exportStats.getSections().clear();
+                    exportStats.getSections().addAll(requiredSections);
+                }
+
+                if (exportFlags.getOrDefault("generalConfig", false)) {
+                    exportStats.setMatchTitleColor(appStats.isMatchTitleColor());
+                    exportStats.setMatchDailyRectColor(appStats.isMatchDailyRectColor());
+                    exportStats.setTaskFontSize(appStats.getTaskFontSize());
+                    exportStats.setMatchPriorityOutline(appStats.isMatchPriorityOutline());
+                    exportStats.setCheckboxTheme(appStats.getCheckboxTheme());
+                    exportStats.setMinDailyCompletionPercent(appStats.getMinDailyCompletionPercent());
+                    exportStats.setZenModeThreshold(appStats.getZenModeThreshold());
+                }
+
+                if (exportFlags.getOrDefault("prioritiesConfig", false)) {
+                    exportStats.getCustomPriorities().clear();
+                    exportStats.getCustomPriorities().addAll(appStats.getCustomPriorities());
+                }
+
+                // 3. Task Database Filtering
+                List<TaskItem> exportTasks = new ArrayList<>();
+                for (TaskItem task : globalDatabase) {
+                    boolean shouldExport = false;
+
+                    if (task.isArchived() && exportFlags.getOrDefault("archived", false)) {
+                        shouldExport = true;
+                    } else if (!task.isArchived() && selectedSectionIds.contains(task.getSectionId())) {
+                        shouldExport = true;
+                    }
+
+                    if (shouldExport) {
+                        exportTasks.add(task);
+                    }
+                }
+
+                // 4. Package and Save
+                BackupBundle bundle = new BackupBundle(exportStats, exportTasks);
+
+                try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+                    oos.writeObject(bundle);
+                }
+
+                Alert success = new Alert(Alert.AlertType.INFORMATION, "Custom backup exported successfully to:\n" + file.getAbsolutePath());
+                success.setHeaderText("Export Successful");
+                TaskDialogs.styleDialog(success);
+                success.show();
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Alert error = new Alert(Alert.AlertType.ERROR, "Failed to export custom data:\n" + ex.getMessage());
+                error.setHeaderText("Export Error");
+                TaskDialogs.styleDialog(error);
+                error.show();
+            }
+        }
     }
 
-    private static void showError(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
+    /**
+     * Imports data from a backup file, replacing current data.
+     */
+    public static void importData(AppStats currentStats, List<TaskItem> currentDatabase, Runnable refreshCallback) {
+        Alert warning = new Alert(Alert.AlertType.CONFIRMATION, "WARNING: Importing a backup will OVERWRITE your current data. Are you sure you want to proceed?", ButtonType.YES, ButtonType.NO);
+        warning.setHeaderText("Confirm Import");
+        TaskDialogs.styleDialog(warning);
 
-        // --- NEW: Inject dark theme styling to errors too ---
-        com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.styleDialog(alert);
-        alert.show();
+        warning.showAndWait().ifPresent(res -> {
+            if (res == ButtonType.YES) {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Import Backup");
+                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Task Tracker Backup", "*.bak", "*.dat"));
+                File file = fileChooser.showOpenDialog(null);
+
+                if (file != null) {
+                    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                        BackupBundle bundle = (BackupBundle) ois.readObject();
+
+                        if (bundle.getAppStats() != null && bundle.getTaskDatabase() != null) {
+
+                            // Clear existing data
+                            currentDatabase.clear();
+                            currentDatabase.addAll(bundle.getTaskDatabase());
+
+                            StorageManager.saveStats(bundle.getAppStats());
+                            StorageManager.saveTasks(currentDatabase);
+
+                            Alert success = new Alert(Alert.AlertType.INFORMATION, "Data imported successfully! The application will now refresh.");
+                            success.setHeaderText("Import Successful");
+                            TaskDialogs.styleDialog(success);
+                            success.showAndWait();
+
+                            // Trigger full UI refresh
+                            refreshCallback.run();
+                        } else {
+                            throw new Exception("Invalid backup file format.");
+                        }
+
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        Alert error = new Alert(Alert.AlertType.ERROR, "Failed to import data. The file may be from an older, incompatible version of the app.\n\nError: " + ex.getMessage());
+                        error.setHeaderText("Import Error");
+                        TaskDialogs.styleDialog(error);
+                        error.show();
+                    }
+                }
+            }
+        });
     }
 }

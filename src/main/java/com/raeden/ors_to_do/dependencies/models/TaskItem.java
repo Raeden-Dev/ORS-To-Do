@@ -55,6 +55,20 @@ public class TaskItem implements Serializable {
     public boolean isStatsExpanded() { return statsExpanded; }
     public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
 
+    private boolean notified24h = false;
+    private boolean notified12h = false;
+    private boolean notified4h = false;
+    private boolean notified2h = false;
+
+    public boolean isNotified24h() { return notified24h; }
+    public void setNotified24h(boolean v) { this.notified24h = v; }
+    public boolean isNotified12h() { return notified12h; }
+    public void setNotified12h(boolean v) { this.notified12h = v; }
+    public boolean isNotified4h() { return notified4h; }
+    public void setNotified4h(boolean v) { this.notified4h = v; }
+    public boolean isNotified2h() { return notified2h; }
+    public void setNotified2h(boolean v) { this.notified2h = v; }
+
     // --- PHASE 4: PERK SYSTEM FIELDS ---
     private Map<String, Integer> statRequirements = new HashMap<>();
     private int perkLevel = 0; // 0 to 5
@@ -221,7 +235,13 @@ public class TaskItem implements Serializable {
     public LocalDateTime getStartDate() { return startDate; }
     public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
     public LocalDateTime getDeadline() { return deadline; }
-    public void setDeadline(LocalDateTime deadline) { this.deadline = deadline; }
+    public void setDeadline(LocalDateTime deadline) {
+        this.deadline = deadline;
+        this.notified24h = false;
+        this.notified12h = false;
+        this.notified4h = false;
+        this.notified2h = false;
+    }
     public boolean isArchived() { return isArchived; }
     public void setArchived(boolean archived) { this.isArchived = archived; }
 }

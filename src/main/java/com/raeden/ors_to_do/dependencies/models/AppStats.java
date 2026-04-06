@@ -56,6 +56,11 @@ public class AppStats implements Serializable {
         return lastStatGainDates;
     }
 
+    private boolean enableNotifications = true;
+
+    public boolean isEnableNotifications() { return enableNotifications; }
+    public void setEnableNotifications(boolean enableNotifications) { this.enableNotifications = enableNotifications; }
+
     private String navQuickText = "Quick To-Do";
     private String navDailyText = "Daily To-Do";
     private String navWorkText = "Work List";
