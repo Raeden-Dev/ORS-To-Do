@@ -4,7 +4,7 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.SubTask;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskCard;
+import com.raeden.ors_to_do.modules.dependencies.ui.cards.TaskCard;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

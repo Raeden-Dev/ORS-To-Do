@@ -95,6 +95,9 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
 
+        Spinner<Integer> inactivitySpinner = new Spinner<>(0, 120, appStats.getFocusInactivityThreshold());
+        inactivitySpinner.setEditable(true);
+
         CheckBox chkGlobalStats = new CheckBox();
         chkGlobalStats.setSelected(appStats.isGlobalStatsEnabled());
 
@@ -182,6 +185,7 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Zen Mode", "Number of active tasks required before Zen Mode becomes available.", zenSpinner, "#FF6666"),
                 createSettingRow("Require Completion Confirmation", "Prompts for confirmation before completing tasks in selected sections.", confirmMenu, "#FF6666"),
                 createSettingRow("Minimum Streak Threshold", "Percentage of completed tasks required to maintain a completion streak.", sliderBox, "#4EC9B0"),
+                createSettingRow("Strict Focus Auto-Pause", "Minutes of global keyboard/mouse inactivity before the Focus Hub timer automatically pauses. (0 = Disabled)", inactivitySpinner, "#FF6666"),
                 createSettingRow("Enable Desktop Notifications", "Shows alerts for approaching deadlines, inactivity, and resets.", notificationsCheck, "#C586C0"),
                 createSettingRow("Run in Background", "Keeps the application running in the system tray when closed.", runInBackgroundCheck, "#569CD6"),
                 createSettingRow("Run on Windows Startup", "Automatically launches Task Tracker when your computer boots.", chkStartup, "#569CD6"),
@@ -192,6 +196,7 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Enable 'Text to Task'", "Allows pasting bulk text in the context menu to automatically generate multiple tasks.", chkTextToTask, "#C586C0"),
                 createSettingRow("Show Sidebar Active Count", "Displays the number of unfinished tasks directly on the sidebar buttons.", chkSidebarCount, "#C586C0"),
                 createSettingRow("Enable Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8")
+
         );
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");
@@ -238,6 +243,7 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setEnableTextToTask(chkTextToTask.isSelected());
             appStats.setShowSidebarTaskCount(chkSidebarCount.isSelected());
             appStats.setCheckboxTheme(themeBox.getValue());
+            appStats.setFocusInactivityThreshold(inactivitySpinner.getValue());
 
             WindowsStartupManager.setStartupEnabled(chkStartup.isSelected());
 

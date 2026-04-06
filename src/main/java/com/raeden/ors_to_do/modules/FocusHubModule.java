@@ -2,8 +2,8 @@ package com.raeden.ors_to_do.modules;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
-import com.raeden.ors_to_do.modules.dependencies.ui.PomodoroTimer;
-import com.raeden.ors_to_do.modules.dependencies.ui.Scratchpad;
+import com.raeden.ors_to_do.modules.dependencies.ui.layout.PomodoroTimer;
+import com.raeden.ors_to_do.modules.dependencies.ui.layout.Scratchpad;
 import javafx.geometry.Insets;
 import javafx.scene.layout.HBox;
 

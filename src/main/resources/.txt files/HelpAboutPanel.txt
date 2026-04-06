@@ -1,8 +1,7 @@
 package com.raeden.ors_to_do.modules.dependencies.settings;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
-import javafx.geometry.Pos;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;

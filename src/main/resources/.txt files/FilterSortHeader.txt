@@ -1,4 +1,4 @@
-package com.raeden.ors_to_do.modules.dependencies.ui;
+package com.raeden.ors_to_do.modules.dependencies.ui.components;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;

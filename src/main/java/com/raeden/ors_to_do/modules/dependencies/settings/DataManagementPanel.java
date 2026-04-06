@@ -4,7 +4,7 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.modules.dependencies.services.BackupManager;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;

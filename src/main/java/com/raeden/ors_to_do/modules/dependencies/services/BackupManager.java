@@ -5,7 +5,7 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.stage.FileChooser;
@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

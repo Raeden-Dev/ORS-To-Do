@@ -11,45 +11,72 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class SingleInstanceManager {
-    private static final int INSTANCE_PORT = 44444;
 
-    public static boolean checkAndWakeUp() {
+    /**
+     * Attempts to register this application instance for the specific version.
+     * Returns true if successful. Returns false if an instance of this version is already running.
+     */
+    public static boolean registerInstance(String version, Stage mainStage) {
+        int versionPort = generatePortForVersion(version);
+
         try {
-            Socket socket = new Socket(InetAddress.getByName("127.0.0.1"), INSTANCE_PORT);
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println("WAKE_UP");
-            socket.close();
-            System.out.println("App is already running in background. Waking up existing instance and closing this one.");
+            // Attempt to bind to the version-specific port
+            ServerSocket serverSocket = new ServerSocket(versionPort, 1, InetAddress.getByAddress(new byte[]{127, 0, 0, 1}));
+
+            // If successful, start a background thread to listen for duplicate launch attempts
+            Thread listenerThread = new Thread(() -> {
+                while (true) {
+                    try (Socket clientSocket = serverSocket.accept();
+                         BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+
+                        String msg = in.readLine();
+                        if ("FOCUS".equals(msg)) {
+                            // Another instance of THIS version tried to launch. Bring our window to the front.
+                            Platform.runLater(() -> {
+                                if (mainStage != null) {
+                                    if (mainStage.isIconified()) {
+                                        mainStage.setIconified(false);
+                                    }
+                                    mainStage.show();
+                                    mainStage.toFront();
+                                    mainStage.requestFocus();
+                                }
+                            });
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            listenerThread.setDaemon(true);
+            listenerThread.start();
             return true;
+
         } catch (Exception e) {
-            return false; // Connection refused, meaning no instance is running
+            // Port is already taken. An instance of this exact version is already running.
+            focusExistingInstance(versionPort);
+            return false;
         }
     }
 
-    public static void startServer(Stage primaryStage) {
-        Thread serverThread = new Thread(() -> {
-            try {
-                ServerSocket serverSocket = new ServerSocket(INSTANCE_PORT, 1, InetAddress.getByName("127.0.0.1"));
-                while (true) {
-                    Socket client = serverSocket.accept();
-                    BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                    String msg = in.readLine();
-                    if ("WAKE_UP".equals(msg)) {
-                        Platform.runLater(() -> {
-                            if (primaryStage != null) {
-                                primaryStage.show();
-                                primaryStage.setIconified(false);
-                                primaryStage.toFront();
-                            }
-                        });
-                    }
-                    client.close();
-                }
-            } catch (Exception e) {
-                // Server socket failed to bind, likely because another app is using the port
-            }
-        });
-        serverThread.setDaemon(true);
-        serverThread.start();
+    /**
+     * Converts the version string (e.g., "v1.39") into a unique, consistent port number.
+     */
+    private static int generatePortForVersion(String version) {
+        int hash = Math.abs(version.hashCode());
+        // Map the hash to a port in the safe private range of 40000 - 60000
+        return 40000 + (hash % 20000);
+    }
+
+    /**
+     * Sends a signal to the currently running instance to bring itself to the front.
+     */
+    private static void focusExistingInstance(int port) {
+        try (Socket socket = new Socket(InetAddress.getByAddress(new byte[]{127, 0, 0, 1}), port);
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+            out.println("FOCUS");
+        } catch (Exception e) {
+            // Ignore, the existing instance might be closing
+        }
     }
 }

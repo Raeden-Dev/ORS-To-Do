@@ -3,7 +3,7 @@ package com.raeden.ors_to_do.modules.dependencies.settings;
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomPriority;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;

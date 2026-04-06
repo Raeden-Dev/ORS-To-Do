@@ -1,21 +1,17 @@
 package com.raeden.ors_to_do.modules.dependencies.settings;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
-import com.raeden.ors_to_do.dependencies.models.SectionConfig;
-import com.raeden.ors_to_do.dependencies.models.DailyTemplate;
-import com.raeden.ors_to_do.dependencies.storage.StorageManager;
-import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.models.CustomPriority;
+import com.raeden.ors_to_do.dependencies.models.DailyTemplate;
+import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.SubTask;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
+import com.raeden.ors_to_do.dependencies.models.TaskItem;
+import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import java.time.DayOfWeek;
-import java.util.ArrayList;
-import java.util.Collections;
+
 import java.util.List;
 
 public class TemplateManagerPanel extends VBox {
@@ -45,52 +41,14 @@ public class TemplateManagerPanel extends VBox {
         Button addBtn = new Button("Add Template");
         addBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand;");
         addBtn.setOnAction(e -> {
-            if (sectionBox.getValue() != null) showTemplateDialog(null, sectionBox.getValue());
+            if (sectionBox.getValue() != null) {
+                TemplateEditDialog.show(null, sectionBox.getValue(), appStats, this::saveAndRefresh);
+            }
         });
 
         Button generateBtn = new Button("Generate Tasks Now");
         generateBtn.setStyle("-fx-background-color: #22543D; -fx-text-fill: white; -fx-cursor: hand;");
-        generateBtn.setOnAction(e -> {
-            SectionConfig selected = sectionBox.getValue();
-            if (selected == null || selected.getAutoAddTemplates().isEmpty()) return;
-
-            CustomPriority fallbackPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
-
-            for (DailyTemplate template : selected.getAutoAddTemplates()) {
-                TaskItem newTask = new TaskItem(template.getText(), fallbackPrio, selected.getId());
-
-                if (selected.isEnableIcons() && template.getIconSymbol() != null && !template.getIconSymbol().equals("None")) {
-                    newTask.setIconSymbol(template.getIconSymbol());
-                    newTask.setIconColor(template.getIconColor());
-                }
-                if (selected.isShowPrefix() && template.getPrefix() != null && !template.getPrefix().isEmpty()) {
-                    newTask.setPrefix(template.getPrefix());
-                    newTask.setPrefixColor(template.getPrefixColor());
-                }
-                if (selected.isShowPriority() && template.getPriorityName() != null && !template.isOptional()) {
-                    appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
-                }
-                if (selected.isShowTaskType() && template.getTaskType() != null) newTask.setTaskType(template.getTaskType());
-                if (selected.isEnableScore()) {
-                    newTask.setRewardPoints(template.getRewardPoints());
-                    newTask.setPenaltyPoints(template.getPenaltyPoints());
-                }
-                if (selected.isEnableSubTasks() && template.getSubTaskLines() != null) {
-                    for (String st : template.getSubTaskLines()) {
-                        if (!st.trim().isEmpty()) newTask.getSubTasks().add(new SubTask(st.trim()));
-                    }
-                }
-                if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
-
-                newTask.setOptional(template.isOptional());
-
-                globalDatabase.add(newTask);
-            }
-
-            StorageManager.saveTasks(globalDatabase);
-            refreshCallback.run();
-            SystemTrayManager.pushNotification("Tasks Generated", "Manually generated " + selected.getAutoAddTemplates().size() + " tasks for " + selected.getName());
-        });
+        generateBtn.setOnAction(e -> generateTasks());
 
         HBox.setHgrow(sectionBox, Priority.ALWAYS);
         sectionBox.setMaxWidth(Double.MAX_VALUE);
@@ -137,290 +95,54 @@ public class TemplateManagerPanel extends VBox {
         if (selected.getAutoAddTemplates().isEmpty()) { templateList.getChildren().add(new Label("No templates for this section.")); return; }
 
         List<DailyTemplate> templates = selected.getAutoAddTemplates();
-
         for (int i = 0; i < templates.size(); i++) {
-            DailyTemplate t = templates.get(i);
-            int index = i;
-
-            HBox row = new HBox(10);
-            row.setAlignment(Pos.CENTER_LEFT);
-
-            String bgColor = (t.getBgColor() != null && !t.getBgColor().equals("transparent")) ? t.getBgColor() : "#2D2D30";
-            if (t.isOptional()) {
-                bgColor = "#332B00";
-            }
-
-            row.setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 10; -fx-border-color: " + (t.isOptional() ? "#FFD700" : "#3E3E42") + "; -fx-border-radius: 5;");
-
-            HBox textContainer = new HBox(5);
-            textContainer.setAlignment(Pos.CENTER_LEFT);
-
-            // --- FIXED: [OPT] Tag is the first element added to the container ---
-            if (t.isOptional()) {
-                Label optLbl = new Label("[OPT]");
-                optLbl.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
-                textContainer.getChildren().add(optLbl);
-            }
-
-            if (selected.isEnableIcons() && t.getIconSymbol() != null && !t.getIconSymbol().equals("None")) {
-                Label iconLbl = new Label(t.getIconSymbol());
-                iconLbl.setStyle("-fx-text-fill: " + (t.getIconColor() != null ? t.getIconColor() : "#FFFFFF") + "; -fx-font-size: 16px;");
-                textContainer.getChildren().add(iconLbl);
-            }
-            if (selected.isShowPrefix() && t.getPrefix() != null && !t.getPrefix().isEmpty()) {
-                Label prefLbl = new Label("[" + t.getPrefix() + "]");
-                prefLbl.setStyle("-fx-text-fill: " + (t.getPrefixColor() != null ? t.getPrefixColor() : "#4EC9B0") + "; -fx-font-weight: bold;");
-                textContainer.getChildren().add(prefLbl);
-            }
-
-            Label textLbl = new Label(t.getText());
-            textLbl.setStyle("-fx-text-fill: white;");
-            textContainer.getChildren().add(textLbl);
-            HBox.setHgrow(textContainer, Priority.ALWAYS);
-
-            StringBuilder daysStr = new StringBuilder("Days: ");
-            if (t.getActiveDays().size() == 7) {
-                daysStr.append("Everyday");
-            } else {
-                DayOfWeek[] order = {DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY};
-                String[] letters = {"S", "M", "T", "W", "T", "F", "S"};
-                for (int j = 0; j < order.length; j++) {
-                    if (t.getActiveDays().contains(order[j])) {
-                        daysStr.append(letters[j]).append(" ");
-                    }
-                }
-            }
-
-            Label daysLbl = new Label(daysStr.toString().trim());
-            daysLbl.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 12px;");
-
-            Button upBtn = new Button("▲");
-            upBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 5 8;");
-            upBtn.setDisable(index == 0);
-            upBtn.setOnAction(e -> {
-                Collections.swap(templates, index, index - 1);
-                StorageManager.saveStats(appStats);
-                refreshList();
-            });
-
-            Button downBtn = new Button("▼");
-            downBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 5 8;");
-            downBtn.setDisable(index == templates.size() - 1);
-            downBtn.setOnAction(e -> {
-                Collections.swap(templates, index, index + 1);
-                StorageManager.saveStats(appStats);
-                refreshList();
-            });
-
-            Button copyBtn = new Button("📋");
-            copyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 5 8; -fx-font-size: 12px;");
-            copyBtn.setOnAction(e -> {
-                DailyTemplate clone = new DailyTemplate(t.getPrefix(), t.getText() + " (Copy)", t.getPrefixColor(), t.getBgColor());
-                clone.setActiveDays(new ArrayList<>(t.getActiveDays()));
-                clone.setIconSymbol(t.getIconSymbol());
-                clone.setIconColor(t.getIconColor());
-                clone.setPriorityName(t.getPriorityName());
-                clone.setTaskType(t.getTaskType());
-                clone.setRewardPoints(t.getRewardPoints());
-                clone.setPenaltyPoints(t.getPenaltyPoints());
-                clone.setOptional(t.isOptional());
-                if (t.getSubTaskLines() != null) {
-                    clone.setSubTaskLines(new ArrayList<>(t.getSubTaskLines()));
-                }
-
-                templates.add(index + 1, clone);
-                StorageManager.saveStats(appStats);
-                refreshList();
-            });
-
-            Button editBtn = new Button("Edit");
-            editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
-            editBtn.setOnAction(e -> showTemplateDialog(t, selected));
-
-            Button delBtn = new Button("Delete");
-            delBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-cursor: hand;");
-            delBtn.setOnAction(e -> {
-                selected.getAutoAddTemplates().remove(t);
-                StorageManager.saveStats(appStats);
-                refreshList();
-            });
-
-            row.getChildren().addAll(textContainer, daysLbl, upBtn, downBtn, copyBtn, editBtn, delBtn);
-            templateList.getChildren().add(row);
+            templateList.getChildren().add(new TemplateRow(templates.get(i), i, templates, selected, appStats, this::saveAndRefresh));
         }
     }
 
-    private void showTemplateDialog(DailyTemplate template, SectionConfig section) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(template == null ? "Add Template" : "Edit Template");
-        TaskDialogs.styleDialog(dialog);
+    private void generateTasks() {
+        SectionConfig selected = sectionBox.getValue();
+        if (selected == null || selected.getAutoAddTemplates().isEmpty()) return;
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
-        int rowIdx = 0;
+        CustomPriority fallbackPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
 
-        TextField textField = new TextField(template != null ? template.getText() : "");
-        grid.add(new Label("Task Text:"), 0, rowIdx); grid.add(textField, 1, rowIdx++);
+        for (DailyTemplate template : selected.getAutoAddTemplates()) {
+            TaskItem newTask = new TaskItem(template.getText(), fallbackPrio, selected.getId());
 
-        ColorPicker bgColorPicker = new ColorPicker();
-        if (template != null && template.getBgColor() != null && !template.getBgColor().equals("transparent")) {
-            bgColorPicker.setValue(Color.web(template.getBgColor()));
-        } else {
-            bgColorPicker.setValue(Color.TRANSPARENT);
-        }
-        grid.add(new Label("Background Color:"), 0, rowIdx); grid.add(bgColorPicker, 1, rowIdx++);
-
-        CheckBox optionalCheck = new CheckBox("Is Optional Task?");
-        optionalCheck.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
-        optionalCheck.setSelected(template != null && template.isOptional());
-
-        if (!section.isEnableOptionalTasks()) {
-            optionalCheck.setDisable(true);
-            optionalCheck.setSelected(false);
-            optionalCheck.setText("Is Optional Task? (Disabled in Section Config)");
-        }
-        grid.add(optionalCheck, 1, rowIdx++);
-
-        ComboBox<String> iconBox = null; ColorPicker iconColorPicker = null;
-        if (section.isEnableIcons()) {
-            iconBox = new ComboBox<>();
-            iconBox.getItems().addAll(TaskDialogs.ICON_LIST);
-            iconBox.setValue(template != null && template.getIconSymbol() != null ? template.getIconSymbol() : "None");
-
-            iconColorPicker = new ColorPicker(Color.web(template != null && template.getIconColor() != null ? template.getIconColor() : "#FFFFFF"));
-
-            grid.add(new Label("Task Icon:"), 0, rowIdx); grid.add(iconBox, 1, rowIdx++);
-            grid.add(new Label("Icon Color:"), 0, rowIdx); grid.add(iconColorPicker, 1, rowIdx++);
-        }
-
-        TextField prefixField = null; ColorPicker prefixColor = null;
-        if (section.isShowPrefix()) {
-            prefixField = new TextField(template != null && template.getPrefix() != null ? template.getPrefix() : "");
-            prefixColor = new ColorPicker(Color.web(template != null && template.getPrefixColor() != null ? template.getPrefixColor() : "#4EC9B0"));
-            grid.add(new Label("Prefix (Optional):"), 0, rowIdx); grid.add(prefixField, 1, rowIdx++);
-            grid.add(new Label("Prefix Color:"), 0, rowIdx); grid.add(prefixColor, 1, rowIdx++);
-        }
-
-        ComboBox<CustomPriority> prioBox = null;
-        if (section.isShowPriority()) {
-            prioBox = new ComboBox<>();
-            prioBox.getItems().addAll(appStats.getCustomPriorities());
-            TaskDialogs.setupPriorityBoxColors(prioBox);
-            if (template != null && template.getPriorityName() != null) {
-                appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(prioBox::setValue);
+            if (selected.isEnableIcons() && template.getIconSymbol() != null && !template.getIconSymbol().equals("None")) {
+                newTask.setIconSymbol(template.getIconSymbol());
+                newTask.setIconColor(template.getIconColor());
             }
-            grid.add(new Label("Default Priority:"), 0, rowIdx); grid.add(prioBox, 1, rowIdx++);
-        }
-
-        ComboBox<CustomPriority> finalPrioBoxForListener = prioBox;
-        optionalCheck.setOnAction(e -> {
-            if (optionalCheck.isSelected()) {
-                if (finalPrioBoxForListener != null) {
-                    finalPrioBoxForListener.setDisable(true);
-                    finalPrioBoxForListener.setValue(null);
-                }
-            } else {
-                if (finalPrioBoxForListener != null) {
-                    finalPrioBoxForListener.setDisable(false);
+            if (selected.isShowPrefix() && template.getPrefix() != null && !template.getPrefix().isEmpty()) {
+                newTask.setPrefix(template.getPrefix());
+                newTask.setPrefixColor(template.getPrefixColor());
+            }
+            if (selected.isShowPriority() && template.getPriorityName() != null && !template.isOptional()) {
+                appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
+            }
+            if (selected.isShowTaskType() && template.getTaskType() != null) newTask.setTaskType(template.getTaskType());
+            if (selected.isEnableScore()) {
+                newTask.setRewardPoints(template.getRewardPoints());
+                newTask.setPenaltyPoints(template.getPenaltyPoints());
+            }
+            if (selected.isEnableSubTasks() && template.getSubTaskLines() != null) {
+                for (String st : template.getSubTaskLines()) {
+                    if (!st.trim().isEmpty()) newTask.getSubTasks().add(new SubTask(st.trim()));
                 }
             }
-        });
-        if (template != null && template.isOptional() && prioBox != null) {
-            prioBox.setDisable(true);
-            prioBox.setValue(null);
+            if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+            newTask.setOptional(template.isOptional());
+
+            globalDatabase.add(newTask);
         }
 
-        TextField workTypeField = null;
-        if (section.isShowTaskType()) {
-            workTypeField = new TextField(template != null && template.getTaskType() != null ? template.getTaskType() : "");
-            grid.add(new Label("Task Type:"), 0, rowIdx); grid.add(workTypeField, 1, rowIdx++);
-        }
-
-        TextField rewardField = null; TextField penaltyField = null;
-        if (section.isEnableScore()) {
-            rewardField = new TextField(template != null ? String.valueOf(template.getRewardPoints()) : "0");
-            penaltyField = new TextField(template != null ? String.valueOf(template.getPenaltyPoints()) : "0");
-            grid.add(new Label("Reward Points:"), 0, rowIdx); grid.add(rewardField, 1, rowIdx++);
-            grid.add(new Label("Penalty Points:"), 0, rowIdx); grid.add(penaltyField, 1, rowIdx++);
-        }
-
-        TextArea subTasksArea = null;
-        if (section.isEnableSubTasks()) {
-            subTasksArea = new TextArea();
-            subTasksArea.setPromptText("Enter sub-tasks...\nOne sub-task per line");
-            subTasksArea.setPrefRowCount(3);
-            subTasksArea.setStyle("-fx-control-inner-background: #2D2D30; -fx-text-fill: white;");
-            if (template != null && template.getSubTaskLines() != null) subTasksArea.setText(String.join("\n", template.getSubTaskLines()));
-            grid.add(new Label("Sub-Tasks:"), 0, rowIdx); grid.add(subTasksArea, 1, rowIdx++);
-        }
-
-        Label daysLabel = new Label("Active Days:"); daysLabel.setStyle("-fx-text-fill: white;");
-        HBox daysBox = new HBox(5);
-        List<CheckBox> dayChecks = new ArrayList<>();
-        for (DayOfWeek day : DayOfWeek.values()) {
-            CheckBox cb = new CheckBox(day.name().substring(0, 3));
-            cb.setStyle("-fx-text-fill: white;");
-            if (template == null || template.getActiveDays().contains(day)) cb.setSelected(true);
-            cb.setUserData(day); dayChecks.add(cb); daysBox.getChildren().add(cb);
-        }
-        grid.add(daysLabel, 0, rowIdx); grid.add(daysBox, 1, rowIdx++);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        ColorPicker finalBgColorPicker = bgColorPicker;
-        ComboBox<String> finalIconBox = iconBox; ColorPicker finalIconColorPicker = iconColorPicker;
-        TextField finalPrefixField = prefixField; ColorPicker finalPrefixColor = prefixColor;
-        ComboBox<CustomPriority> finalPrioBox = prioBox; TextField finalWorkTypeField = workTypeField;
-        TextField finalRewardField = rewardField; TextField finalPenaltyField = penaltyField; TextArea finalSubTasksArea = subTasksArea;
-
-        dialog.showAndWait().ifPresent(res -> {
-            if (res == ButtonType.OK && !textField.getText().trim().isEmpty()) {
-                List<DayOfWeek> selectedDays = new ArrayList<>();
-                for (CheckBox cb : dayChecks) if (cb.isSelected()) selectedDays.add((DayOfWeek) cb.getUserData());
-
-                DailyTemplate tToSave = template != null ? template : new DailyTemplate(null, "", null, null);
-
-                tToSave.setText(textField.getText().trim());
-                tToSave.setActiveDays(selectedDays);
-                tToSave.setBgColor(toHexString(finalBgColorPicker.getValue()));
-                tToSave.setOptional(optionalCheck.isSelected());
-
-                if (section.isEnableIcons() && finalIconBox != null) {
-                    tToSave.setIconSymbol(finalIconBox.getValue());
-                    tToSave.setIconColor(toHexString(finalIconColorPicker.getValue()));
-                }
-                if (section.isShowPrefix() && finalPrefixField != null) {
-                    tToSave.setPrefix(finalPrefixField.getText().trim());
-                    tToSave.setPrefixColor(toHexString(finalPrefixColor.getValue()));
-                }
-
-                if (section.isShowPriority() && finalPrioBox != null && finalPrioBox.getValue() != null && !tToSave.isOptional()) {
-                    tToSave.setPriorityName(finalPrioBox.getValue().getName());
-                } else if (tToSave.isOptional()) {
-                    tToSave.setPriorityName(null);
-                }
-
-                if (section.isShowTaskType() && finalWorkTypeField != null) tToSave.setTaskType(finalWorkTypeField.getText().trim());
-                if (section.isEnableScore() && finalRewardField != null) {
-                    try { tToSave.setRewardPoints(Integer.parseInt(finalRewardField.getText().trim())); } catch(Exception ignore){}
-                    try { tToSave.setPenaltyPoints(Integer.parseInt(finalPenaltyField.getText().trim())); } catch(Exception ignore){}
-                }
-                if (section.isEnableSubTasks() && finalSubTasksArea != null) {
-                    List<String> lines = new ArrayList<>();
-                    for(String line : finalSubTasksArea.getText().split("\n")) if (!line.trim().isEmpty()) lines.add(line.trim());
-                    tToSave.setSubTaskLines(lines);
-                }
-
-                if (template == null) section.getAutoAddTemplates().add(tToSave);
-                StorageManager.saveStats(appStats);
-                refreshList();
-            }
-        });
+        StorageManager.saveTasks(globalDatabase);
+        refreshCallback.run();
+        SystemTrayManager.pushNotification("Tasks Generated", "Manually generated " + selected.getAutoAddTemplates().size() + " tasks for " + selected.getName());
     }
 
-    private String toHexString(Color color) {
-        if (color == null || color.getOpacity() == 0.0) return "transparent";
-        return String.format("#%02X%02X%02X", (int) (color.getRed() * 255), (int) (color.getGreen() * 255), (int) (color.getBlue() * 255));
+    private void saveAndRefresh() {
+        StorageManager.saveStats(appStats);
+        refreshList();
     }
 }

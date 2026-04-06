@@ -77,6 +77,9 @@ public class GeneralSettingsPanel extends VBox {
         CheckBox chkStartup = new CheckBox();
         chkStartup.setSelected(appStats.isRunOnStartup());
 
+        CheckBox notificationsCheck = new CheckBox();
+        notificationsCheck.setSelected(appStats.isEnableNotifications());
+
         CheckBox matchRectCheck = new CheckBox();
         matchRectCheck.setSelected(appStats.isMatchDailyRectColor());
 
@@ -105,69 +108,81 @@ public class GeneralSettingsPanel extends VBox {
         themeBox.getItems().addAll("Default", "Dark", "Green", "Blue", "Purple");
         themeBox.setValue(appStats.getCheckboxTheme());
 
+        // =================================================================================
+        // --- FIXED: Dynamic Confirmation Menu to catch newly added sections instantly ---
+        // =================================================================================
         MenuButton confirmMenu = new MenuButton("Select Sections...");
         confirmMenu.getStyleClass().add("custom-menu-btn");
-        List<String> selectedConfirm = new ArrayList<>(appStats.getRequireConfirmationSections());
-        List<CheckBox> sectionCbs = new ArrayList<>();
 
-        Runnable saveConfirmState = () -> {
-            appStats.setRequireConfirmationSections(selectedConfirm);
-            StorageManager.saveStats(appStats);
-            refreshCallback.run();
-        };
+        Runnable rebuildConfirmMenu = () -> {
+            confirmMenu.getItems().clear();
+            List<String> selectedConfirm = new ArrayList<>(appStats.getRequireConfirmationSections());
+            List<CheckBox> sectionCbs = new ArrayList<>();
 
-        CheckBox allCb = new CheckBox("ALL Sections");
-        allCb.setStyle("-fx-text-fill: white;");
-        allCb.setSelected(selectedConfirm.contains("ALL"));
-        CustomMenuItem allItem = new CustomMenuItem(allCb);
-        allItem.setHideOnClick(false);
-        confirmMenu.getItems().add(allItem);
-        confirmMenu.getItems().add(new SeparatorMenuItem());
+            Runnable saveConfirmState = () -> {
+                appStats.setRequireConfirmationSections(selectedConfirm);
+                StorageManager.saveStats(appStats);
+                refreshCallback.run();
+            };
 
-        for (SectionConfig sc : appStats.getSections()) {
-            CheckBox cb = new CheckBox(sc.getName());
-            cb.setStyle("-fx-text-fill: white;");
-            cb.setSelected(selectedConfirm.contains(sc.getId()) || selectedConfirm.contains("ALL"));
-            sectionCbs.add(cb);
+            CheckBox allCb = new CheckBox("ALL Sections");
+            allCb.setStyle("-fx-text-fill: white;");
+            allCb.setSelected(selectedConfirm.contains("ALL"));
+            CustomMenuItem allItem = new CustomMenuItem(allCb);
+            allItem.setHideOnClick(false);
+            confirmMenu.getItems().add(allItem);
+            confirmMenu.getItems().add(new SeparatorMenuItem());
 
-            cb.setOnAction(e -> {
-                if (cb.isSelected()) {
-                    if (!selectedConfirm.contains(sc.getId())) selectedConfirm.add(sc.getId());
-                } else {
-                    selectedConfirm.remove(sc.getId());
-                    if (allCb.isSelected()) {
-                        allCb.setSelected(false);
-                        selectedConfirm.remove("ALL");
+            for (SectionConfig sc : appStats.getSections()) {
+                CheckBox cb = new CheckBox(sc.getName());
+                cb.setStyle("-fx-text-fill: white;");
+                cb.setSelected(selectedConfirm.contains(sc.getId()) || selectedConfirm.contains("ALL"));
+                sectionCbs.add(cb);
+
+                cb.setOnAction(e -> {
+                    if (cb.isSelected()) {
+                        if (!selectedConfirm.contains(sc.getId())) selectedConfirm.add(sc.getId());
+                    } else {
+                        selectedConfirm.remove(sc.getId());
+                        if (allCb.isSelected()) {
+                            allCb.setSelected(false);
+                            selectedConfirm.remove("ALL");
+                        }
                     }
+                    saveConfirmState.run();
+                });
+                CustomMenuItem item = new CustomMenuItem(cb);
+                item.setHideOnClick(false);
+                confirmMenu.getItems().add(item);
+            }
+
+            allCb.setOnAction(e -> {
+                if (allCb.isSelected()) {
+                    if (!selectedConfirm.contains("ALL")) selectedConfirm.add("ALL");
+                    for (CheckBox cb : sectionCbs) cb.setSelected(true);
+                    for (SectionConfig sc : appStats.getSections()) {
+                        if (!selectedConfirm.contains(sc.getId())) selectedConfirm.add(sc.getId());
+                    }
+                } else {
+                    selectedConfirm.clear();
+                    for (CheckBox cb : sectionCbs) cb.setSelected(false);
                 }
                 saveConfirmState.run();
             });
-            CustomMenuItem item = new CustomMenuItem(cb);
-            item.setHideOnClick(false);
-            confirmMenu.getItems().add(item);
-        }
+        };
 
-        allCb.setOnAction(e -> {
-            if (allCb.isSelected()) {
-                if (!selectedConfirm.contains("ALL")) selectedConfirm.add("ALL");
-                for (CheckBox cb : sectionCbs) cb.setSelected(true);
-                for (SectionConfig sc : appStats.getSections()) {
-                    if (!selectedConfirm.contains(sc.getId())) selectedConfirm.add(sc.getId());
-                }
-            } else {
-                selectedConfirm.clear();
-                for (CheckBox cb : sectionCbs) cb.setSelected(false);
-            }
-            saveConfirmState.run();
-        });
+        // Build it once initially, and rebuild it every time it is clicked/opened
+        rebuildConfirmMenu.run();
+        confirmMenu.setOnShowing(e -> rebuildConfirmMenu.run());
+        // =================================================================================
 
-        // --- NEW: Reordered Behavior Rows ---
         behaviorList.getChildren().addAll(
                 createSettingRow("Task Font Size", "Adjusts the size of the text across all task cards.", fontSizeSpinner, "#569CD6"),
                 createSettingRow("Checkbox Theme", "Changes the visual style and color of the completion checkboxes.", themeBox, "#DCDCAA"),
                 createSettingRow("Zen Mode", "Number of active tasks required before Zen Mode becomes available.", zenSpinner, "#FF6666"),
                 createSettingRow("Require Completion Confirmation", "Prompts for confirmation before completing tasks in selected sections.", confirmMenu, "#FF6666"),
                 createSettingRow("Minimum Streak Threshold", "Percentage of completed tasks required to maintain a completion streak.", sliderBox, "#4EC9B0"),
+                createSettingRow("Enable Desktop Notifications", "Shows alerts for approaching deadlines, inactivity, and resets.", notificationsCheck, "#C586C0"),
                 createSettingRow("Run in Background", "Keeps the application running in the system tray when closed.", runInBackgroundCheck, "#569CD6"),
                 createSettingRow("Run on Windows Startup", "Automatically launches Task Tracker when your computer boots.", chkStartup, "#569CD6"),
                 createSettingRow("Match Prefix Color", "Uses the prefix color for the left-side indicator rectangle on tasks.", matchRectCheck, "#CE9178"),
@@ -213,6 +228,7 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setMinDailyCompletionPercent((int) streakSlider.getValue());
             appStats.setRunInBackground(runInBackgroundCheck.isSelected());
             appStats.setRunOnStartup(chkStartup.isSelected());
+            appStats.setEnableNotifications(notificationsCheck.isSelected());
             appStats.setMatchDailyRectColor(matchRectCheck.isSelected());
             appStats.setMatchPriorityOutline(matchOutlineCheck.isSelected());
             appStats.setMatchTitleColor(matchTitleColorCheck.isSelected());
@@ -244,6 +260,7 @@ public class GeneralSettingsPanel extends VBox {
         streakSlider.setOnMouseReleased(e -> autoSaveTrigger.run());
         runInBackgroundCheck.setOnAction(e -> autoSaveTrigger.run());
         chkStartup.setOnAction(e -> autoSaveTrigger.run());
+        notificationsCheck.setOnAction(e -> autoSaveTrigger.run());
         matchRectCheck.setOnAction(e -> autoSaveTrigger.run());
         matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
@@ -275,12 +292,10 @@ public class GeneralSettingsPanel extends VBox {
         );
     }
 
-    // --- FIXED: Generates identical layouts for every single setting row ---
     private HBox createSettingRow(String title, String desc, Node control, String colorHex) {
         HBox row = new HBox(15);
         row.setAlignment(Pos.CENTER_LEFT);
 
-        // --- NEW: Rectangle indicators (matches sidebar/task styling) ---
         Rectangle rect = new Rectangle(5, 20, Color.web(colorHex));
         rect.setArcWidth(3);
         rect.setArcHeight(3);
@@ -300,7 +315,6 @@ public class GeneralSettingsPanel extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Force standardized width on dynamic controls
         if (control instanceof Region && !(control instanceof CheckBox) && !(control instanceof HBox)) {
             ((Region) control).setPrefWidth(170);
             ((Region) control).setMaxWidth(170);

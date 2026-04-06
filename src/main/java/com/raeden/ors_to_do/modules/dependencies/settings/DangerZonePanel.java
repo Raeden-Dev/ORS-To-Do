@@ -5,7 +5,8 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
-import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.DeletedHistoryDialog;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import java.util.List;
@@ -108,7 +109,7 @@ public class DangerZonePanel extends VBox {
         historyBtn.setPrefWidth(BUTTON_WIDTH);
         historyBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-border-color: #555555; -fx-border-radius: 3;");
         historyBtn.setOnAction(e -> {
-            com.raeden.ors_to_do.modules.dependencies.ui.DeletedHistoryDialog.show(appStats, refreshCallback);
+            DeletedHistoryDialog.show(appStats, refreshCallback);
         });
         wipePane.getChildren().add(historyBtn);
 

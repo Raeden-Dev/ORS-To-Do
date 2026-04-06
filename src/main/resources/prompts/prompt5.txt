@@ -136,11 +136,24 @@ Also make the import data dialog box dark
     - Any task that has reached <24h, <12h, <4h, <2h deadline left recently.
     - If I havent used the application for over 4 hours, shows the most amount of tasks I have left in a certain configuration
     - If I have any task left to do in any timed section, notification shows when time left is 75%, 50%, 25% and 10% in that certain page until reset
-
-
-=============================
-KNOWN ISSUES IN v1.39
-=============================
-- Require Completion Confirmation dropdown at general configuration in settings page, doesn't update and add the new page to dropdown if I add a new page (it does after restarting the app)
+> Focus time allocated completion of tasks. Some tasks cannot be completed by just clicking on the checkbox. It may have a time set like 15 min /  1 hour or whatever that I need to track with my focus session timer in order to bring it down to zero to complete.
+    - Add a "Allow timed tasks" option in section config for this feature
+> Trimming down god classes:
+    - Dynamic Module
+    - Task Card
+    - Task Edit Dialog
+    - Analytics Module
+    - Section Manager Panel
+    - Template Manager Panel
+- Fix Require Completion Confirmation dropdown at general configuration in settings page, doesn't update and add the new page to dropdown if I add a new page (it does after restarting the app)
 - The "Time: " in Edit task should be called "Exact Time: " and should be disabled unless a deadline is selected.
-- Fixed discrepencies between options in section config
+- Fix discrepancies between options in section config
+> Focus session will be more strict, it'll look for keyboard / mouse inactivity. If there is no activity on keyboard or mouse movement (configurable), the timer stops immediately
+> Currently there is only 1 streak tracking component, I might want multiple of my pages to have streaks. So, need to put into account that, adding streak from another page doesnt increase streak of a completely different page that is not related to the page where I got the streak.
+    - Implement necessary stuff so I can have multiple pages with streaks
+    - Also in global analytics I still should have the highest streak but with addition of a label below it which shows what page I got it from
+
+======================
+KNOWN ISSUES IN v1.40
+======================
+

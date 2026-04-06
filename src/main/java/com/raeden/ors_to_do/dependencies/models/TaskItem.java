@@ -177,6 +177,12 @@ public class TaskItem implements Serializable {
     }
     public void setDependsOnTaskIds(List<String> dependsOnTaskIds) { this.dependsOnTaskIds = dependsOnTaskIds; }
 
+    // --- NEW: Timed Task Target ---
+    private int targetTimeMinutes = 0;
+
+    public int getTargetTimeMinutes() { return targetTimeMinutes; }
+    public void setTargetTimeMinutes(int targetTimeMinutes) { this.targetTimeMinutes = targetTimeMinutes; }
+
     public boolean isCounterMode() { return isCounterMode; }
     public void setCounterMode(boolean counterMode) { isCounterMode = counterMode; }
     public int getCurrentCount() { return currentCount; }

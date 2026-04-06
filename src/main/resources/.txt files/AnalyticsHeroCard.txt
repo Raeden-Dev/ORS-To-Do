@@ -1,0 +1,23 @@
+package com.raeden.ors_to_do.modules.dependencies.ui.analytics;
+
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
+
+public class AnalyticsHeroCard extends VBox {
+
+    public AnalyticsHeroCard(String title, String value, String colorHex) {
+        super(5);
+        setAlignment(Pos.CENTER);
+        setPrefSize(200, 120);
+        setStyle("-fx-background-color: #2D2D30; -fx-border-color: #3E3E42; -fx-border-radius: 8; -fx-background-radius: 8;");
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        Label valLabel = new Label(value);
+        valLabel.setStyle("-fx-text-fill: " + colorHex + "; -fx-font-size: 32px; -fx-font-weight: bold;");
+
+        getChildren().addAll(titleLabel, valLabel);
+    }
+}

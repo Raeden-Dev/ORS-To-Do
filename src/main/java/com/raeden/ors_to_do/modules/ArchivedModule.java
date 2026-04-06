@@ -5,6 +5,7 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.SubTask;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -45,7 +46,7 @@ public class ArchivedModule extends BorderPane {
             alert.setHeaderText("Export Archive Data?");
 
             // Inject dark theme
-            com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs.styleDialog(alert);
+            TaskDialogs.styleDialog(alert);
 
             alert.showAndWait().ifPresent(res -> {
                 if (res == ButtonType.CANCEL) return;
