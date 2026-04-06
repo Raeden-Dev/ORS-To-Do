@@ -72,7 +72,6 @@ public class TaskCard extends VBox {
         boolean isLocked = !blockingTaskNames.isEmpty();
         boolean isNoteMode = config.isNotesPage();
 
-        // --- STYLING FLAG ---
         boolean allowStyling = isNoteMode || config.isEnableTaskStyling();
 
         String bgStyle = task.getColorHex() != null && !task.getColorHex().equals("transparent") ? "-fx-background-color: " + task.getColorHex() + "; " : "";
@@ -161,7 +160,6 @@ public class TaskCard extends VBox {
 
         if (!isLocked) {
 
-            // --- [OPTIONAL] TAG ---
             if (task.isOptional()) {
                 Label optIndicator = new Label("[OPTIONAL]");
                 optIndicator.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + metaFontSize + "px; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
@@ -309,8 +307,9 @@ public class TaskCard extends VBox {
                         task.setPenaltyApplied(true);
                         appStats.setGlobalScore(appStats.getGlobalScore() - task.getPenaltyPoints());
 
+                        // --- FIXED: Triggering full RPG Engine for overdue penalties ---
                         if (config.isEnableStatsSystem()) {
-                            task.getStatPenalties().forEach((statId, amount) -> appStats.addStatXp(statId, -amount));
+                            TaskActionHandler.processRPGStats(task, appStats, false);
                         }
 
                         StorageManager.saveStats(appStats);
@@ -351,7 +350,6 @@ public class TaskCard extends VBox {
                 mainRow.getChildren().add(timeLabel);
             }
 
-            // Hide priority dropdown if Optional Task
             if (config.isShowPriority() && !isNoteMode && !task.isOptional()) {
                 ComboBox<CustomPriority> localPrioBox = new ComboBox<>();
                 localPrioBox.getItems().addAll(appStats.getCustomPriorities());
@@ -467,7 +465,6 @@ public class TaskCard extends VBox {
 
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
 
-        // --- CONSUME THE EVENT TO PREVENT THE BACKGROUND MENU FROM SHOWING ---
         this.setOnContextMenuRequested(e -> {
             contextMenu.show(this, e.getScreenX(), e.getScreenY());
             e.consume();

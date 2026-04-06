@@ -7,6 +7,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager.pushNotification;
 
@@ -49,7 +50,6 @@ public class TaskActionHandler {
     public static void handleTaskCompletion(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate, CheckBox optCheckBox) {
         boolean hasRewards = task.getRewardPoints() > 0 || (config.isEnableStatsSystem() && !task.getStatRewards().isEmpty());
 
-        // --- NEW: Intercept completion if it belongs to a protected section ---
         List<String> reqSections = appStats.getRequireConfirmationSections();
         boolean needsConfirmation = hasRewards || reqSections.contains("ALL") || reqSections.contains(config.getId());
 
@@ -110,7 +110,48 @@ public class TaskActionHandler {
         if (task.isPointsClaimed()) {
             appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
             if (config.isEnableStatsSystem()) {
-                task.getStatRewards().forEach((statId, amount) -> appStats.addStatXp(statId, amount));
+                // --- FIXED: Triggering full RPG Engine instead of legacy method ---
+                processRPGStats(task, appStats, true);
+            }
+        }
+    }
+
+    public static void processRPGStats(TaskItem task, AppStats appStats, boolean isCompletion) {
+        Map<String, Integer> statChanges = isCompletion ? task.getStatRewards() : task.getStatPenalties();
+
+        if (statChanges == null || statChanges.isEmpty()) return;
+
+        for (Map.Entry<String, Integer> entry : statChanges.entrySet()) {
+            String statName = entry.getKey();
+            int amount = entry.getValue();
+
+            for (CustomStat stat : appStats.getCustomStats()) {
+                // Notice we match by ID now to be safe, but fallback to name just in case
+                if (stat.getId().equals(statName) || stat.getName().equals(statName)) {
+
+                    if (isCompletion) {
+                        int newAmount = stat.getCurrentAmount() + amount;
+
+                        if (stat.getMaxCap() > 0 && newAmount > stat.getMaxCap()) {
+                            newAmount = stat.getMaxCap();
+                        }
+
+                        stat.setCurrentAmount(newAmount);
+                        stat.setLifetimeEarned(stat.getLifetimeEarned() + amount);
+
+                        if (stat.getCurrentAmount() > stat.getMaxLevelReached()) {
+                            stat.setMaxLevelReached(stat.getCurrentAmount());
+                        }
+
+                        appStats.getLastStatGainDates().put(stat.getId(), java.time.LocalDate.now());
+
+                    } else {
+                        int newAmount = Math.max(0, stat.getCurrentAmount() - amount);
+                        stat.setCurrentAmount(newAmount);
+                        stat.setLifetimeLost(stat.getLifetimeLost() + amount);
+                    }
+                    break;
+                }
             }
         }
     }

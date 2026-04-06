@@ -134,6 +134,7 @@ public class StatsManagerPanel extends VBox {
         grid.setPadding(new Insets(10));
 
         ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPrefWidth(120); // Give the labels a bit of fixed room so wrapping looks good
         ColumnConstraints col2 = new ColumnConstraints();
         col2.setHgrow(Priority.ALWAYS);
         grid.getColumnConstraints().addAll(col1, col2);
@@ -145,6 +146,33 @@ public class StatsManagerPanel extends VBox {
         nameField.setMaxWidth(Double.MAX_VALUE);
         grid.add(new Label("Stat Name:"), 0, rowIdx);
         grid.add(nameField, 1, rowIdx++);
+
+        // --- PHASE 1: NEW RPG INPUTS ---
+
+        TextArea descArea = new TextArea(isNew ? "" : stat.getDescription());
+        descArea.setPromptText("Brief lore or description...");
+        descArea.setPrefRowCount(3);
+        descArea.setWrapText(true);
+        descArea.setMaxWidth(Double.MAX_VALUE);
+        grid.add(new Label("Description:"), 0, rowIdx);
+        grid.add(descArea, 1, rowIdx++);
+
+        Spinner<Integer> capSpinner = new Spinner<>(0, 99999, isNew ? 9999 : stat.getMaxCap());
+        capSpinner.setEditable(true);
+        capSpinner.setMaxWidth(Double.MAX_VALUE);
+        grid.add(new Label("Max Cap\n(0 = Infinite):"), 0, rowIdx);
+        grid.add(capSpinner, 1, rowIdx++);
+
+        Spinner<Integer> atrophySpinner = new Spinner<>(0, 365, isNew ? 0 : stat.getAtrophyDays());
+        atrophySpinner.setEditable(true);
+        atrophySpinner.setMaxWidth(Double.MAX_VALUE);
+        Label atrophyLabel = new Label("Atrophy Decay\n(Days):");
+        Tooltip atrophyTip = new Tooltip("Days of inactivity before stat drops.\n0 = Never decays.");
+        atrophyLabel.setTooltip(atrophyTip);
+        grid.add(atrophyLabel, 0, rowIdx);
+        grid.add(atrophySpinner, 1, rowIdx++);
+
+        // --- END PHASE 1 INPUTS ---
 
         ComboBox<String> iconBox = new ComboBox<>();
         iconBox.getItems().addAll(TaskDialogs.ICON_LIST);
@@ -185,6 +213,11 @@ public class StatsManagerPanel extends VBox {
                 target.setIconSymbol(iconBox.getValue());
                 target.setBackgroundColor(toHexString(bgColorPicker.getValue()));
                 target.setTextColor(toHexString(textColorPicker.getValue()));
+
+                // --- PHASE 1: SAVE NEW RPG VARIABLES ---
+                target.setDescription(descArea.getText().trim());
+                target.setMaxCap(capSpinner.getValue());
+                target.setAtrophyDays(atrophySpinner.getValue());
 
                 if (isNew) {
                     appStats.getCustomStats().add(target);

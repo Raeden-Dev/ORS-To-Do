@@ -3,10 +3,13 @@ package com.raeden.ors_to_do.modules;
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomPriority;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
+import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.modules.dependencies.ui.FilterSortHeader;
 import com.raeden.ors_to_do.modules.dependencies.ui.TaskCard;
+import com.raeden.ors_to_do.modules.dependencies.ui.StatCard;
+import com.raeden.ors_to_do.modules.dependencies.ui.PerkCard; // Added PerkCard import
 import com.raeden.ors_to_do.modules.dependencies.ui.TaskDialogs;
 import com.raeden.ors_to_do.modules.dependencies.ui.ZenModeOverlay;
 import javafx.animation.Timeline;
@@ -48,12 +51,13 @@ public class DynamicModule extends StackPane {
         mainContent = new BorderPane();
         mainContent.setPadding(new Insets(15));
 
-        Runnable zenToggleAction = config.isNotesPage() ? () -> {} : this::toggleZenMode;
+        // --- FIXED: Disabled Zen Mode trigger for Stat and Perk Pages ---
+        Runnable zenToggleAction = (config.isNotesPage() || config.isStatPage() || config.isPerkPage()) ? () -> {} : this::toggleZenMode;
 
         zenOverlay = new ZenModeOverlay(config, appStats, globalDatabase, zenToggleAction, syncCallback, activeTimelines, this::reorderTasks);
         filterSortHeader = new FilterSortHeader(config, appStats, globalDatabase, zenToggleAction, this::refreshList);
 
-        if (config.isNotesPage()) {
+        if (config.isNotesPage() || config.isStatPage() || config.isPerkPage()) {
             filterSortHeader.getChildren().forEach(node -> {
                 if (node instanceof HBox) {
                     ((HBox) node).getChildren().removeIf(n -> n instanceof Button && ((Button) n).getText().contains("Zen Mode"));
@@ -107,29 +111,34 @@ public class DynamicModule extends StackPane {
             bgMenu.getItems().add(batchItem);
         }
 
-        scrollPane.setOnContextMenuRequested(e -> {
-            Node target = (Node) e.getTarget();
-            boolean isTaskCard = false;
-            while (target != null) {
-                if (target instanceof TaskCard) {
-                    isTaskCard = true;
-                    break;
+        // --- FIXED: Only allow background right-click task creation if it's NOT a stat/perk page ---
+        if (!config.isStatPage() && !config.isPerkPage()) {
+            scrollPane.setOnContextMenuRequested(e -> {
+                Node target = (Node) e.getTarget();
+                boolean isTaskCard = false;
+                while (target != null) {
+                    if (target instanceof TaskCard) {
+                        isTaskCard = true;
+                        break;
+                    }
+                    target = target.getParent();
                 }
-                target = target.getParent();
-            }
-            if (!isTaskCard) {
-                bgMenu.show(scrollPane, e.getScreenX(), e.getScreenY());
-            }
-        });
+                if (!isTaskCard) {
+                    bgMenu.show(scrollPane, e.getScreenX(), e.getScreenY());
+                }
+            });
+        }
 
-        // --- FIXED: EventFilter catches ANY mouse press (left, right, or middle) and instantly hides the menu ---
         scrollPane.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
             if (bgMenu.isShowing()) {
                 bgMenu.hide();
             }
         });
 
-        buildInputPanel();
+        if (!config.isStatPage()) {
+            buildInputPanel();
+        }
+
         refreshList();
     }
 
@@ -177,6 +186,8 @@ public class DynamicModule extends StackPane {
             inputField.setPromptText("Enter new note for " + config.getName() + "...");
         } else if (config.isRewardsPage()) {
             inputField.setPromptText("Enter new reward...");
+        } else if (config.isPerkPage()) {
+            inputField.setPromptText("Enter new perk name...");
         } else {
             inputField.setPromptText("Enter new task for " + config.getName() + "...");
         }
@@ -185,7 +196,7 @@ public class DynamicModule extends StackPane {
         HBox.setHgrow(inputField, Priority.ALWAYS);
         inputPanel.getChildren().add(inputField);
 
-        if (config.isShowPriority() && !config.isNotesPage()) {
+        if (config.isShowPriority() && !config.isNotesPage() && !config.isPerkPage()) {
             priorityBox = new ComboBox<>();
             priorityBox.getItems().addAll(appStats.getCustomPriorities());
             if (!appStats.getCustomPriorities().isEmpty()) priorityBox.setValue(appStats.getCustomPriorities().get(1));
@@ -210,7 +221,7 @@ public class DynamicModule extends StackPane {
     }
 
     private void toggleZenMode() {
-        if (config.isNotesPage()) return;
+        if (config.isNotesPage() || config.isStatPage() || config.isPerkPage()) return;
 
         isZenMode = !isZenMode;
 
@@ -249,6 +260,58 @@ public class DynamicModule extends StackPane {
         }
 
         listContainer.getChildren().clear();
+
+        // --- PHASE 3: STAT PAGE ROUTER ---
+        if (config.isStatPage()) {
+            if (!appStats.isGlobalStatsEnabled() || appStats.getCustomStats().isEmpty()) {
+                Label emptyMsg = new Label("No custom stats available. Go to Settings to create them.");
+                emptyMsg.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
+                emptyMsg.setMaxWidth(Double.MAX_VALUE);
+                emptyMsg.setAlignment(Pos.CENTER);
+                listContainer.getChildren().add(emptyMsg);
+            } else {
+                for (CustomStat stat : appStats.getCustomStats()) {
+                    StatCard statCard = new StatCard(stat, appStats, () -> {
+                        refreshList();
+                        if (syncCallback != null) syncCallback.run();
+                    });
+                    listContainer.getChildren().add(statCard);
+                }
+            }
+            filterSortHeader.updateBadges(appStats.getCustomStats().size(), 0);
+            return;
+        }
+        // --- END PHASE 3 ---
+
+        // --- PHASE 4: PERK PAGE ROUTER ---
+        if (config.isPerkPage()) {
+            List<TaskItem> perksToDisplay = new ArrayList<>();
+            for (TaskItem task : globalDatabase) {
+                if (task.getSectionId() != null && task.getSectionId().equals(config.getId()) && !task.isArchived()) {
+                    perksToDisplay.add(task);
+                }
+            }
+
+            if (perksToDisplay.isEmpty()) {
+                Label emptyMsg = new Label("Type a perk name in the bar below and click 'Add' to create your first Skill Tree Perk!");
+                emptyMsg.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
+                emptyMsg.setMaxWidth(Double.MAX_VALUE);
+                emptyMsg.setAlignment(Pos.CENTER);
+                listContainer.getChildren().add(emptyMsg);
+            } else {
+                for (TaskItem perk : perksToDisplay) {
+                    PerkCard pCard = new PerkCard(perk, appStats, globalDatabase, () -> {
+                        refreshList();
+                        if (syncCallback != null) syncCallback.run();
+                    });
+                    listContainer.getChildren().add(pCard);
+                }
+            }
+            filterSortHeader.updateBadges(perksToDisplay.size(), 0);
+            return;
+        }
+        // --- END PHASE 4 ---
+
         int availableCount = 0;
         int completedCount = 0;
 
@@ -353,8 +416,8 @@ public class DynamicModule extends StackPane {
         if (text.isEmpty()) return;
 
         CustomPriority defaultPrio = null;
-        if (config.isShowPriority() && !config.isNotesPage() && priorityBox != null) defaultPrio = priorityBox.getValue();
-        else if (config.isShowPriority() && !config.isNotesPage() && !appStats.getCustomPriorities().isEmpty()) defaultPrio = appStats.getCustomPriorities().get(0);
+        if (config.isShowPriority() && !config.isNotesPage() && !config.isPerkPage() && priorityBox != null) defaultPrio = priorityBox.getValue();
+        else if (config.isShowPriority() && !config.isNotesPage() && !config.isPerkPage() && !appStats.getCustomPriorities().isEmpty()) defaultPrio = appStats.getCustomPriorities().get(0);
 
         TaskItem newTask = new TaskItem(text, defaultPrio, config.getId());
 
@@ -367,7 +430,7 @@ public class DynamicModule extends StackPane {
                 newTask.setPrefixColor("#4EC9B0");
             }
         }
-        if (config.isShowTaskType() && !config.isNotesPage()) newTask.setTaskType("General");
+        if (config.isShowTaskType() && !config.isNotesPage() && !config.isPerkPage()) newTask.setTaskType("General");
 
         globalDatabase.add(newTask);
 

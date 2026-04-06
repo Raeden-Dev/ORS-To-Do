@@ -72,5 +72,49 @@ NEW ADDITIONS FOR v1.39
     This forces you to maintain a balanced routine to keep your highly-leveled Perks from de-leveling and losing their glow. This atrophy is configurable per stat
 
 =================================================
-NEW ADDITIONS FOR v1.39 DIVIVED INTO PHASES BY AI
+NEW ADDITIONS FOR v1.39 DIVIDED INTO PHASES BY AI
 =================================================
+This is a fantastic evolution of your application. Transforming it from a standard productivity tracker into a full-fledged RPG system adds a powerful layer of gamification.
+
+To integrate these complex systems without breaking your existing features (like Pomodoro timers, streaks, or templates), you need a strict phase-by-step approach. You must build the underlying data models first, then the tracking logic, and finally the user interfaces.
+
+Here is your 5-Phase Implementation Plan based on your current v1.39 codebase architecture.
+
+### Phase 1: The Data Foundation (Models & Settings)
+Before building new visual pages, your application needs to know how to store these new RPG concepts and allow you to configure them in the settings.
+
+* [cite_start]**`CustomStat.java`** [cite: 24][cite_start]: Add new properties to this model: `description` (String), `maxCap` (int), `atrophyDays` (int - where 0 means no atrophy), `lifetimeEarned` (int), `lifetimeLost` (int), and `maxLevelReached` (int)[cite: 24].
+* [cite_start]**`AppStats.java`** [cite: 7, 8][cite_start]: Add a tracking map like `Map<String, LocalDate> lastStatGainDates` to track exactly when each stat was last increased (crucial for calculating atrophy later)[cite: 7].
+* [cite_start]**`StatsManagerPanel.java`** [cite: 2, 3][cite_start]: Update the `showStatDialog()` logic so you can input the new description, max cap, and atrophy timer when creating or editing a custom stat[cite: 2].
+* [cite_start]**`SectionConfig.java`** [cite: 30, 31][cite_start]: Add two new booleans: `isStatPage` and `isPerkPage`[cite: 30].
+* [cite_start]**`SectionManagerPanel.java`** [cite: 59, 60][cite_start]: Add checkboxes for "Is Stat Page" and "Is Perk Page" alongside your existing features (mutually exclusive with the Notes and Rewards page modes)[cite: 59].
+
+### Phase 2: The Tracking Engine & Analytics
+With the data structure in place, you need to ensure the system actually records your lifetime progress and updates the Analytics dashboard.
+
+* [cite_start]**`TaskActionHandler.java`**[cite: 98]: This is the core engine for task completion. [cite_start]Modify the logic here so that when a task awards XP, it increments the stat's `lifetimeEarned`, updates the `currentAmount` (clamping it to `maxCap`), and sets the `lastStatGainDates` in `AppStats` to `LocalDate.now()` to reset the atrophy timer[cite: 98]. [cite_start]If a task penalizes a stat, increment `lifetimeLost`[cite: 98].
+* [cite_start]**`AnalyticsModule.java`**[cite: 5, 6]: Completely revamp the "Current Stats" section. [cite_start]Instead of just displaying the current amount, loop through your `appStats.getCustomStats()` and create a detailed visual block showing: Current/Max, Lifetime Earned, Lifetime Lost, and Max Level Reached[cite: 6].
+
+### Phase 3: The "Stat Page" System
+Now you can build the dedicated interactive board to visualize your current stats as physical cards.
+
+* [cite_start]**Create `StatCard.java` (New Class)**: Build a new UI component similar to `TaskCard`[cite: 65, 68]. This card will take a `CustomStat` object and render it using the specific background, outline, text, and icon colors defined in the stat's configuration. It should include a visual progress bar (e.g., `450 / 1000 XP`).
+* [cite_start]**`DynamicModule.java`**[cite: 50, 52]: Add routing logic. When building the list of items, add a check: `if (config.isStatPage())`. [cite_start]If true, bypass the `globalDatabase` of tasks and instead loop through `appStats.getCustomStats()`, rendering `StatCard` objects onto the screen[cite: 50, 52].
+
+### Phase 4: The "Perk Page" & Skill Tree
+Perks act like conditional items that require an upkeep of stats to remain active.
+
+* [cite_start]**`TaskItem.java` (or new `PerkItem.java`)** [cite: 91, 92][cite_start]: Add fields specifically for Perks: `Map<String, Integer> statRequirements` (e.g., requires 500 Strength), `int perkLevel` (0-5), and `int weeksMaintained`[cite: 91].
+* **Create `PerkCard.java` (New Class)**: A specialized UI component.
+    * *Locked State:* Grayed out, showing the required stats/tasks to unlock it.
+    * *Unlocked State:* Shows the description dropdown. Applies a dynamic CSS `-fx-effect: dropshadow(...)` where the glow intensity and color correspond directly to the `perkLevel`.
+* [cite_start]**`DynamicModule.java`** [cite: 50, 52][cite_start]: Add another routing check for `if (config.isPerkPage())` to render these specific cards[cite: 50].
+
+### Phase 5: The Background Gamification Engine
+This is where the application becomes a living RPG. You will implement the background penalty and leveling system.
+
+* [cite_start]**`DailyRolloverManager.java`** [cite: 62][cite_start]: This file handles your midnight reset logic[cite: 62]. You need to add two major background processes here:
+    1.  **Daily Atrophy Check:** Iterate through all `CustomStat` objects. Check their `atrophyDays` against the `lastStatGainDates` map. [cite_start]If `LocalDate.now()` exceeds the allowed inactivity period, deduct the decay amount, update `lifetimeLost`, and trigger a system tray notification warning the user[cite: 62, 101].
+    2.  **Weekly Perk Check:** Add a condition (e.g., `if (today == DayOfWeek.SUNDAY)`). Iterate through all active perks. Check if your current stats still meet the `statRequirements`. If yes, increment `weeksMaintained`, which levels up the `perkLevel` (max 5) and boosts the glow. [cite_start]If no (due to Atrophy dropping a stat too low), reset the `perkLevel` to 0, removing the glow and locking the perk until you recover the lost stats[cite: 62].
+
+By following this order, you ensure your application logic remains perfectly stable while you layer on the RPG complexity!

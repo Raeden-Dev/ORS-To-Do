@@ -7,6 +7,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager.pushNotification;
 
@@ -111,6 +112,54 @@ public class TaskActionHandler {
             appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
             if (config.isEnableStatsSystem()) {
                 task.getStatRewards().forEach((statId, amount) -> appStats.addStatXp(statId, amount));
+            }
+        }
+    }
+
+    public static void processRPGStats(TaskItem task, AppStats appStats, boolean isCompletion) {
+        // Grab the relevant map (Rewards for completion, Penalties for failure)
+        Map<String, Integer> statChanges = isCompletion ? task.getStatRewards() : task.getStatPenalties();
+
+        if (statChanges == null || statChanges.isEmpty()) return;
+
+        for (Map.Entry<String, Integer> entry : statChanges.entrySet()) {
+            String statName = entry.getKey();
+            int amount = entry.getValue();
+
+            // Find the matching CustomStat in the global database
+            for (CustomStat stat : appStats.getCustomStats()) {
+                if (stat.getName().equals(statName)) {
+
+                    if (isCompletion) {
+                        // --- GAIN XP ---
+                        int newAmount = stat.getCurrentAmount() + amount;
+
+                        // Clamp to Max Cap (If Max Cap is 0, we treat it as infinite)
+                        if (stat.getMaxCap() > 0 && newAmount > stat.getMaxCap()) {
+                            newAmount = stat.getMaxCap();
+                        }
+
+                        stat.setCurrentAmount(newAmount);
+                        stat.setLifetimeEarned(stat.getLifetimeEarned() + amount);
+
+                        // Update Peak Level Reached
+                        if (stat.getCurrentAmount() > stat.getMaxLevelReached()) {
+                            stat.setMaxLevelReached(stat.getCurrentAmount());
+                        }
+
+                        // Reset the Atrophy Timer Anchor to TODAY
+                        appStats.getLastStatGainDates().put(stat.getId(), java.time.LocalDate.now());
+
+                    } else {
+                        // --- LOSE XP (PENALTY) ---
+                        // Ensure stats never drop below 0
+                        int newAmount = Math.max(0, stat.getCurrentAmount() - amount);
+
+                        stat.setCurrentAmount(newAmount);
+                        stat.setLifetimeLost(stat.getLifetimeLost() + amount);
+                    }
+                    break; // Move to the next stat change in the task
+                }
             }
         }
     }

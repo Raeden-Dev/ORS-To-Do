@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class TaskTrackerApp extends Application {
+    public static final String APP_VERSION = "v1.39";
 
     private List<TaskItem> taskDatabase;
     private AppStats appStats;
@@ -95,7 +96,12 @@ public class TaskTrackerApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        SingleInstanceManager.startServer(primaryStage);
+        if (!SingleInstanceManager.registerInstance(APP_VERSION, primaryStage)) {
+            System.out.println("An instance of " + APP_VERSION + " is already running. Exiting.");
+            Platform.exit();
+            System.exit(0);
+            return;
+        }
         Platform.setImplicitExit(false);
         SystemTrayManager.setupSystemTray(primaryStage, this::shutdownApp);
 
@@ -249,10 +255,6 @@ public class TaskTrackerApp extends Application {
     }
 
     public static void main(String[] args) {
-        if (SingleInstanceManager.checkAndWakeUp()) {
-            System.exit(0);
-            return;
-        }
         launch(args);
     }
 }

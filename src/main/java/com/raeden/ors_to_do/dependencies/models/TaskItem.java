@@ -55,6 +55,27 @@ public class TaskItem implements Serializable {
     public boolean isStatsExpanded() { return statsExpanded; }
     public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
 
+    // --- PHASE 4: PERK SYSTEM FIELDS ---
+    private Map<String, Integer> statRequirements = new HashMap<>();
+    private int perkLevel = 0; // 0 to 5
+    private int weeksMaintained = 0;
+    private String perkDescription = "";
+
+    public Map<String, Integer> getStatRequirements() {
+        if (statRequirements == null) statRequirements = new HashMap<>();
+        return statRequirements;
+    }
+    public void setStatRequirements(Map<String, Integer> statRequirements) { this.statRequirements = statRequirements; }
+
+    public int getPerkLevel() { return perkLevel; }
+    public void setPerkLevel(int perkLevel) { this.perkLevel = perkLevel; }
+
+    public int getWeeksMaintained() { return weeksMaintained; }
+    public void setWeeksMaintained(int weeksMaintained) { this.weeksMaintained = weeksMaintained; }
+
+    public String getPerkDescription() { return perkDescription; }
+    public void setPerkDescription(String perkDescription) { this.perkDescription = perkDescription; }
+
     // --- NEW: Link Card Properties ---
     private boolean isLinkCard;
     private String linkActionPath;

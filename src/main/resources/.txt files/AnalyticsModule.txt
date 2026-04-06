@@ -4,6 +4,7 @@ import com.raeden.ors_to_do.dependencies.models.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -140,38 +141,9 @@ public class AnalyticsModule extends BorderPane {
 
         dashboardContent.getChildren().add(heroFlow);
 
-        // --- NEW: Render Custom RPG Stats ---
-        if (appStats.isGlobalStatsEnabled() && !appStats.getCustomStats().isEmpty()) {
-            VBox rpgBox = new VBox(15);
-            rpgBox.setPadding(new Insets(20, 0, 0, 0));
-
-            Label rpgHeader = new Label("Current Stats");
-            rpgHeader.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
-
-            FlowPane statsFlow = new FlowPane(15, 15);
-
-            for (CustomStat stat : appStats.getCustomStats()) {
-                int currentXp = appStats.getStatXpMap().getOrDefault(stat.getId(), 0);
-
-                VBox badge = new VBox(5);
-                badge.setAlignment(Pos.CENTER);
-                String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
-                badge.setStyle("-fx-background-color: " + bgC + "; -fx-padding: 15 25; -fx-background-radius: 8; -fx-border-color: #3E3E42; -fx-border-radius: 8;");
-
-                String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
-                Label nameLbl = new Label(icon + stat.getName());
-                String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
-                nameLbl.setStyle("-fx-text-fill: " + txtC + "; -fx-font-weight: bold; -fx-font-size: 14px;");
-
-                Label xpLbl = new Label(currentXp + "");
-                xpLbl.setStyle("-fx-text-fill: " + txtC + "; -fx-font-size: 18px; -fx-font-weight: bold;");
-
-                badge.getChildren().addAll(nameLbl, xpLbl);
-                statsFlow.getChildren().add(badge);
-            }
-
-            rpgBox.getChildren().addAll(rpgHeader, statsFlow);
-            dashboardContent.getChildren().add(rpgBox);
+        // --- PHASE 2: Render Detailed RPG Character Sheet ---
+        if (appStats.isGlobalStatsEnabled()) {
+            dashboardContent.getChildren().add(buildRPGStatsBoard());
         }
 
         // Build Section-by-Section Breakdown
@@ -204,6 +176,79 @@ public class AnalyticsModule extends BorderPane {
         }
 
         dashboardContent.getChildren().add(breakdownList);
+    }
+
+    // --- PHASE 2: RPG CHARACTER SHEET DASHBOARD ---
+    private VBox buildRPGStatsBoard() {
+        VBox board = new VBox(15);
+        board.setStyle("-fx-background-color: #252526; -fx-padding: 20; -fx-background-radius: 8; -fx-border-color: #3E3E42; -fx-border-radius: 8;");
+
+        Label title = new Label("RPG Character Sheet");
+        title.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 20px; -fx-font-weight: bold;");
+        board.getChildren().add(title);
+
+        if (appStats.getCustomStats().isEmpty()) {
+            Label empty = new Label("No custom stats created yet. Go to General Settings to define your RPG stats.");
+            empty.setStyle("-fx-text-fill: #AAAAAA; -fx-font-style: italic;");
+            board.getChildren().add(empty);
+            return board;
+        }
+
+        // Use a FlowPane so cards wrap nicely if the window is resized
+        FlowPane statsGrid = new FlowPane(15, 15);
+
+        for (CustomStat stat : appStats.getCustomStats()) {
+            VBox statCard = new VBox(10);
+
+            // Dynamic styling based on the stat's Custom Color
+            String bgColor = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+            String txtColor = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
+            statCard.setStyle("-fx-background-color: #2D2D30; -fx-padding: 15; -fx-background-radius: 5; -fx-border-color: " + bgColor + "; -fx-border-width: 2; -fx-border-radius: 5;");
+            statCard.setPrefWidth(300);
+
+            // --- HEADER (Icon, Name, and Current/Max XP) ---
+            String icon = (stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None")) ? stat.getIconSymbol() + " " : "";
+            Label nameLbl = new Label(icon + stat.getName());
+            nameLbl.setStyle("-fx-text-fill: " + txtColor + "; -fx-font-size: 16px; -fx-font-weight: bold;");
+
+            String capText = stat.getMaxCap() > 0 ? " / " + stat.getMaxCap() : "";
+            Label amountLbl = new Label(stat.getCurrentAmount() + capText + " XP");
+            amountLbl.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+            HBox header = new HBox(nameLbl, new Region(), amountLbl);
+            HBox.setHgrow(header.getChildren().get(1), Priority.ALWAYS);
+
+            // --- PROGRESS BAR ---
+            ProgressBar pBar = new ProgressBar();
+            if (stat.getMaxCap() > 0) {
+                pBar.setProgress((double) stat.getCurrentAmount() / stat.getMaxCap());
+            } else {
+                pBar.setProgress(1.0); // Infinite max cap appears full
+            }
+            pBar.setPrefWidth(Double.MAX_VALUE);
+            // Tint the progress bar to match the stat color
+            pBar.setStyle("-fx-accent: " + bgColor + "; -fx-control-inner-background: #1E1E1E; -fx-background-radius: 3;");
+
+            // --- LIFETIME TRACKERS ---
+            HBox lifetimeBox = new HBox(15);
+
+            Label earned = new Label("▲ " + stat.getLifetimeEarned() + " Earned");
+            earned.setStyle("-fx-text-fill: #4EC9B0; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+            Label lost = new Label("▼ " + stat.getLifetimeLost() + " Lost");
+            lost.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+            Label peak = new Label("⭐ Peak: " + stat.getMaxLevelReached());
+            peak.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+            lifetimeBox.getChildren().addAll(earned, lost, peak);
+
+            statCard.getChildren().addAll(header, pBar, lifetimeBox);
+            statsGrid.getChildren().add(statCard);
+        }
+
+        board.getChildren().add(statsGrid);
+        return board;
     }
 
     private VBox createHeroCard(String title, String value, String colorHex) {

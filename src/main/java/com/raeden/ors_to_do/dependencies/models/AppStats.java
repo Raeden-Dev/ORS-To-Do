@@ -50,6 +50,12 @@ public class AppStats implements Serializable {
     public boolean isMatchTitleColor() { return matchTitleColor; }
     public void setMatchTitleColor(boolean matchTitleColor) { this.matchTitleColor = matchTitleColor; }
 
+    private Map<String, LocalDate> lastStatGainDates = new HashMap<>();
+    public Map<String, LocalDate> getLastStatGainDates() {
+        if (lastStatGainDates == null) lastStatGainDates = new HashMap<>();
+        return lastStatGainDates;
+    }
+
     private String navQuickText = "Quick To-Do";
     private String navDailyText = "Daily To-Do";
     private String navWorkText = "Work List";

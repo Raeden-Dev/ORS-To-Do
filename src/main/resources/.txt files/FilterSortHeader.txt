@@ -133,7 +133,6 @@ public class FilterSortHeader extends VBox {
 
         if (config.isShowAnalytics()) {
             Button exportBtn = new Button("📊 Export");
-            // --- FIXED: Typo "-border-radius" changed to "-fx-border-radius" ---
             exportBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 5 15; -fx-background-radius: 15; -fx-border-color: #569CD6; -fx-border-radius: 15; -fx-font-size: 13px;");
             exportBtn.setOnAction(e -> AnalyticsExporter.exportSectionAnalytics(config, globalDatabase));
             badgesFlow.getChildren().add(exportBtn);
@@ -194,10 +193,21 @@ public class FilterSortHeader extends VBox {
             trueCompleted = completedCount;
         }
 
-        if (config.isHasStreak()) availableTasksLabel.setText(config.getName() + " (" + completedCount + "/" + (availableCount + completedCount) + ")");
-        else availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
+        // --- UPDATED: Page-Specific Title Logic ---
+        if (config.isStatPage()) {
+            availableTasksLabel.setText("Total Stats: " + availableCount);
+        } else if (config.isPerkPage()) {
+            availableTasksLabel.setText("Total Perks: " + availableCount);
+        } else if (config.isNotesPage()) {
+            availableTasksLabel.setText("Total Notes: " + availableCount);
+        } else if (config.isHasStreak()) {
+            availableTasksLabel.setText(config.getName() + " (" + completedCount + "/" + (availableCount + completedCount) + ")");
+        } else {
+            availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
+        }
 
-        if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage()) {
+        // --- UPDATED: Hide Sub-tasks label on special pages ---
+        if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage() && !config.isStatPage() && !config.isPerkPage()) {
             int activeSubTaskCount = 0;
             if (globalDatabase != null) {
                 for (TaskItem task : globalDatabase) {

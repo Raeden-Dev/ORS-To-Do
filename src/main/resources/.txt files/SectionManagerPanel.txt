@@ -72,7 +72,6 @@ public class SectionManagerPanel extends VBox {
             HBox nameBox = new HBox(10, colorIndicator, nameLabel);
             nameBox.setAlignment(Pos.CENTER_LEFT);
 
-            // --- FIXED: Visual Badge so the interval is visible directly on the Dashboard ---
             if (config.getResetIntervalHours() > 0) {
                 Label intervalBadge = new Label("⏱ " + config.getResetIntervalHours() + "h Reset");
                 intervalBadge.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px; -fx-background-color: #2D2D30; -fx-padding: 3 8; -fx-background-radius: 10; -fx-border-color: #3E3E42; -fx-border-radius: 10;");
@@ -207,7 +206,6 @@ public class SectionManagerPanel extends VBox {
         intervalSpinner.setEditable(true);
         intervalSpinner.setPrefWidth(80);
 
-        // --- FIXED: Intercept keystrokes instantly so the Editable Spinner bug never occurs ---
         intervalSpinner.getEditor().textProperty().addListener((obs, oldText, newText) -> {
             try {
                 int val = Integer.parseInt(newText.trim());
@@ -215,7 +213,6 @@ public class SectionManagerPanel extends VBox {
             } catch (NumberFormatException ignored) {}
         });
 
-        // Backup safeguard if they empty the text box entirely and click away
         intervalSpinner.getEditor().focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
             if (!isNowFocused) {
                 try {
@@ -242,6 +239,7 @@ public class SectionManagerPanel extends VBox {
         col2.setPercentWidth(50);
         featuresGrid.getColumnConstraints().addAll(col1, col2);
 
+        // Standard Toggles
         CheckBox allowManualArchiveCheck = new CheckBox("Allow Manual Archiving");
         allowManualArchiveCheck.setSelected(config.isAllowManualArchiving());
 
@@ -263,18 +261,14 @@ public class SectionManagerPanel extends VBox {
         CheckBox enableLinksCheck = new CheckBox("Enable Sub-Task Links");
         enableLinksCheck.setSelected(config.isEnableLinks());
 
-        CheckBox rewardsPageCheck = new CheckBox("Enable Rewards Shop Mode");
-        rewardsPageCheck.setSelected(config.isRewardsPage());
-        rewardsPageCheck.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
+        CheckBox enableStatsSystemCheck = new CheckBox("Enable Custom Stats");
+        enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
 
-        featuresGrid.add(createToggleWithDesc(allowManualArchiveCheck, "Enables right-click to send tasks to Archive."), 0, 0);
-        featuresGrid.add(createToggleWithDesc(enableSubTasksCheck, "Allows creating nested to-do items inside a card."), 0, 1);
-        featuresGrid.add(createToggleWithDesc(showDateCheck, "Displays the exact date the task was generated."), 0, 2);
-        featuresGrid.add(createToggleWithDesc(showPrefixCheck, "Allows prefixing tags like [GYM] with custom colors."), 0, 3);
-        featuresGrid.add(createToggleWithDesc(showTagsCheck, "Auto-generates clickable sorting buttons at the top of the page."), 0, 4);
-        featuresGrid.add(createToggleWithDesc(enableScoreCheck, "Allows adding and earning score points for tasks."), 0, 5);
-        featuresGrid.add(createToggleWithDesc(enableLinksCheck, "Allows attaching clickable URLs to sub-tasks."), 0, 6);
-        featuresGrid.add(createToggleWithDesc(rewardsPageCheck, "Turns this list into a shop where items cost points instead of giving them."), 0, 7);
+        CheckBox enableZenModeCheck = new CheckBox("Allow Zen Mode");
+        enableZenModeCheck.setSelected(config.isEnableZenMode());
+
+        CheckBox enableTaskStylingCheck = new CheckBox("Enable Task Styling");
+        enableTaskStylingCheck.setSelected(config.isEnableTaskStyling());
 
         CheckBox streakCheck = new CheckBox("Enable Streak System");
         streakCheck.setSelected(config.isHasStreak());
@@ -301,17 +295,37 @@ public class SectionManagerPanel extends VBox {
         CheckBox enableIconsCheck = new CheckBox("Enable Task Icons");
         enableIconsCheck.setSelected(config.isEnableIcons());
 
-        CheckBox enableZenModeCheck = new CheckBox("Allow Zen Mode");
-        enableZenModeCheck.setSelected(config.isEnableZenMode());
-
         CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks");
         enableOptionalTasksCheck.setSelected(config.isEnableOptionalTasks());
         enableOptionalTasksCheck.setDisable(config.getResetIntervalHours() <= 0 || !config.isEnableScore());
 
-        CheckBox enableTaskStylingCheck = new CheckBox("Enable Task Styling");
-        enableTaskStylingCheck.setSelected(config.isEnableTaskStyling());
+        CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards");
+        enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
 
-        // Because we added the textProperty listener above, this logic now correctly fires instantly when typing!
+        // Left Column (0)
+        featuresGrid.add(createToggleWithDesc(allowManualArchiveCheck, "Enables right-click to send tasks to Archive."), 0, 0);
+        featuresGrid.add(createToggleWithDesc(enableSubTasksCheck, "Allows creating nested to-do items inside a card."), 0, 1);
+        featuresGrid.add(createToggleWithDesc(showDateCheck, "Displays the exact date the task was generated."), 0, 2);
+        featuresGrid.add(createToggleWithDesc(showPrefixCheck, "Allows prefixing tags like [GYM] with custom colors."), 0, 3);
+        featuresGrid.add(createToggleWithDesc(showTagsCheck, "Auto-generates clickable sorting buttons at the top of the page."), 0, 4);
+        featuresGrid.add(createToggleWithDesc(enableScoreCheck, "Allows adding and earning score points for tasks."), 0, 5);
+        featuresGrid.add(createToggleWithDesc(enableLinksCheck, "Allows attaching clickable URLs to sub-tasks."), 0, 6);
+        featuresGrid.add(createToggleWithDesc(enableStatsSystemCheck, "Allows tasks to grant XP towards your Custom RPG Stats."), 0, 7);
+        featuresGrid.add(createToggleWithDesc(enableZenModeCheck, "Adds a focus mode button that unlocks when threshold is met."), 0, 8);
+        featuresGrid.add(createToggleWithDesc(enableTaskStylingCheck, "Allows custom background and outline colors for individual tasks."), 0, 9);
+
+        // Right Column (1)
+        featuresGrid.add(createToggleWithDesc(streakCheck, "Tracks consecutive completions. Requires a reset interval."), 1, 0);
+        featuresGrid.add(createToggleWithDesc(autoArchiveCheck, "Tasks are sent to archive the moment they are checked off."), 1, 1);
+        featuresGrid.add(createToggleWithDesc(showPriorityCheck, "Adds a priority ranking dropdown to each task."), 1, 2);
+        featuresGrid.add(createToggleWithDesc(trackTimeCheck, "Links tasks to the Pomodoro Focus Hub timer."), 1, 3);
+        featuresGrid.add(createToggleWithDesc(showTaskTypeCheck, "Displays an editable string box for categorization."), 1, 4);
+        featuresGrid.add(createToggleWithDesc(favoriteCheck, "Allows starring tasks for a golden border override."), 1, 5);
+        featuresGrid.add(createToggleWithDesc(showAnalyticsCheck, "Displays a button to export an HTML graph of completed tasks."), 1, 6);
+        featuresGrid.add(createToggleWithDesc(enableIconsCheck, "Allows attaching custom color-coded symbols to tasks."), 1, 7);
+        featuresGrid.add(createToggleWithDesc(enableOptionalTasksCheck, "Allows tasks that grant bonus points but do not count to totals."), 1, 8);
+        featuresGrid.add(createToggleWithDesc(enableLinkCardsCheck, "Allows creating tasks that act purely as clickable shortcuts."), 1, 9);
+
         intervalSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             boolean hasInterval = newVal != null && newVal > 0;
             streakCheck.setDisable(!hasInterval);
@@ -327,34 +341,43 @@ public class SectionManagerPanel extends VBox {
             if (!hasInterval || !enableScoreCheck.isSelected()) enableOptionalTasksCheck.setSelected(false);
         });
 
-        featuresGrid.add(createToggleWithDesc(streakCheck, "Tracks consecutive completions. Requires a reset interval."), 1, 0);
-        featuresGrid.add(createToggleWithDesc(autoArchiveCheck, "Tasks are sent to archive the moment they are checked off."), 1, 1);
-        featuresGrid.add(createToggleWithDesc(showPriorityCheck, "Adds a priority ranking dropdown to each task."), 1, 2);
-        featuresGrid.add(createToggleWithDesc(trackTimeCheck, "Links tasks to the Pomodoro Focus Hub timer."), 1, 3);
-        featuresGrid.add(createToggleWithDesc(showTaskTypeCheck, "Displays an editable string box for categorization."), 1, 4);
-        featuresGrid.add(createToggleWithDesc(favoriteCheck, "Allows starring tasks for a golden border override."), 1, 5);
-        featuresGrid.add(createToggleWithDesc(showAnalyticsCheck, "Displays a button to export an HTML graph of completed tasks."), 1, 6);
-        featuresGrid.add(createToggleWithDesc(enableIconsCheck, "Allows attaching custom color-coded symbols to tasks."), 1, 7);
-        featuresGrid.add(createToggleWithDesc(enableZenModeCheck, "Adds a focus mode button that unlocks when the task paralysis threshold is met."), 0, 8);
-        featuresGrid.add(createToggleWithDesc(enableOptionalTasksCheck, "Allows tasks that grant bonus points but do not count toward required daily totals."), 1, 8);
-        featuresGrid.add(createToggleWithDesc(enableTaskStylingCheck, "Allows custom background, outline, and sidebox colors for individual tasks."), 0, 9);
-
         content.getChildren().add(featuresGrid);
         content.getChildren().add(new Separator());
 
-        CheckBox enableStatsSystemCheck = new CheckBox("Enable Custom Stats");
-        enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
+        // --- NEW: Dedicated Box for Special Page Modes ---
+        VBox specialModesBox = new VBox(10);
+        specialModesBox.setStyle("-fx-border-color: #555555; -fx-border-radius: 5; -fx-padding: 10; -fx-background-color: #252526; -fx-background-radius: 5;");
 
-        CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards");
-        enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
+        Label modeHeader = new Label("Special Page Modes (Select up to One):");
+        modeHeader.setStyle("-fx-text-fill: #AAAAAA; -fx-font-style: italic; -fx-font-size: 12px;");
+
+        FlowPane modeToggles = new FlowPane(20, 10);
 
         CheckBox notesPageCheck = new CheckBox("Notes Page");
         notesPageCheck.setSelected(config.isNotesPage());
         notesPageCheck.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
 
-        HBox extraBox = new HBox(20);
-        extraBox.getChildren().addAll(enableStatsSystemCheck, enableLinkCardsCheck, notesPageCheck);
-        content.getChildren().add(extraBox);
+        CheckBox statPageCheck = new CheckBox("Stat Page");
+        statPageCheck.setSelected(config.isStatPage());
+        statPageCheck.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
+
+        CheckBox perkPageCheck = new CheckBox("Perk Page");
+        perkPageCheck.setSelected(config.isPerkPage());
+        perkPageCheck.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
+
+        CheckBox rewardsPageCheck = new CheckBox("Rewards Shop");
+        rewardsPageCheck.setSelected(config.isRewardsPage());
+        rewardsPageCheck.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
+
+        modeToggles.getChildren().addAll(notesPageCheck, statPageCheck, perkPageCheck, rewardsPageCheck);
+        specialModesBox.getChildren().addAll(modeHeader, modeToggles);
+
+        rewardsPageCheck.setOnAction(e -> { if(rewardsPageCheck.isSelected()) { notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } });
+        notesPageCheck.setOnAction(e -> { if(notesPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } });
+        statPageCheck.setOnAction(e -> { if(statPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); perkPageCheck.setSelected(false); } });
+        perkPageCheck.setOnAction(e -> { if(perkPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); statPageCheck.setSelected(false); } });
+
+        content.getChildren().add(specialModesBox);
 
         presetBox.setOnAction(e -> {
             SectionConfig loadedPreset = presetBox.getValue();
@@ -380,6 +403,8 @@ public class SectionManagerPanel extends VBox {
                 enableStatsSystemCheck.setSelected(loadedPreset.isEnableStatsSystem());
                 enableLinkCardsCheck.setSelected(loadedPreset.isEnableLinkCards());
                 notesPageCheck.setSelected(loadedPreset.isNotesPage());
+                statPageCheck.setSelected(loadedPreset.isStatPage());
+                perkPageCheck.setSelected(loadedPreset.isPerkPage());
                 enableOptionalTasksCheck.setSelected(loadedPreset.isEnableOptionalTasks());
                 enableTaskStylingCheck.setSelected(loadedPreset.isEnableTaskStyling());
             }
@@ -415,6 +440,8 @@ public class SectionManagerPanel extends VBox {
                 newPreset.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
                 newPreset.setEnableLinkCards(enableLinkCardsCheck.isSelected());
                 newPreset.setNotesPage(notesPageCheck.isSelected());
+                newPreset.setStatPage(statPageCheck.isSelected());
+                newPreset.setPerkPage(perkPageCheck.isSelected());
                 newPreset.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected());
                 newPreset.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
 
@@ -447,6 +474,8 @@ public class SectionManagerPanel extends VBox {
                 config.setEnableScore(enableScoreCheck.isSelected());
                 config.setEnableLinks(enableLinksCheck.isSelected());
                 config.setRewardsPage(rewardsPageCheck.isSelected());
+                config.setStatPage(statPageCheck.isSelected());
+                config.setPerkPage(perkPageCheck.isSelected());
 
                 config.setAutoArchive(autoArchiveCheck.isSelected());
                 config.setShowPriority(showPriorityCheck.isSelected());

@@ -35,6 +35,14 @@ public class SectionConfig implements Serializable {
     private boolean enableZenMode = false;
     private boolean enableOptionalTasks = false;
 
+    private boolean isStatPage = false;
+    private boolean isPerkPage = false;
+
+    public boolean isStatPage() { return isStatPage; }
+    public void setStatPage(boolean statPage) { this.isStatPage = statPage; }
+    public boolean isPerkPage() { return isPerkPage; }
+    public void setPerkPage(boolean perkPage) { this.isPerkPage = perkPage; }
+
     // --- NEW: Enable Task Styling Flag ---
     private boolean enableTaskStyling = false;
 
