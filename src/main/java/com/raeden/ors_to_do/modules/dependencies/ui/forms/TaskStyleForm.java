@@ -105,7 +105,8 @@ public class TaskStyleForm {
     }
 
     private String toHexString(Color color) {
-        if (color == null) return "transparent";
+        // --- FIXED: Explicitly check for 0.0 opacity so transparent colors don't default to Black ---
+        if (color == null || color.getOpacity() == 0.0) return "transparent";
         return String.format("#%02X%02X%02X", (int)(color.getRed()*255), (int)(color.getGreen()*255), (int)(color.getBlue()*255));
     }
 }

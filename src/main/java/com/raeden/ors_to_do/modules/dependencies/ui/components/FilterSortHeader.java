@@ -74,7 +74,6 @@ public class FilterSortHeader extends VBox {
             badgesFlow.getChildren().add(scoreLabel);
         }
 
-        // --- FIXED: Read Streak from SectionConfig and add directly to badgesFlow ---
         if (config.isHasStreak()) {
             Label streakLabel = new Label("🔥 Streak: " + config.getCurrentStreak());
             streakLabel.setStyle("-fx-text-fill: #FF8C00; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-color: #332B00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FF8C00; -fx-border-radius: 15;");
@@ -172,7 +171,12 @@ public class FilterSortHeader extends VBox {
 
         sortComboBox.setOnAction(e -> onFilterSortChanged.run());
 
-        filterSortRow.getChildren().addAll(filterSpacer, sortComboBox);
+        filterSortRow.getChildren().add(filterSpacer);
+
+        if (!config.isStatPage()) {
+            filterSortRow.getChildren().add(sortComboBox);
+        }
+
         getChildren().add(filterSortRow);
     }
 
@@ -194,10 +198,13 @@ public class FilterSortHeader extends VBox {
             trueCompleted = completedCount;
         }
 
+        // --- FIXED: Added Challenge Page to the Title Logic ---
         if (config.isStatPage()) {
             availableTasksLabel.setText("Total Stats: " + availableCount);
         } else if (config.isPerkPage()) {
             availableTasksLabel.setText("Total Perks: " + availableCount);
+        } else if (config.isChallengePage()) {
+            availableTasksLabel.setText("Active Challenge: " + availableCount);
         } else if (config.isNotesPage()) {
             availableTasksLabel.setText("Total Notes: " + availableCount);
         } else if (config.isHasStreak()) {
@@ -206,7 +213,12 @@ public class FilterSortHeader extends VBox {
             availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
         }
 
-        if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage() && !config.isStatPage() && !config.isPerkPage()) {
+        // --- FIXED: Updated the Sub-Label logic for Challenges ---
+        if (config.isChallengePage()) {
+            activeSubTasksLabel.setText("Completed Challenges: " + completedCount);
+            activeSubTasksLabel.setVisible(true);
+            activeSubTasksLabel.setManaged(true);
+        } else if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage() && !config.isStatPage() && !config.isPerkPage()) {
             int activeSubTaskCount = 0;
             if (globalDatabase != null) {
                 for (TaskItem task : globalDatabase) {

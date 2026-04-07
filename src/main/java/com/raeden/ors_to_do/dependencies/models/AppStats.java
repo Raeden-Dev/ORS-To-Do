@@ -291,7 +291,39 @@ public class AppStats implements Serializable {
 
     public Map<OriginModule, String> getPendingDrafts() { return pendingDrafts; }
 
+    private boolean expandStatMiniCards = false;
 
+    public boolean isExpandStatMiniCards() { return expandStatMiniCards; }
+    public void setExpandStatMiniCards(boolean expandStatMiniCards) { this.expandStatMiniCards = expandStatMiniCards; }
+
+    private int preventEditingHours = 0;
+
+    public int getPreventEditingHours() { return preventEditingHours; }
+    public void setPreventEditingHours(int preventEditingHours) { this.preventEditingHours = preventEditingHours; }
+
+    // --- NEW: Urge Surfing Settings ---
+    private boolean enableUrgeButton = true;
+    private int urgeSessionDurationSeconds = 120; // Default 2 minutes
+    private List<String> urgeQuotes = new ArrayList<>();
+
+    public boolean isEnableUrgeButton() { return enableUrgeButton; }
+    public void setEnableUrgeButton(boolean enableUrgeButton) { this.enableUrgeButton = enableUrgeButton; }
+
+    public int getUrgeSessionDurationSeconds() { return urgeSessionDurationSeconds; }
+    public void setUrgeSessionDurationSeconds(int urgeSessionDurationSeconds) { this.urgeSessionDurationSeconds = urgeSessionDurationSeconds; }
+
+    public List<String> getUrgeQuotes() {
+        if (urgeQuotes == null) urgeQuotes = new ArrayList<>();
+        // Load default quotes if the user hasn't set any yet
+        if (urgeQuotes.isEmpty()) {
+            urgeQuotes.add("This urge is just a feeling, and feelings pass.");
+            urgeQuotes.add("Ride the wave. You don't have to act on it.");
+            urgeQuotes.add("Breathe in strength, breathe out the craving.");
+            urgeQuotes.add("You are in control of your actions.");
+        }
+        return urgeQuotes;
+    }
+    public void setUrgeQuotes(List<String> urgeQuotes) { this.urgeQuotes = urgeQuotes; }
     // ==========================================
     // HELPER METHODS
     // ==========================================

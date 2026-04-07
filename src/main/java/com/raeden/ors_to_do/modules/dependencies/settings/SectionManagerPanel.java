@@ -4,10 +4,12 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -39,14 +41,38 @@ public class SectionManagerPanel extends VBox {
 
         Button addSectionBtn = new Button("+ Add Section");
         addSectionBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 8 15;");
-        addSectionBtn.setPrefWidth(250);
-        topRow.getChildren().add(addSectionBtn);
+        addSectionBtn.setPrefWidth(200);
+
+        // --- NEW: Add Separator Button ---
+        Button addSeparatorBtn = new Button("+ Add Separator");
+        addSeparatorBtn.setStyle("-fx-background-color: #555555; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 8 15;");
+        addSeparatorBtn.setPrefWidth(200);
+
+        topRow.getChildren().addAll(addSectionBtn, addSeparatorBtn);
 
         existingSectionsBox = new VBox(10);
 
         addSectionBtn.setOnAction(e -> {
             SectionConfig newConfig = new SectionConfig(UUID.randomUUID().toString(), "");
             SectionEditDialog.show(newConfig, true, appStats, () -> {
+                StorageManager.saveStats(appStats);
+                refreshList();
+                if (this.onSectionChanged != null) this.onSectionChanged.run();
+                this.refreshCallback.run();
+            });
+        });
+
+        // --- NEW: Create Separator Logic ---
+        addSeparatorBtn.setOnAction(e -> {
+            TextInputDialog nameDialog = new TextInputDialog("");
+            nameDialog.setTitle("Add Separator");
+            nameDialog.setHeaderText("Enter a label for this category separator\n(Leave blank for just a line):");
+            TaskDialogs.styleDialog(nameDialog);
+
+            nameDialog.showAndWait().ifPresent(name -> {
+                SectionConfig sepConfig = new SectionConfig(UUID.randomUUID().toString(), name.trim());
+                sepConfig.setSeparator(true); // Flag it as a separator!
+                appStats.getSections().add(sepConfig);
                 StorageManager.saveStats(appStats);
                 refreshList();
                 if (this.onSectionChanged != null) this.onSectionChanged.run();

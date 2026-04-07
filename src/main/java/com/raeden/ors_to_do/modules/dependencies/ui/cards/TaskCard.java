@@ -59,9 +59,20 @@ public class TaskCard extends VBox {
         mainRow.setPadding(new Insets(10));
         if (task.isLinkCard()) mainRow.setCursor(javafx.scene.Cursor.HAND);
 
+        // --- FIXED: Enforce 'Prevent Editing' setting on double-click ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
-                TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
+                int lockHours = appStats.getPreventEditingHours();
+
+                // Check if the setting is > 0 and the current time is PAST the lock time
+                if (lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "This task was created over " + lockHours + " hour(s) ago and is locked from editing.");
+                    alert.setHeaderText("Editing Locked");
+                    TaskDialogs.styleDialog(alert);
+                    alert.show();
+                } else {
+                    TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
+                }
             } else if (event.getClickCount() == 1 && event.getButton() == MouseButton.PRIMARY && task.isLinkCard()) {
                 TaskLinkUtil.openActionPath(task.getLinkActionPath());
             }

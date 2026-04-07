@@ -17,7 +17,6 @@ public class StatsManagerPanel extends VBox {
     private Runnable refreshCallback;
     private final double BUTTON_WIDTH = 200.0;
 
-    // --- FIXED: Extracted label to class level so we can update it dynamically ---
     private Label descLabel;
 
     public StatsManagerPanel(AppStats appStats, Runnable refreshCallback) {
@@ -41,11 +40,9 @@ public class StatsManagerPanel extends VBox {
 
         getChildren().addAll(header, descLabel, existingStatsBox, new Separator(), createStatBtn);
 
-        // Run the initial state check
         refreshState();
     }
 
-    // --- NEW: Public method to update the UI instantly when settings change ---
     public void refreshState() {
         if (!appStats.isGlobalStatsEnabled()) {
             this.setDisable(true);
@@ -134,7 +131,7 @@ public class StatsManagerPanel extends VBox {
         grid.setPadding(new Insets(10));
 
         ColumnConstraints col1 = new ColumnConstraints();
-        col1.setPrefWidth(120); // Give the labels a bit of fixed room so wrapping looks good
+        col1.setPrefWidth(120);
         ColumnConstraints col2 = new ColumnConstraints();
         col2.setHgrow(Priority.ALWAYS);
         grid.getColumnConstraints().addAll(col1, col2);
@@ -146,8 +143,6 @@ public class StatsManagerPanel extends VBox {
         nameField.setMaxWidth(Double.MAX_VALUE);
         grid.add(new Label("Stat Name:"), 0, rowIdx);
         grid.add(nameField, 1, rowIdx++);
-
-        // --- PHASE 1: NEW RPG INPUTS ---
 
         TextArea descArea = new TextArea(isNew ? "" : stat.getDescription());
         descArea.setPromptText("Brief lore or description...");
@@ -172,7 +167,14 @@ public class StatsManagerPanel extends VBox {
         grid.add(atrophyLabel, 0, rowIdx);
         grid.add(atrophySpinner, 1, rowIdx++);
 
-        // --- END PHASE 1 INPUTS ---
+        // --- NEW: Starting XP Amount Spinner ---
+        Spinner<Integer> startingAmountSpinner = new Spinner<>(0, 999999, isNew ? 0 : stat.getCurrentAmount());
+        startingAmountSpinner.setEditable(true);
+        startingAmountSpinner.setMaxWidth(Double.MAX_VALUE);
+        Label startingAmountLabel = new Label("Current XP / \nStarting Amount:");
+        grid.add(startingAmountLabel, 0, rowIdx);
+        grid.add(startingAmountSpinner, 1, rowIdx++);
+        // ---------------------------------------
 
         ComboBox<String> iconBox = new ComboBox<>();
         iconBox.getItems().addAll(TaskDialogs.ICON_LIST);
@@ -213,13 +215,18 @@ public class StatsManagerPanel extends VBox {
                 target.setIconSymbol(iconBox.getValue());
                 target.setBackgroundColor(toHexString(bgColorPicker.getValue()));
                 target.setTextColor(toHexString(textColorPicker.getValue()));
-
-                // --- PHASE 1: SAVE NEW RPG VARIABLES ---
                 target.setDescription(descArea.getText().trim());
                 target.setMaxCap(capSpinner.getValue());
                 target.setAtrophyDays(atrophySpinner.getValue());
 
+                // --- NEW: Apply Starting/Current Amount ---
+                int startingAmt = startingAmountSpinner.getValue();
+                target.setCurrentAmount(startingAmt);
+
+                // If this is a brand new stat being created, initialize the lifetime stats as well!
                 if (isNew) {
+                    target.setLifetimeEarned(startingAmt);
+                    target.setMaxLevelReached(startingAmt);
                     appStats.getCustomStats().add(target);
                 }
 

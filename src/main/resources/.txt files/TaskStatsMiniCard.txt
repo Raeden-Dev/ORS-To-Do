@@ -7,72 +7,103 @@ import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.VBox;
 
 public class TaskStatsMiniCard extends FlowPane {
 
-    private boolean hasAnyStats = false;
+    private boolean containsStats = false;
 
     public TaskStatsMiniCard(TaskItem task, SectionConfig config, AppStats appStats, boolean isLocked) {
-        super(8, 8);
-        setPadding(new Insets(8, 12, 8, 12));
-        setStyle("-fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
-        setMaxWidth(Double.MAX_VALUE);
-        VBox.setMargin(this, new Insets(4, 0, 0, 0));
+        super(10, 8);
+        setPadding(new Insets(5, 0, 5, 0));
 
-        boolean isStatsVis = !isLocked && task.isStatsExpanded();
-        setVisible(isStatsVis);
-        setManaged(isStatsVis);
+        if (isLocked) {
+            setVisible(false);
+            setManaged(false);
+            return;
+        }
 
-        // Calculate a proportional font size for the pills (slightly smaller than the main text)
-        int pillFontSize = Math.max(9, appStats.getTaskFontSize() - 3);
+        if (config != null && config.isEnableStatsSystem() && appStats.isGlobalStatsEnabled()) {
+            boolean isExpandedMode = appStats.isExpandStatMiniCards();
 
-        if (config.isRewardsPage() && task.getCostPoints() > 0) {
-            Label pLabel = new Label("💎 -" + task.getCostPoints() + " Cost");
-            pLabel.setStyle("-fx-text-fill: #9CDCFE; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #1A3A4D; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-            getChildren().add(pLabel);
-            hasAnyStats = true;
-        } else if (config.isEnableScore()) {
-            if (task.getRewardPoints() > 0) {
-                Label pLabel = new Label("🏆 +" + task.getRewardPoints() + " Pts");
-                pLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #332B00; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-                getChildren().add(pLabel);
-                hasAnyStats = true;
-            }
-            if (task.getPenaltyPoints() > 0) {
-                Label pLabel = new Label("💀 -" + task.getPenaltyPoints() + " Pts");
-                pLabel.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + pillFontSize + "px; -fx-background-color: #330000; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-                getChildren().add(pLabel);
-                hasAnyStats = true;
+            for (CustomStat stat : appStats.getCustomStats()) {
+                String statId = stat.getId();
+
+                boolean hasReward = task.getStatRewards() != null && task.getStatRewards().containsKey(statId);
+                boolean hasCapReward = task.getStatCapRewards() != null && task.getStatCapRewards().containsKey(statId);
+                boolean hasCost = task.getStatCosts() != null && task.getStatCosts().containsKey(statId);
+                boolean hasPenalty = task.getStatPenalties() != null && task.getStatPenalties().containsKey(statId);
+
+                if (hasReward || hasCapReward || hasCost || hasPenalty) {
+                    containsStats = true;
+
+                    String statIcon = (stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None")) ? stat.getIconSymbol() + " " : "";
+                    String bgColor = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+
+                    String commonStyle = "-fx-font-size: 11px; -fx-background-color: " + bgColor + "; -fx-padding: 2 6; -fx-background-radius: 10; -fx-border-radius: 10; -fx-font-weight: bold;";
+
+                    String rewardStyle = "-fx-text-fill: #4EC9B0; -fx-border-color: #4EC9B0; " + commonStyle;
+                    String capStyle = "-fx-text-fill: #C586C0; -fx-border-color: #C586C0; " + commonStyle;
+                    String costStyle = "-fx-text-fill: #FF8C00; -fx-border-color: #FF8C00; " + commonStyle;
+                    String penaltyStyle = "-fx-text-fill: #E06666; -fx-border-color: #E06666; " + commonStyle;
+
+                    // 1. Render Cap Reward
+                    if (hasCapReward) {
+                        Label lbl;
+                        if (isExpandedMode) {
+                            lbl = new Label("▲ " + task.getStatCapRewards().get(statId) + " Max " + stat.getName());
+                        } else {
+                            lbl = new Label("▲ " + task.getStatCapRewards().get(statId) + " " + (statIcon.isEmpty() ? stat.getName() : statIcon.trim()));
+                        }
+                        lbl.setStyle(capStyle);
+                        getChildren().add(lbl);
+                    }
+
+                    // 2. Render Reward
+                    if (hasReward) {
+                        Label lbl;
+                        if (isExpandedMode) {
+                            lbl = new Label("+" + task.getStatRewards().get(statId) + " " + stat.getName());
+                        } else {
+                            lbl = new Label("+" + task.getStatRewards().get(statId) + " " + (statIcon.isEmpty() ? stat.getName() : statIcon.trim()));
+                        }
+                        lbl.setStyle(rewardStyle);
+                        getChildren().add(lbl);
+                    }
+
+                    // 3. Render Cost
+                    if (hasCost) {
+                        Label lbl;
+                        if (isExpandedMode) {
+                            lbl = new Label("~" + task.getStatCosts().get(statId) + " " + stat.getName());
+                        } else {
+                            lbl = new Label("~" + task.getStatCosts().get(statId) + " " + (statIcon.isEmpty() ? stat.getName() : statIcon.trim()));
+                        }
+                        lbl.setStyle(costStyle);
+                        getChildren().add(lbl);
+                    }
+
+                    // 4. Render Penalty
+                    if (hasPenalty) {
+                        Label lbl;
+                        if (isExpandedMode) {
+                            lbl = new Label("-" + task.getStatPenalties().get(statId) + " " + stat.getName());
+                        } else {
+                            lbl = new Label("-" + task.getStatPenalties().get(statId) + " " + (statIcon.isEmpty() ? stat.getName() : statIcon.trim()));
+                        }
+                        lbl.setStyle(penaltyStyle);
+                        getChildren().add(lbl);
+                    }
+                }
             }
         }
 
-        if (config.isEnableStatsSystem()) {
-            for (CustomStat stat : appStats.getCustomStats()) {
-                int rew = task.getStatRewards().getOrDefault(stat.getId(), 0);
-                if (rew > 0) {
-                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
-                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
-                    String txtC = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
-                    Label sLabel = new Label(icon + "+" + rew + " " + stat.getName());
-                    sLabel.setStyle("-fx-text-fill: " + txtC + "; -fx-background-color: " + bgC + "; -fx-font-size: " + pillFontSize + "px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold;");
-                    getChildren().add(sLabel);
-                    hasAnyStats = true;
-                }
-                int pen = task.getStatPenalties().getOrDefault(stat.getId(), 0);
-                if (pen > 0) {
-                    String icon = stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None") ? stat.getIconSymbol() + " " : "";
-                    String bgC = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
-                    Label sLabel = new Label(icon + "-" + pen + " " + stat.getName());
-                    sLabel.setStyle("-fx-text-fill: #FF6666; -fx-background-color: " + bgC + "; -fx-font-size: " + pillFontSize + "px; -fx-padding: 3 8; -fx-background-radius: 4; -fx-font-weight: bold; -fx-border-color: #FF6666; -fx-border-radius: 4;");
-                    getChildren().add(sLabel);
-                    hasAnyStats = true;
-                }
-            }
+        if (!containsStats || !task.isStatsExpanded()) {
+            setVisible(false);
+            setManaged(false);
         }
     }
 
     public boolean hasAnyStats() {
-        return hasAnyStats;
+        return containsStats;
     }
 }

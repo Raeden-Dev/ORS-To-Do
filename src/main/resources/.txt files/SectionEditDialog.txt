@@ -99,6 +99,7 @@ public class SectionEditDialog {
         CheckBox enableIconsCheck = new CheckBox("Enable Task Icons"); enableIconsCheck.setSelected(config.isEnableIcons());
         CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks"); enableOptionalTasksCheck.setSelected(config.isEnableOptionalTasks());
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards"); enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
+        CheckBox enableTimedTasksCheck = new CheckBox("Allow Timed Tasks"); enableTimedTasksCheck.setSelected(config.isEnableTimedTasks());
 
         featuresGrid.add(createToggle(allowManualArchiveCheck, "Enables right-click to send tasks to Archive."), 0, 0);
         featuresGrid.add(createToggle(enableSubTasksCheck, "Allows creating nested to-do items inside a card."), 0, 1);
@@ -110,6 +111,8 @@ public class SectionEditDialog {
         featuresGrid.add(createToggle(enableStatsSystemCheck, "Allows tasks to grant XP towards your Custom RPG Stats."), 0, 7);
         featuresGrid.add(createToggle(enableZenModeCheck, "Adds a focus mode button that unlocks when threshold is met."), 0, 8);
         featuresGrid.add(createToggle(enableTaskStylingCheck, "Allows custom background and outline colors for individual tasks."), 0, 9);
+        featuresGrid.add(createToggle(enableTimedTasksCheck, "Tasks require specific focus time to complete."), 0, 10);
+
         featuresGrid.add(createToggle(streakCheck, "Tracks consecutive completions. Requires a reset interval."), 1, 0);
         featuresGrid.add(createToggle(autoArchiveCheck, "Tasks are sent to archive the moment they are checked off."), 1, 1);
         featuresGrid.add(createToggle(showPriorityCheck, "Adds a priority ranking dropdown to each task."), 1, 2);
@@ -155,10 +158,12 @@ public class SectionEditDialog {
                 trackTimeCheck.setDisable(true); trackTimeCheck.setSelected(false);
                 enableZenModeCheck.setDisable(true); enableZenModeCheck.setSelected(false);
                 showPriorityCheck.setDisable(!isReward); if (!isReward) showPriorityCheck.setSelected(false);
+                enableTimedTasksCheck.setDisable(true); enableTimedTasksCheck.setSelected(false);
             } else {
                 boolean subTasks = enableSubTasksCheck.isSelected(); boolean links = enableLinkCardsCheck.isSelected(); boolean focus = trackTimeCheck.isSelected();
                 enableSubTasksCheck.setDisable(links); enableLinkCardsCheck.setDisable(subTasks || focus); trackTimeCheck.setDisable(links);
                 enableZenModeCheck.setDisable(false); showPriorityCheck.setDisable(false);
+                enableTimedTasksCheck.setDisable(false);
             }
 
             streakCheck.setDisable(!hasInterval); if (!hasInterval) streakCheck.setSelected(false);
@@ -192,6 +197,7 @@ public class SectionEditDialog {
                 enableLinkCardsCheck.setSelected(p.isEnableLinkCards()); notesPageCheck.setSelected(p.isNotesPage());
                 statPageCheck.setSelected(p.isStatPage()); perkPageCheck.setSelected(p.isPerkPage());
                 enableOptionalTasksCheck.setSelected(p.isEnableOptionalTasks()); enableTaskStylingCheck.setSelected(p.isEnableTaskStyling());
+                enableTimedTasksCheck.setSelected(p.isEnableTimedTasks());
                 updateUIState.run();
             }
         });
@@ -214,6 +220,8 @@ public class SectionEditDialog {
                 newPreset.setEnableLinkCards(enableLinkCardsCheck.isSelected()); newPreset.setNotesPage(notesPageCheck.isSelected());
                 newPreset.setStatPage(statPageCheck.isSelected()); newPreset.setPerkPage(perkPageCheck.isSelected());
                 newPreset.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected()); newPreset.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
+                newPreset.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
+
                 appStats.getSectionPresets().add(newPreset); presetBox.getItems().add(newPreset); presetBox.setValue(newPreset);
                 StorageManager.saveStats(appStats);
             });
@@ -242,6 +250,7 @@ public class SectionEditDialog {
                 config.setEnableStatsSystem(enableStatsSystemCheck.isSelected()); config.setEnableLinkCards(enableLinkCardsCheck.isSelected());
                 config.setNotesPage(notesPageCheck.isSelected()); config.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected());
                 config.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
+                config.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
 
                 if (isNew) appStats.getSections().add(config);
                 onSave.run();

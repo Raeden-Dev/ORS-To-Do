@@ -7,12 +7,8 @@ import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.modules.*;
 import com.raeden.ors_to_do.modules.dependencies.*;
 
-import com.raeden.ors_to_do.modules.dependencies.services.DailyRolloverManager;
-import com.raeden.ors_to_do.modules.dependencies.services.QuickCaptureManager;
-import com.raeden.ors_to_do.modules.dependencies.services.SingleInstanceManager;
-import com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager;
+import com.raeden.ors_to_do.modules.dependencies.services.*;
 // --- NEW: Added NotificationManager Import ---
-import com.raeden.ors_to_do.modules.dependencies.services.NotificationManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.layout.GlobalSearchBar;
 import com.raeden.ors_to_do.modules.dependencies.ui.layout.SidebarManager;
 import javafx.application.Application;
@@ -27,7 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class TaskTrackerApp extends Application {
-    public static final String APP_VERSION = "v1.4";
+    public static final String APP_VERSION = "v1.41";
 
     private List<TaskItem> taskDatabase;
     private AppStats appStats;
@@ -186,6 +182,7 @@ public class TaskTrackerApp extends Application {
 
         // --- NEW: Start Background Notification Engine ---
         NotificationManager.start(appStats, taskDatabase, primaryStage);
+        GlobalActivityTracker.init();
     }
 
     private void shutdownApp() {

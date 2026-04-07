@@ -95,8 +95,15 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
 
+        Spinner<Integer> inactivitySpinner = new Spinner<>(0, 120, appStats.getFocusInactivityThreshold());
+        inactivitySpinner.setEditable(true);
+
         CheckBox chkGlobalStats = new CheckBox();
         chkGlobalStats.setSelected(appStats.isGlobalStatsEnabled());
+
+        // --- NEW: Expanded Stats Info Checkbox ---
+        CheckBox chkExpandedStats = new CheckBox();
+        chkExpandedStats.setSelected(appStats.isExpandStatMiniCards());
 
         CheckBox chkTextToTask = new CheckBox();
         chkTextToTask.setSelected(appStats.isEnableTextToTask());
@@ -108,9 +115,6 @@ public class GeneralSettingsPanel extends VBox {
         themeBox.getItems().addAll("Default", "Dark", "Green", "Blue", "Purple");
         themeBox.setValue(appStats.getCheckboxTheme());
 
-        // =================================================================================
-        // --- FIXED: Dynamic Confirmation Menu to catch newly added sections instantly ---
-        // =================================================================================
         MenuButton confirmMenu = new MenuButton("Select Sections...");
         confirmMenu.getStyleClass().add("custom-menu-btn");
 
@@ -134,6 +138,10 @@ public class GeneralSettingsPanel extends VBox {
             confirmMenu.getItems().add(new SeparatorMenuItem());
 
             for (SectionConfig sc : appStats.getSections()) {
+                if (sc.isNotesPage() || sc.isRewardsPage() || sc.isStatPage() || sc.isPerkPage() || sc.isSeparator()) {
+                    continue;
+                }
+
                 CheckBox cb = new CheckBox(sc.getName());
                 cb.setStyle("-fx-text-fill: white;");
                 cb.setSelected(selectedConfirm.contains(sc.getId()) || selectedConfirm.contains("ALL"));
@@ -161,6 +169,9 @@ public class GeneralSettingsPanel extends VBox {
                     if (!selectedConfirm.contains("ALL")) selectedConfirm.add("ALL");
                     for (CheckBox cb : sectionCbs) cb.setSelected(true);
                     for (SectionConfig sc : appStats.getSections()) {
+                        if (sc.isNotesPage() || sc.isRewardsPage() || sc.isStatPage() || sc.isPerkPage() || sc.isSeparator()) {
+                            continue;
+                        }
                         if (!selectedConfirm.contains(sc.getId())) selectedConfirm.add(sc.getId());
                     }
                 } else {
@@ -171,10 +182,8 @@ public class GeneralSettingsPanel extends VBox {
             });
         };
 
-        // Build it once initially, and rebuild it every time it is clicked/opened
         rebuildConfirmMenu.run();
         confirmMenu.setOnShowing(e -> rebuildConfirmMenu.run());
-        // =================================================================================
 
         behaviorList.getChildren().addAll(
                 createSettingRow("Task Font Size", "Adjusts the size of the text across all task cards.", fontSizeSpinner, "#569CD6"),
@@ -182,6 +191,7 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Zen Mode", "Number of active tasks required before Zen Mode becomes available.", zenSpinner, "#FF6666"),
                 createSettingRow("Require Completion Confirmation", "Prompts for confirmation before completing tasks in selected sections.", confirmMenu, "#FF6666"),
                 createSettingRow("Minimum Streak Threshold", "Percentage of completed tasks required to maintain a completion streak.", sliderBox, "#4EC9B0"),
+                createSettingRow("Strict Focus Auto-Pause", "Minutes of global keyboard/mouse inactivity before the Focus Hub timer automatically pauses. (0 = Disabled)", inactivitySpinner, "#FF6666"),
                 createSettingRow("Enable Desktop Notifications", "Shows alerts for approaching deadlines, inactivity, and resets.", notificationsCheck, "#C586C0"),
                 createSettingRow("Run in Background", "Keeps the application running in the system tray when closed.", runInBackgroundCheck, "#569CD6"),
                 createSettingRow("Run on Windows Startup", "Automatically launches Task Tracker when your computer boots.", chkStartup, "#569CD6"),
@@ -191,7 +201,10 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Always on Top", "Pins the Task Tracker window above all other applications.", alwaysOnTopCheck, "#C586C0"),
                 createSettingRow("Enable 'Text to Task'", "Allows pasting bulk text in the context menu to automatically generate multiple tasks.", chkTextToTask, "#C586C0"),
                 createSettingRow("Show Sidebar Active Count", "Displays the number of unfinished tasks directly on the sidebar buttons.", chkSidebarCount, "#C586C0"),
-                createSettingRow("Enable Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8")
+                createSettingRow("Enable Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8"),
+
+                // --- NEW: Added the setting row for expanded stats ---
+                createSettingRow("Expanded Stats Info", "Shows the full stat name, category (Reward/Cost/Penalty), and custom colors on task cards instead of compact icons.", chkExpandedStats, "#B5CEA8")
         );
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");
@@ -238,6 +251,10 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setEnableTextToTask(chkTextToTask.isSelected());
             appStats.setShowSidebarTaskCount(chkSidebarCount.isSelected());
             appStats.setCheckboxTheme(themeBox.getValue());
+            appStats.setFocusInactivityThreshold(inactivitySpinner.getValue());
+
+            // --- NEW: Save the expanded stats preference ---
+            appStats.setExpandStatMiniCards(chkExpandedStats.isSelected());
 
             WindowsStartupManager.setStartupEnabled(chkStartup.isSelected());
 
@@ -265,6 +282,10 @@ public class GeneralSettingsPanel extends VBox {
         matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
         chkGlobalStats.setOnAction(e -> autoSaveTrigger.run());
+
+        // --- NEW: Trigger auto-save when the expanded stats checkbox is clicked ---
+        chkExpandedStats.setOnAction(e -> autoSaveTrigger.run());
+
         chkTextToTask.setOnAction(e -> autoSaveTrigger.run());
         chkSidebarCount.setOnAction(e -> autoSaveTrigger.run());
         themeBox.setOnAction(e -> autoSaveTrigger.run());

@@ -23,9 +23,17 @@ public class TaskActionControls extends HBox {
         // 1. Time Tracked
         if (config.isTrackTime() && !isNoteMode) {
             int mins = task.getTimeSpentSeconds() / 60;
-            Label timeLabel = new Label("⏱ " + mins + "m");
+
+            // --- NEW: Fraction Display for Timed Tasks ---
+            String timeText = task.getTargetTimeMinutes() > 0 ? "⏱ " + mins + "m / " + task.getTargetTimeMinutes() + "m" : "⏱ " + mins + "m";
+            Label timeLabel = new Label(timeText);
             timeLabel.setPadding(new Insets(0, 10, 0, 0));
-            timeLabel.setStyle("-fx-text-fill: " + (mins > 0 ? "#E06666" : "#858585") + "; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px;");
+
+            if (task.getTargetTimeMinutes() > 0 && mins >= task.getTargetTimeMinutes()) {
+                timeLabel.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px;");
+            } else {
+                timeLabel.setStyle("-fx-text-fill: " + (mins > 0 ? "#E06666" : "#858585") + "; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px;");
+            }
             getChildren().add(timeLabel);
         }
 
@@ -99,7 +107,19 @@ public class TaskActionControls extends HBox {
         } else {
             CheckBox checkBox = new CheckBox();
             checkBox.setSelected(task.isFinished());
-            if (task.isPointsClaimed()) checkBox.setDisable(true);
+
+            // --- NEW: Time Lock Logic ---
+            boolean timeLocked = task.getTargetTimeMinutes() > 0 && (task.getTimeSpentSeconds() / 60) < task.getTargetTimeMinutes();
+
+            if (task.isPointsClaimed() || task.isFinished() || timeLocked) {
+                checkBox.setDisable(true);
+            }
+
+            if (timeLocked && !task.isFinished()) {
+                Tooltip t = new Tooltip("Requires " + task.getTargetTimeMinutes() + "m of focus time to complete!");
+                t.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: #FF6666; -fx-border-color: #FF6666; -fx-font-size: 12px;");
+                Tooltip.install(checkBox, t);
+            }
 
             checkBox.setOnAction(e -> {
                 if (checkBox.isSelected()) {

@@ -169,6 +169,17 @@ public class TaskItem implements Serializable {
         return taskLinks;
     }
 
+    private Map<String, Integer> statCosts = new HashMap<>();
+
+    public Map<String, Integer> getStatCosts() {
+        if (statCosts == null) statCosts = new HashMap<>();
+        return statCosts;
+    }
+
+    public void setStatCosts(Map<String, Integer> statCosts) {
+        this.statCosts = statCosts;
+    }
+
     private List<String> dependsOnTaskIds = new ArrayList<>();
 
     public List<String> getDependsOnTaskIds() {
@@ -176,6 +187,23 @@ public class TaskItem implements Serializable {
         return dependsOnTaskIds;
     }
     public void setDependsOnTaskIds(List<String> dependsOnTaskIds) { this.dependsOnTaskIds = dependsOnTaskIds; }
+
+    private Map<String, Integer> statCapRewards = new HashMap<>();
+
+    public Map<String, Integer> getStatCapRewards() {
+        if (statCapRewards == null) statCapRewards = new HashMap<>();
+        return statCapRewards;
+    }
+
+    public void setStatCapRewards(Map<String, Integer> statCapRewards) {
+        this.statCapRewards = statCapRewards;
+    }
+
+    // --- NEW: Timed Task Target ---
+    private int targetTimeMinutes = 0;
+
+    public int getTargetTimeMinutes() { return targetTimeMinutes; }
+    public void setTargetTimeMinutes(int targetTimeMinutes) { this.targetTimeMinutes = targetTimeMinutes; }
 
     public boolean isCounterMode() { return isCounterMode; }
     public void setCounterMode(boolean counterMode) { isCounterMode = counterMode; }

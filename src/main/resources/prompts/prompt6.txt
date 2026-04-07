@@ -1,0 +1,28 @@
+=============================
+WRITTEN BY ME FOR v1.45 Update
+=============================
+
+> Require Completion Confirmation in general configuration should not add special type of pages in dropdown
+> Remove the "Sort dropdown" in Stats page
+> In Edit Stat Dialog box, I should be able to set a starting amount of that stat
+> I should be able to add penalty to tasks that is given when I complete a certain task instead of just being penalized when I miss a deadline or don't finish it.
+    - e.g: For going to the gym or working too much my sanity stat reduces
+> A "+ Add Separator" in Manage Dynamic sections which is just a seperator similar to the one between my dynamic sidebar buttons and the focus hub, analytics, archived etc. (but this separator is static and just for organization)
+    - This separator can be moved around  in the dynamic sections panel in settings page
+    - I can add a name for the separator which shows above it
+> Cards which were created 1 hour ago cannot be edited again
+    - Add a counter in general configuration panel at settings called "Prevent Editing" that I can set (every number counts as an hour, if set to zero I can edit any time, if set to 1 then I cannot edit again after 1 hour)
+> I should be able to increase the max cap of a stat by completing a card or having a counter card to the max. However incase of counter cards, if I lose the count again, I will have my max cap lowered according to the amount it added in first place. (e.g I can to 25 pushups, +5 max strength, I can no longer do 25 pushups, -5 max strength)
+> I can hook counter cards or other cards from other sections into a perk (Having a counter card to max will allow me to have that perk)
+> Perk cards will show the date when I unlocked it from & also the date I lost it, task cards will stay inactive for 15 minutes before Im able to start working towards it. While it is inactive it should say "Inactive" and disable it.
+    - The inactive time is so that I can edit the perk settings and set it up. Also for it not to mistake that I "Earned it" while I was only setting it up
+> Reward cards can give me increase of the stat I add to it
+> New challenge type cards which is same as Perk cards but can give me stat reward or increase my max stat cap
+    - Once I complete this card, I can never revert it or lose it (Through archive, however I can delete it)
+> Similar to Zen Button, An Urge Button located in Focus hub, this is designed to gain me back my focus from bad habits or habits I want to get rid of by doing a breathing session for some time and showing a random quote below it.
+    - There is a Urge settings button in general configuration which opens a dialog box where I can disable it or add quotes and stuff and set my breathing or whatever session
+> StatCard now should show the "Max stat" beside it, add a small "?" button before the numbers that opens description of the stat in a TaskStatsMiniCard
+    -The Total Stats above should have boxes similar to the screenshot after it called:
+    - Low Attributes: X (X is the number of attribute I have that is <25% of its max) [Red color]
+    - High Attributes: Y (Y is the number of attribute I have that is >25% of its max) [Green color]
+    - Max Attributes: Z (Z is the number of attribute I have that is 100% of its max) [Light Blue color]

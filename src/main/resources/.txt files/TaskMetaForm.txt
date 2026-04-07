@@ -21,6 +21,7 @@ public class TaskMetaForm {
     private TextField taskTypeField;
     private DatePicker datePicker;
     private TextField timePicker;
+    private TextField targetTimeField; // NEW
 
     public void buildUI(GridPane grid, AtomicInteger rowIdx, TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> db) {
         selectedDeps = new ArrayList<>(task.getDependsOnTaskIds());
@@ -43,6 +44,17 @@ public class TaskMetaForm {
             taskTypeField.setMaxWidth(Double.MAX_VALUE);
             grid.add(new Label("Category:"), 0, rowIdx.get());
             grid.add(taskTypeField, 1, rowIdx.getAndIncrement());
+        }
+
+        // --- NEW: Timed Tasks Input ---
+        if (config == null || config.isEnableTimedTasks()) {
+            targetTimeField = new TextField();
+            targetTimeField.setMaxWidth(Double.MAX_VALUE);
+            targetTimeField.setPromptText("Minutes (0 = Off)");
+            if (task.getTargetTimeMinutes() > 0) targetTimeField.setText(String.valueOf(task.getTargetTimeMinutes()));
+
+            grid.add(new Label("Required Focus Time (m):"), 0, rowIdx.get());
+            grid.add(targetTimeField, 1, rowIdx.getAndIncrement());
         }
 
         datePicker = new DatePicker();
@@ -69,6 +81,12 @@ public class TaskMetaForm {
         if (prioBoxEdit != null) task.setPriority(prioBoxEdit.getValue());
         else if (task.isOptional()) task.setPriority(null);
         if (taskTypeField != null) task.setTaskType(taskTypeField.getText().trim());
+
+        // --- NEW: Save Timed Task Target ---
+        if (targetTimeField != null) {
+            try { task.setTargetTimeMinutes(Math.max(0, Integer.parseInt(targetTimeField.getText().trim()))); }
+            catch (Exception e) { task.setTargetTimeMinutes(0); }
+        }
 
         if (datePicker.getValue() != null) {
             try {

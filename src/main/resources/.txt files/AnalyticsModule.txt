@@ -92,12 +92,14 @@ public class AnalyticsModule extends BorderPane {
         }
         long hours = lifetimeFocusSeconds / 3600, mins = (lifetimeFocusSeconds % 3600) / 60;
 
+        String highestStreakSub = appStats.getHighestStreakSection() != null && !appStats.getHighestStreakSection().equals("None")
+                ? "in " + appStats.getHighestStreakSection() : "";
         // 3. Render Widgets
         FlowPane heroFlow = new FlowPane(20, 20);
         heroFlow.setAlignment(Pos.CENTER_LEFT);
         heroFlow.getChildren().addAll(
                 new AnalyticsHeroCard("🏆 Global Score", String.valueOf(appStats.getGlobalScore()), "#FFD700"),
-                new AnalyticsHeroCard("🔥 Highest Streak", String.valueOf(appStats.getHighestStreak()), "#FF8C00"),
+                new AnalyticsHeroCard("🔥 Highest Streak", String.valueOf(appStats.getHighestStreak()), highestStreakSub, "#FF8C00"),
                 new AnalyticsHeroCard("✅ Lifetime Tasks", String.valueOf(lifetimeCompletedTasks), "#4EC9B0"),
                 new AnalyticsHeroCard("⏱ Lifetime Focus", String.format("%dh %dm", hours, mins), "#569CD6"),
                 new AnalyticsHeroCard("🗑 Tasks Deleted", String.valueOf(appStats.getLifetimeDeletedTasks()), "#FF6666"),

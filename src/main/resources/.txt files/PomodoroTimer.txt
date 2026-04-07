@@ -6,6 +6,7 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager;
+import com.raeden.ors_to_do.modules.dependencies.services.GlobalActivityTracker;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
@@ -24,6 +25,7 @@ public class PomodoroTimer extends VBox {
 
     private Timeline timeline;
     private int timeLeft = 25 * 60;
+    private int lastTrackedTimeLeft = 25 * 60; // Tracks precise elapsed time to prevent double-counting
     private boolean isFocusMode = true;
 
     private Label timeDisplay;
@@ -31,7 +33,6 @@ public class PomodoroTimer extends VBox {
     private Button startPauseBtn;
     private ComboBox<Integer> timerOptions;
 
-    // --- NEW: Search Field and Background Task List ---
     private TextField taskSearchField;
     private ComboBox<TaskItem> taskSelector;
     private List<TaskItem> allFocusableTasks = new ArrayList<>();
@@ -56,7 +57,6 @@ public class PomodoroTimer extends VBox {
         Label linkLabel = new Label("Link Focus to Task:");
         linkLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 14px; -fx-font-weight: bold;");
 
-        // --- NEW: Task Search Bar ---
         taskSearchField = new TextField();
         taskSearchField.setPromptText("🔍 Search tasks...");
         taskSearchField.setPrefWidth(300);
@@ -109,7 +109,11 @@ public class PomodoroTimer extends VBox {
         timerOptions.setValue(25);
         timerOptions.setOnAction(e -> {
             if (timeline == null || !timeline.getStatus().equals(Timeline.Status.RUNNING)) {
-                if (isFocusMode) { timeLeft = timerOptions.getValue() * 60; updateDisplay(); }
+                if (isFocusMode) {
+                    timeLeft = timerOptions.getValue() * 60;
+                    lastTrackedTimeLeft = timeLeft; // Keep tracker in sync
+                    updateDisplay();
+                }
             }
         });
         optionsPanel.getChildren().addAll(focusLengthLabel, timerOptions);
@@ -130,8 +134,25 @@ public class PomodoroTimer extends VBox {
         setupTimerLogic();
 
         startPauseBtn.setOnAction(e -> {
-            if (timeline.getStatus() == Timeline.Status.RUNNING) { timeline.pause(); startPauseBtn.setText("Resume"); }
-            else { timeline.play(); startPauseBtn.setText("Pause"); }
+            if (timeline.getStatus() == Timeline.Status.RUNNING) {
+                timeline.pause();
+
+                // Track time on manual pause
+                if (isFocusMode && taskSelector.getValue() != null) {
+                    int elapsed = lastTrackedTimeLeft - timeLeft;
+                    if (elapsed > 0) taskSelector.getValue().addTimeSpent(elapsed);
+                    lastTrackedTimeLeft = timeLeft;
+                    StorageManager.saveTasks(globalDatabase);
+                    if (refreshCallback != null) refreshCallback.run();
+                }
+
+                startPauseBtn.setText("Resume");
+            } else {
+                GlobalActivityTracker.resetActivityTime();
+                lastTrackedTimeLeft = timeLeft; // Sync tracker before un-pausing
+                timeline.play();
+                startPauseBtn.setText("Pause");
+            }
         });
 
         resetBtn.setOnAction(e -> resetTimer(isFocusMode));
@@ -141,7 +162,7 @@ public class PomodoroTimer extends VBox {
         TaskItem selected = taskSelector.getValue();
 
         allFocusableTasks.clear();
-        allFocusableTasks.add(null); // "None" option
+        allFocusableTasks.add(null);
 
         for (TaskItem task : globalDatabase) {
             if (!task.isFinished() && !task.isArchived()) {
@@ -160,7 +181,6 @@ public class PomodoroTimer extends VBox {
             }
         }
 
-        // Apply current filter to update the combo box items
         applyTaskFilter(taskSearchField.getText());
 
         if (selected != null && taskSelector.getItems().contains(selected)) {
@@ -170,7 +190,6 @@ public class PomodoroTimer extends VBox {
         }
     }
 
-    // --- NEW: Helper method to filter tasks dynamically ---
     private void applyTaskFilter(String query) {
         TaskItem currentlySelected = taskSelector.getValue();
         taskSelector.getItems().clear();
@@ -181,12 +200,11 @@ public class PomodoroTimer extends VBox {
             String lowerQuery = query.toLowerCase();
             for (TaskItem task : allFocusableTasks) {
                 if (task == null) {
-                    taskSelector.getItems().add(null); // Always keep 'None' option
+                    taskSelector.getItems().add(null);
                 } else {
                     String taskText = task.getTextContent().toLowerCase();
                     String secName = getSectionName(task).toLowerCase();
 
-                    // Match against task text or section name
                     if (taskText.contains(lowerQuery) || secName.contains(lowerQuery)) {
                         taskSelector.getItems().add(task);
                     }
@@ -194,20 +212,17 @@ public class PomodoroTimer extends VBox {
             }
         }
 
-        // Restore selection if it's still in the filtered list
         if (currentlySelected != null && taskSelector.getItems().contains(currentlySelected)) {
             taskSelector.setValue(currentlySelected);
         } else if (!taskSelector.getItems().isEmpty()) {
             taskSelector.setValue(taskSelector.getItems().get(0));
         }
 
-        // Auto-expand the dropdown when user is typing
         if (taskSearchField.isFocused() && !taskSelector.getItems().isEmpty()) {
             taskSelector.show();
         }
     }
 
-    // --- NEW: Helper method to fetch Section Name ---
     private String getSectionName(TaskItem item) {
         if (item == null) return "";
         if (item.getSectionId() != null) {
@@ -222,7 +237,63 @@ public class PomodoroTimer extends VBox {
 
     private void setupTimerLogic() {
         timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+
+            // --- Global Inactivity Auto-Pause Check ---
+            if (isFocusMode && appStats.getFocusInactivityThreshold() > 0) {
+                long inactiveMillis = System.currentTimeMillis() - GlobalActivityTracker.getLastActivityTime();
+                long thresholdMillis = appStats.getFocusInactivityThreshold() * 60 * 1000L;
+
+                if (inactiveMillis > thresholdMillis) {
+                    timeline.pause();
+
+                    // Add time before pausing for inactivity
+                    if (taskSelector.getValue() != null) {
+                        int elapsed = lastTrackedTimeLeft - timeLeft;
+                        if (elapsed > 0) taskSelector.getValue().addTimeSpent(elapsed);
+                        lastTrackedTimeLeft = timeLeft;
+                        StorageManager.saveTasks(globalDatabase);
+                        if (refreshCallback != null) refreshCallback.run();
+                    }
+
+                    startPauseBtn.setText("Resume");
+                    SystemTrayManager.pushNotification("Focus Paused", "Timer paused due to " + appStats.getFocusInactivityThreshold() + " minutes of inactivity.");
+                    GlobalActivityTracker.resetActivityTime();
+                    return;
+                }
+            }
+
             timeLeft--; updateDisplay();
+
+            // --- Mid-Session Timed Task Auto-Completion ---
+            if (isFocusMode && taskSelector.getValue() != null) {
+                TaskItem activeTask = taskSelector.getValue();
+                if (activeTask.getTargetTimeMinutes() > 0 && !activeTask.isFinished()) {
+                    int elapsedThisSession = lastTrackedTimeLeft - timeLeft;
+                    int totalTracked = activeTask.getTimeSpentSeconds() + elapsedThisSession;
+
+                    if (totalTracked >= activeTask.getTargetTimeMinutes() * 60) {
+
+                        // Bank the exact time required
+                        activeTask.addTimeSpent(elapsedThisSession);
+                        lastTrackedTimeLeft = timeLeft;
+
+                        // Find section and complete
+                        SectionConfig taskConfig = appStats.getSections().stream().filter(c -> c.getId().equals(activeTask.getSectionId())).findFirst().orElse(null);
+                        com.raeden.ors_to_do.modules.dependencies.ui.utils.TaskActionHandler.handleTaskCompletion(activeTask, taskConfig, appStats, globalDatabase, refreshCallback, null);
+
+                        if (taskConfig != null && taskConfig.isEnableStatsSystem()) {
+                            com.raeden.ors_to_do.modules.dependencies.ui.utils.TaskActionHandler.processRPGStats(activeTask, appStats, true);
+                            StorageManager.saveStats(appStats);
+                        }
+
+                        SystemTrayManager.pushNotification("Timed Task Complete!", "Target focus time reached for: " + activeTask.getTextContent());
+
+                        // Deselect task so timer defaults back to "Free Focus" for the remainder of the session
+                        taskSelector.setValue(null);
+                    }
+                }
+            }
+
             if (timeLeft <= 0) {
                 timeline.pause();
                 isFocusMode = !isFocusMode;
@@ -240,21 +311,17 @@ public class PomodoroTimer extends VBox {
         if (timeline != null) timeline.pause();
 
         if (this.isFocusMode && taskSelector.getValue() != null) {
-            int totalSessionTime = timerOptions.getValue() * 60;
-            if (timeLeft > 0 && timeLeft < totalSessionTime) {
-                int elapsedSeconds = totalSessionTime - timeLeft;
-                taskSelector.getValue().addTimeSpent(elapsedSeconds);
-                StorageManager.saveTasks(globalDatabase);
-                if (refreshCallback != null) refreshCallback.run();
-            } else if (timeLeft <= 0) {
-                taskSelector.getValue().addTimeSpent(totalSessionTime);
-                StorageManager.saveTasks(globalDatabase);
-                if (refreshCallback != null) refreshCallback.run();
+            int elapsed = lastTrackedTimeLeft - timeLeft;
+            if (elapsed > 0) {
+                taskSelector.getValue().addTimeSpent(elapsed);
             }
+            StorageManager.saveTasks(globalDatabase);
+            if (refreshCallback != null) refreshCallback.run();
         }
 
         isFocusMode = focus;
         timeLeft = isFocusMode ? timerOptions.getValue() * 60 : 5 * 60;
+        lastTrackedTimeLeft = timeLeft; // Reset sync
         statusLabel.setText(isFocusMode ? "FOCUS SESSION" : "SHORT BREAK");
         statusLabel.getStyleClass().removeAll("focus-status", "break-status");
         statusLabel.getStyleClass().add(isFocusMode ? "focus-status" : "break-status");

@@ -5,6 +5,7 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
+import com.raeden.ors_to_do.modules.dependencies.ui.cards.ChallengeCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.PerkCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.StatCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.TaskCard;
@@ -46,12 +47,13 @@ public class DynamicModule extends StackPane {
         mainContent = new BorderPane();
         mainContent.setPadding(new Insets(15));
 
-        Runnable zenToggleAction = (config.isNotesPage() || config.isStatPage() || config.isPerkPage()) ? () -> {} : this::toggleZenMode;
+        boolean isSpecialOverlay = config.isNotesPage() || config.isStatPage() || config.isPerkPage() || config.isChallengePage();
+        Runnable zenToggleAction = isSpecialOverlay ? () -> {} : this::toggleZenMode;
 
         zenOverlay = new ZenModeOverlay(config, appStats, globalDatabase, zenToggleAction, syncCallback, activeTimelines, this::reorderTasks);
         filterSortHeader = new FilterSortHeader(config, appStats, globalDatabase, zenToggleAction, this::refreshList);
 
-        if (config.isNotesPage() || config.isStatPage() || config.isPerkPage()) {
+        if (isSpecialOverlay) {
             filterSortHeader.getChildren().forEach(node -> {
                 if (node instanceof HBox) ((HBox) node).getChildren().removeIf(n -> n instanceof Button && ((Button) n).getText().contains("Zen Mode"));
             });
@@ -69,7 +71,7 @@ public class DynamicModule extends StackPane {
 
         ContextMenu bgMenu = DynamicContextMenu.build(config, appStats, globalDatabase, this::refreshList, syncCallback);
 
-        if (!config.isStatPage() && !config.isPerkPage()) {
+        if (!config.isStatPage() && !config.isPerkPage() && !config.isChallengePage()) {
             scrollPane.setOnContextMenuRequested(e -> {
                 Node target = (Node) e.getTarget();
                 boolean isTaskCard = false;
@@ -84,7 +86,18 @@ public class DynamicModule extends StackPane {
         scrollPane.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> { if (bgMenu.isShowing()) bgMenu.hide(); });
 
         if (!config.isStatPage()) {
-            DynamicInputPanel inputPanel = new DynamicInputPanel(config, appStats, globalDatabase, filterSortHeader, this::refreshList);
+            Runnable onInputRefresh = () -> {
+                if (config.isChallengePage() && !globalDatabase.isEmpty()) {
+                    TaskItem newest = globalDatabase.get(globalDatabase.size() - 1);
+                    if (newest.getSectionId() != null && newest.getSectionId().equals(config.getId())) {
+                        newest.setChallengeCard(true);
+                        StorageManager.saveTasks(globalDatabase);
+                    }
+                }
+                refreshList();
+            };
+
+            DynamicInputPanel inputPanel = new DynamicInputPanel(config, appStats, globalDatabase, filterSortHeader, onInputRefresh);
             mainContent.setBottom(inputPanel);
         }
 
@@ -92,7 +105,7 @@ public class DynamicModule extends StackPane {
     }
 
     private void toggleZenMode() {
-        if (config.isNotesPage() || config.isStatPage() || config.isPerkPage()) return;
+        if (config.isNotesPage() || config.isStatPage() || config.isPerkPage() || config.isChallengePage()) return;
         isZenMode = !isZenMode;
 
         if (getScene() != null && getScene().getRoot() instanceof BorderPane) {
@@ -124,6 +137,7 @@ public class DynamicModule extends StackPane {
 
         if (config.isStatPage()) { loadStatPage(); return; }
         if (config.isPerkPage()) { loadPerkPage(); return; }
+        if (config.isChallengePage()) { loadChallengePage(); return; }
 
         int availableCount = 0; int completedCount = 0;
         Set<String> uniqueTags = new HashSet<>();
@@ -180,11 +194,23 @@ public class DynamicModule extends StackPane {
         filterSortHeader.updateBadges(appStats.getCustomStats().size(), 0);
     }
 
+    // --- FIXED: Added sorting and active count tracking for Perks ---
     private void loadPerkPage() {
         List<TaskItem> perks = new ArrayList<>();
+        int totalCount = 0;
+        int activeCount = 0;
+
         for (TaskItem task : globalDatabase) {
-            if (task.getSectionId() != null && task.getSectionId().equals(config.getId()) && !task.isArchived()) perks.add(task);
+            if (task.getSectionId() != null && task.getSectionId().equals(config.getId()) && !task.isArchived()) {
+                perks.add(task);
+                totalCount++;
+                if (task.getPerkLevel() > 0 || task.getPerkUnlockedDate() != null) {
+                    activeCount++;
+                }
+            }
         }
+
+        DynamicSortHelper.sortTasks(perks, filterSortHeader.getSortMode(), config, appStats);
 
         if (perks.isEmpty()) {
             Label emptyMsg = new Label("Type a perk name in the bar below and click 'Add' to create your first Skill Tree Perk!");
@@ -196,7 +222,35 @@ public class DynamicModule extends StackPane {
                 listContainer.getChildren().add(new PerkCard(perk, appStats, globalDatabase, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); }));
             }
         }
-        filterSortHeader.updateBadges(perks.size(), 0);
+        filterSortHeader.updateBadges(totalCount, activeCount);
+    }
+
+    private void loadChallengePage() {
+        List<TaskItem> challenges = new ArrayList<>();
+        int availableCount = 0;
+        int completedCount = 0;
+
+        for (TaskItem task : globalDatabase) {
+            if (task.getSectionId() != null && task.getSectionId().equals(config.getId()) && !task.isArchived()) {
+                challenges.add(task);
+                if (task.isFinished()) completedCount++;
+                else availableCount++;
+            }
+        }
+
+        DynamicSortHelper.sortTasks(challenges, filterSortHeader.getSortMode(), config, appStats);
+
+        if (challenges.isEmpty()) {
+            Label emptyMsg = new Label("Type a challenge name below to create a new conquerable Challenge!");
+            emptyMsg.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
+            emptyMsg.setMaxWidth(Double.MAX_VALUE); emptyMsg.setAlignment(Pos.CENTER);
+            listContainer.getChildren().add(emptyMsg);
+        } else {
+            for (TaskItem challenge : challenges) {
+                listContainer.getChildren().add(new ChallengeCard(challenge, appStats, globalDatabase, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); }));
+            }
+        }
+        filterSortHeader.updateBadges(availableCount, completedCount);
     }
 
     private void reorderTasks(String draggedId, String targetId) {

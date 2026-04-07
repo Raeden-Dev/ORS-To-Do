@@ -5,11 +5,13 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -26,46 +28,98 @@ public class SectionRow extends HBox {
         super(10);
         setAlignment(Pos.CENTER_LEFT);
 
-        Rectangle colorIndicator = new Rectangle(12, 12, Color.web(config.getSidebarColor()));
-        colorIndicator.setStroke(Color.web("#555555"));
-
-        Label nameLabel = new Label(config.getName());
-        nameLabel.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px; -fx-font-weight: bold;");
-
-        HBox nameBox = new HBox(10, colorIndicator, nameLabel);
-        nameBox.setAlignment(Pos.CENTER_LEFT);
-
-        if (config.getResetIntervalHours() > 0) {
-            Label intervalBadge = new Label("⏱ " + config.getResetIntervalHours() + "h Reset");
-            intervalBadge.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px; -fx-background-color: #2D2D30; -fx-padding: 3 8; -fx-background-radius: 10; -fx-border-color: #3E3E42; -fx-border-radius: 10;");
-            nameBox.getChildren().add(intervalBadge);
-        }
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button editBtn = new Button("⚙ Edit Features");
-        editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
-        editBtn.setOnAction(e -> SectionEditDialog.show(config, false, appStats, () -> {
-            StorageManager.saveStats(appStats);
-            refreshList.run();
-            if(onSectionChanged != null) onSectionChanged.run();
-            refreshCallback.run();
-        }));
+        // --- FIXED: Reduced vertical padding to shrink the gap, kept horizontal at 8px for perfect alignment ---
+        setPadding(new Insets(2, 8, 2, 8));
 
         Button moveUpBtn = new Button("▲");
         moveUpBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
+        moveUpBtn.setPrefWidth(32);
         moveUpBtn.setOnAction(e -> moveSection(config, index, -1, appStats, refreshList, onSectionChanged, refreshCallback));
 
         Button moveDownBtn = new Button("▼");
         moveDownBtn.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: #AAAAAA; -fx-cursor: hand; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
+        moveDownBtn.setPrefWidth(32);
         moveDownBtn.setOnAction(e -> moveSection(config, index, 1, appStats, refreshList, onSectionChanged, refreshCallback));
 
         Button deleteBtn = new Button("❌");
         deleteBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-cursor: hand;");
-        deleteBtn.setOnAction(e -> deleteSection(config, appStats, globalDatabase, refreshList, onSectionChanged, refreshCallback));
+        deleteBtn.setPrefWidth(36);
 
-        getChildren().addAll(nameBox, spacer, moveUpBtn, moveDownBtn, editBtn, deleteBtn);
+        // =====================================
+        // --- RENDER AS SEPARATOR ---
+        // =====================================
+        if (config.isSeparator()) {
+            Label nameLabel = new Label(config.getName().isEmpty() ? "------------- (Line Only) -------------" : "----- " + config.getName() + " -----");
+            nameLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: 14px; -fx-font-style: italic; -fx-font-weight: bold;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            Button renameBtn = new Button("✎ Rename");
+            renameBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+            renameBtn.setPrefWidth(120);
+            renameBtn.setOnAction(e -> {
+                TextInputDialog dialog = new TextInputDialog(config.getName());
+                dialog.setTitle("Rename Separator");
+                dialog.setHeaderText("Enter new label (leave blank for just a line):");
+                TaskDialogs.styleDialog(dialog);
+                dialog.showAndWait().ifPresent(newName -> {
+                    config.setName(newName.trim());
+                    StorageManager.saveStats(appStats);
+                    refreshList.run();
+                    if(onSectionChanged != null) onSectionChanged.run();
+                    refreshCallback.run();
+                });
+            });
+
+            deleteBtn.setOnAction(e -> {
+                appStats.getSections().remove(config);
+                StorageManager.saveStats(appStats);
+                refreshList.run();
+                if(onSectionChanged != null) onSectionChanged.run();
+                refreshCallback.run();
+            });
+
+            getChildren().addAll(nameLabel, spacer, moveUpBtn, moveDownBtn, renameBtn, deleteBtn);
+            setStyle("-fx-background-color: #1E1E1E; -fx-border-color: #333333; -fx-border-radius: 5; -fx-border-style: dashed; -fx-border-width: 1;");
+
+            // =====================================
+            // --- STANDARD: RENDER AS SECTION ---
+            // =====================================
+        } else {
+            Rectangle colorIndicator = new Rectangle(12, 12, Color.web(config.getSidebarColor()));
+            colorIndicator.setStroke(Color.web("#555555"));
+
+            Label nameLabel = new Label(config.getName());
+            nameLabel.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+            HBox nameBox = new HBox(10, colorIndicator, nameLabel);
+            nameBox.setAlignment(Pos.CENTER_LEFT);
+
+            if (config.getResetIntervalHours() > 0) {
+                Label intervalBadge = new Label("⏱ " + config.getResetIntervalHours() + "h Reset");
+                intervalBadge.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px; -fx-background-color: #2D2D30; -fx-padding: 3 8; -fx-background-radius: 10; -fx-border-color: #3E3E42; -fx-border-radius: 10;");
+                nameBox.getChildren().add(intervalBadge);
+            }
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            Button editBtn = new Button("⚙ Edit Features");
+            editBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+            editBtn.setPrefWidth(120);
+            editBtn.setOnAction(e -> SectionEditDialog.show(config, false, appStats, () -> {
+                StorageManager.saveStats(appStats);
+                refreshList.run();
+                if(onSectionChanged != null) onSectionChanged.run();
+                refreshCallback.run();
+            }));
+
+            deleteBtn.setOnAction(e -> deleteSection(config, appStats, globalDatabase, refreshList, onSectionChanged, refreshCallback));
+
+            getChildren().addAll(nameBox, spacer, moveUpBtn, moveDownBtn, editBtn, deleteBtn);
+            setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-border-radius: 5; -fx-border-width: 1;");
+        }
     }
 
     private void moveSection(SectionConfig config, int currentIndex, int offset, AppStats appStats, Runnable refreshList, Runnable onSectionChanged, Runnable refreshCallback) {

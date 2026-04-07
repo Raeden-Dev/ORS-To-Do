@@ -2,6 +2,7 @@ package com.raeden.ors_to_do.modules.dependencies.ui.cards;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
+import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
@@ -11,7 +12,11 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +26,7 @@ public class PerkCard extends VBox {
     public PerkCard(TaskItem perkTask, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {
         super(10);
 
-        boolean isLocked = false;
+        boolean meetsRequirements = true;
         VBox requirementsBox = new VBox(5);
         requirementsBox.setPadding(new Insets(10, 0, 0, 0));
 
@@ -30,7 +35,7 @@ public class PerkCard extends VBox {
             CustomStat foundStat = appStats.getCustomStats().stream().filter(s -> s.getId().equals(req.getKey())).findFirst().orElse(null);
             if (foundStat != null) {
                 if (foundStat.getCurrentAmount() < req.getValue()) {
-                    isLocked = true;
+                    meetsRequirements = false;
                     Label l = new Label("❌ Requires " + req.getValue() + " " + foundStat.getName() + " (Current: " + foundStat.getCurrentAmount() + ")");
                     l.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 12px;");
                     requirementsBox.getChildren().add(l);
@@ -47,12 +52,10 @@ public class PerkCard extends VBox {
             for (String depId : perkTask.getDependsOnTaskIds()) {
                 TaskItem depTask = globalDatabase.stream().filter(t -> t.getId().equals(depId)).findFirst().orElse(null);
                 if (depTask != null) {
-                    // In a Skill Tree, a perk is "finished" if it is unlocked (Level > 0) OR if we just treat it as unlocked when requirements are met.
-                    // For logic consistency, we check if the dependency perk is NOT locked itself (Level > 0).
-                    boolean isDepUnlocked = depTask.getPerkLevel() > 0 || (depTask.getStatRequirements().isEmpty() && (depTask.getDependsOnTaskIds() == null || depTask.getDependsOnTaskIds().isEmpty()));
+                    boolean isDepUnlocked = depTask.getPerkLevel() > 0 || depTask.isFinished() || (depTask.getStatRequirements().isEmpty() && (depTask.getDependsOnTaskIds() == null || depTask.getDependsOnTaskIds().isEmpty()));
 
                     if (!isDepUnlocked) {
-                        isLocked = true;
+                        meetsRequirements = false;
                         Label l = new Label("❌ Requires Perk: " + depTask.getTextContent());
                         l.setStyle("-fx-text-fill: #FF6666; -fx-font-size: 12px;");
                         requirementsBox.getChildren().add(l);
@@ -63,6 +66,50 @@ public class PerkCard extends VBox {
                     }
                 }
             }
+        }
+
+        // --- 15-Minute Setup Phase Logic ---
+        LocalDateTime creationTime = perkTask.getDateCreated();
+        boolean isSetupPhase = LocalDateTime.now().isBefore(creationTime.plusMinutes(15));
+        boolean isLocked = !meetsRequirements || isSetupPhase;
+
+        if (isSetupPhase) {
+            long minsLeft = Duration.between(LocalDateTime.now(), creationTime.plusMinutes(15)).toMinutes();
+            Label setupLbl = new Label("⏳ Inactive (Setup Phase) - " + (minsLeft + 1) + " mins left");
+            setupLbl.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 12px; -fx-font-weight: bold;");
+            requirementsBox.getChildren().add(0, setupLbl);
+        }
+
+        // --- Tracking Unlock and Lost Dates ---
+        boolean stateChanged = false;
+
+        if (meetsRequirements && !isSetupPhase && perkTask.getPerkUnlockedDate() == null) {
+            perkTask.setPerkUnlockedDate(LocalDateTime.now());
+            perkTask.setPerkLostDate(null);
+            if (perkTask.getPerkLevel() == 0) perkTask.setPerkLevel(1);
+            stateChanged = true;
+        }
+        else if (!meetsRequirements && perkTask.getPerkUnlockedDate() != null) {
+            perkTask.setPerkLostDate(LocalDateTime.now());
+            perkTask.setPerkUnlockedDate(null);
+            perkTask.setPerkLevel(0); // Reset perk level upon loss
+            stateChanged = true;
+        }
+
+        if (stateChanged) {
+            StorageManager.saveTasks(globalDatabase);
+        }
+
+        // --- Display Dates in UI ---
+        if (perkTask.getPerkUnlockedDate() != null) {
+            Label unlockedLbl = new Label("📅 Unlocked: " + perkTask.getPerkUnlockedDate().format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")));
+            unlockedLbl.setStyle("-fx-text-fill: #4EC9B0; -fx-font-size: 11px;");
+            requirementsBox.getChildren().add(unlockedLbl);
+        }
+        if (perkTask.getPerkLostDate() != null) {
+            Label lostLbl = new Label("⚠️ Lost: " + perkTask.getPerkLostDate().format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")));
+            lostLbl.setStyle("-fx-text-fill: #E06666; -fx-font-size: 11px;");
+            requirementsBox.getChildren().add(lostLbl);
         }
 
         // Dynamic Custom Colors
@@ -133,11 +180,15 @@ public class PerkCard extends VBox {
         VBox content = new VBox(15);
         content.setPadding(new Insets(10));
 
-        // 1. Description
+        // 1. Name & Description
+        TextField nameInput = new TextField(perkTask.getTextContent());
+        nameInput.setPromptText("Perk Name");
+
         TextArea descInput = new TextArea(perkTask.getPerkDescription() != null ? perkTask.getPerkDescription() : "");
         descInput.setPromptText("What does this perk do? (e.g. Grants access to special tasks, buffs a stat, etc.)");
         descInput.setPrefRowCount(3);
-        content.getChildren().addAll(new Label("Perk Effect / Lore Description:"), descInput);
+
+        content.getChildren().addAll(new Label("Perk Name:"), nameInput, new Label("Perk Effect / Lore Description:"), descInput);
 
         // 2. Styling & Icon Section
         content.getChildren().add(new Separator());
@@ -147,13 +198,18 @@ public class PerkCard extends VBox {
 
         GridPane styleGrid = new GridPane();
         styleGrid.setHgap(15); styleGrid.setVgap(10);
+        ColumnConstraints col1 = new ColumnConstraints();
+        ColumnConstraints col2 = new ColumnConstraints(); col2.setHgrow(Priority.ALWAYS);
+        styleGrid.getColumnConstraints().addAll(col1, col2);
 
         ComboBox<String> iconBox = new ComboBox<>();
         iconBox.getItems().addAll(TaskDialogs.ICON_LIST);
         iconBox.setValue(perkTask.getIconSymbol() != null ? perkTask.getIconSymbol() : "None");
-        iconBox.setMaxWidth(Double.MAX_VALUE);
+        iconBox.setMaxWidth(Double.MAX_VALUE); HBox.setHgrow(iconBox, Priority.ALWAYS);
 
         ColorPicker iconColorPicker = new ColorPicker(Color.web(perkTask.getIconColor() != null ? perkTask.getIconColor() : "#FFFFFF"));
+        iconColorPicker.setMaxWidth(Double.MAX_VALUE); HBox.setHgrow(iconColorPicker, Priority.ALWAYS);
+
         ColorPicker bgColorPicker = new ColorPicker(Color.web(perkTask.getColorHex() != null && !perkTask.getColorHex().equals("transparent") ? perkTask.getColorHex() : "#2D2D30"));
         ColorPicker outlinePicker = new ColorPicker(Color.web(perkTask.getCustomOutlineColor() != null && !perkTask.getCustomOutlineColor().equals("transparent") ? perkTask.getCustomOutlineColor() : "#569CD6"));
 
@@ -198,9 +254,12 @@ public class PerkCard extends VBox {
             }
         });
         statBox.setButtonCell(statBox.getCellFactory().call(null));
+        statBox.setMaxWidth(Double.MAX_VALUE); HBox.setHgrow(statBox, Priority.ALWAYS);
 
         Spinner<Integer> amountSpinner = new Spinner<>(1, 99999, 100);
         amountSpinner.setEditable(true);
+        amountSpinner.setMaxWidth(Double.MAX_VALUE); HBox.setHgrow(amountSpinner, Priority.ALWAYS);
+
         Button addStatBtn = new Button("Add Hook");
         addStatBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white;");
 
@@ -244,42 +303,60 @@ public class PerkCard extends VBox {
 
         content.getChildren().add(activeReqsBox);
 
-        // 4. Perk Dependencies (Skill Tree Links)
+        // 4. Hook Tasks / Challenges
         content.getChildren().add(new Separator());
-        Label depLabel = new Label("Hook Perk Requirements (Skill Tree Path):");
+        Label depLabel = new Label("Hook Tasks / Challenges:");
         depLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
         content.getChildren().add(depLabel);
 
-        MenuButton dependenciesMenu = new MenuButton("Select Parent Perks...");
+        MenuButton dependenciesMenu = new MenuButton("Select Parent Requirements...");
         dependenciesMenu.getStyleClass().add("custom-menu-btn");
         dependenciesMenu.setMaxWidth(Double.MAX_VALUE);
         List<String> selectedDeps = new ArrayList<>(perkTask.getDependsOnTaskIds());
-        int depCount = 0;
+        int[] depCount = {0};
 
-        for (TaskItem other : globalDatabase) {
-            if (other.getId().equals(perkTask.getId())) continue;
-            if (other.isArchived()) continue;
-            // Only show other perks in this specific Skill Tree section
-            if (other.getSectionId() != null && other.getSectionId().equals(perkTask.getSectionId())) {
-                CheckBox cb = new CheckBox(other.getTextContent());
-                cb.setStyle("-fx-text-fill: white;");
-                cb.setSelected(selectedDeps.contains(other.getId()));
-                if (cb.isSelected()) depCount++;
-
-                cb.setOnAction(e -> {
-                    if (cb.isSelected() && !selectedDeps.contains(other.getId())) selectedDeps.add(other.getId());
-                    else if (!cb.isSelected()) selectedDeps.remove(other.getId());
-                    dependenciesMenu.setText("Hooked Perks (" + selectedDeps.size() + ")");
-                });
-
-                CustomMenuItem item = new CustomMenuItem(cb);
-                item.setHideOnClick(false);
-                dependenciesMenu.getItems().add(item);
+        Map<String, Menu> sectionMenus = new HashMap<>();
+        if (appStats != null && appStats.getSections() != null) {
+            for (SectionConfig sc : appStats.getSections()) {
+                Menu m = new Menu(sc.getName());
+                sectionMenus.put(sc.getId(), m);
+                dependenciesMenu.getItems().add(m);
             }
         }
-        dependenciesMenu.setText("Hooked Perks (" + depCount + ")");
+        Menu othersMenu = new Menu("Other Tasks");
+
+        for (TaskItem other : globalDatabase) {
+            if (other.getId().equals(perkTask.getId()) || other.isArchived()) continue;
+
+            CheckBox cb = new CheckBox(other.getTextContent());
+            cb.setStyle("-fx-text-fill: white;");
+            cb.setSelected(selectedDeps.contains(other.getId()));
+            if (cb.isSelected()) depCount[0]++;
+
+            cb.setOnAction(e -> {
+                if (cb.isSelected() && !selectedDeps.contains(other.getId())) selectedDeps.add(other.getId());
+                else if (!cb.isSelected()) selectedDeps.remove(other.getId());
+                dependenciesMenu.setText("Hooked Requirements (" + selectedDeps.size() + ")");
+            });
+
+            CustomMenuItem item = new CustomMenuItem(cb);
+            item.setHideOnClick(false);
+
+            Menu targetMenu = sectionMenus.get(other.getSectionId());
+            if (targetMenu != null) {
+                targetMenu.getItems().add(item);
+            } else {
+                othersMenu.getItems().add(item);
+            }
+        }
+
+        // Clean up empty folders
+        dependenciesMenu.getItems().removeIf(menuItem -> menuItem instanceof Menu && ((Menu) menuItem).getItems().isEmpty());
+        if (!othersMenu.getItems().isEmpty()) dependenciesMenu.getItems().add(othersMenu);
+
+        dependenciesMenu.setText("Hooked Requirements (" + depCount[0] + ")");
         if (dependenciesMenu.getItems().isEmpty()) {
-            CustomMenuItem emptyItem = new CustomMenuItem(new Label("No other perks available in this tree."));
+            CustomMenuItem emptyItem = new CustomMenuItem(new Label("No other tasks available."));
             emptyItem.setDisable(true);
             dependenciesMenu.getItems().add(emptyItem);
         }
@@ -298,6 +375,7 @@ public class PerkCard extends VBox {
 
         dialog.showAndWait().ifPresent(res -> {
             if (res == ButtonType.OK) {
+                perkTask.setTextContent(nameInput.getText().trim());
                 perkTask.setPerkDescription(descInput.getText().trim());
 
                 perkTask.setIconSymbol(iconBox.getValue());

@@ -61,6 +61,9 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> fontSizeSpinner = new Spinner<>(10, 36, appStats.getTaskFontSize());
         fontSizeSpinner.setEditable(true);
 
+        Spinner<Integer> preventEditingSpinner = new Spinner<>(0, 8760, appStats.getPreventEditingHours());
+        preventEditingSpinner.setEditable(true);
+
         Slider streakSlider = new Slider(10, 100, appStats.getMinDailyCompletionPercent());
         streakSlider.setMajorTickUnit(10); streakSlider.setMinorTickCount(0); streakSlider.setSnapToTicks(true);
         streakSlider.setShowTickLabels(false); streakSlider.setShowTickMarks(false); streakSlider.setPrefWidth(120);
@@ -95,11 +98,24 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
 
+        // --- NEW: Urge Settings Launch Button ---
+        Button urgeSettingsBtn = new Button("Configure Urge Surfing...");
+        urgeSettingsBtn.getStyleClass().add("custom-menu-btn");
+        urgeSettingsBtn.setOnAction(e -> {
+            UrgeSettingsDialog.show(appStats, () -> {
+                StorageManager.saveStats(appStats);
+                refreshCallback.run();
+            });
+        });
+
         Spinner<Integer> inactivitySpinner = new Spinner<>(0, 120, appStats.getFocusInactivityThreshold());
         inactivitySpinner.setEditable(true);
 
         CheckBox chkGlobalStats = new CheckBox();
         chkGlobalStats.setSelected(appStats.isGlobalStatsEnabled());
+
+        CheckBox chkExpandedStats = new CheckBox();
+        chkExpandedStats.setSelected(appStats.isExpandStatMiniCards());
 
         CheckBox chkTextToTask = new CheckBox();
         chkTextToTask.setSelected(appStats.isEnableTextToTask());
@@ -111,9 +127,6 @@ public class GeneralSettingsPanel extends VBox {
         themeBox.getItems().addAll("Default", "Dark", "Green", "Blue", "Purple");
         themeBox.setValue(appStats.getCheckboxTheme());
 
-        // =================================================================================
-        // --- FIXED: Dynamic Confirmation Menu to catch newly added sections instantly ---
-        // =================================================================================
         MenuButton confirmMenu = new MenuButton("Select Sections...");
         confirmMenu.getStyleClass().add("custom-menu-btn");
 
@@ -137,6 +150,10 @@ public class GeneralSettingsPanel extends VBox {
             confirmMenu.getItems().add(new SeparatorMenuItem());
 
             for (SectionConfig sc : appStats.getSections()) {
+                if (sc.isNotesPage() || sc.isRewardsPage() || sc.isStatPage() || sc.isPerkPage() || sc.isSeparator()) {
+                    continue;
+                }
+
                 CheckBox cb = new CheckBox(sc.getName());
                 cb.setStyle("-fx-text-fill: white;");
                 cb.setSelected(selectedConfirm.contains(sc.getId()) || selectedConfirm.contains("ALL"));
@@ -164,6 +181,9 @@ public class GeneralSettingsPanel extends VBox {
                     if (!selectedConfirm.contains("ALL")) selectedConfirm.add("ALL");
                     for (CheckBox cb : sectionCbs) cb.setSelected(true);
                     for (SectionConfig sc : appStats.getSections()) {
+                        if (sc.isNotesPage() || sc.isRewardsPage() || sc.isStatPage() || sc.isPerkPage() || sc.isSeparator()) {
+                            continue;
+                        }
                         if (!selectedConfirm.contains(sc.getId())) selectedConfirm.add(sc.getId());
                     }
                 } else {
@@ -174,15 +194,16 @@ public class GeneralSettingsPanel extends VBox {
             });
         };
 
-        // Build it once initially, and rebuild it every time it is clicked/opened
         rebuildConfirmMenu.run();
         confirmMenu.setOnShowing(e -> rebuildConfirmMenu.run());
-        // =================================================================================
 
         behaviorList.getChildren().addAll(
                 createSettingRow("Task Font Size", "Adjusts the size of the text across all task cards.", fontSizeSpinner, "#569CD6"),
                 createSettingRow("Checkbox Theme", "Changes the visual style and color of the completion checkboxes.", themeBox, "#DCDCAA"),
                 createSettingRow("Zen Mode", "Number of active tasks required before Zen Mode becomes available.", zenSpinner, "#FF6666"),
+                // --- NEW: Urge Surfing Setting Row ---
+                createSettingRow("Urge Surfing Tool", "Configure the breathing session duration and custom quotes to help resist bad habits.", urgeSettingsBtn, "#4EC9B0"),
+                createSettingRow("Prevent Editing (Hours)", "Number of hours after creation before a task is permanently locked from being edited. (0 = Disabled)", preventEditingSpinner, "#FF8C00"),
                 createSettingRow("Require Completion Confirmation", "Prompts for confirmation before completing tasks in selected sections.", confirmMenu, "#FF6666"),
                 createSettingRow("Minimum Streak Threshold", "Percentage of completed tasks required to maintain a completion streak.", sliderBox, "#4EC9B0"),
                 createSettingRow("Strict Focus Auto-Pause", "Minutes of global keyboard/mouse inactivity before the Focus Hub timer automatically pauses. (0 = Disabled)", inactivitySpinner, "#FF6666"),
@@ -195,8 +216,8 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Always on Top", "Pins the Task Tracker window above all other applications.", alwaysOnTopCheck, "#C586C0"),
                 createSettingRow("Enable 'Text to Task'", "Allows pasting bulk text in the context menu to automatically generate multiple tasks.", chkTextToTask, "#C586C0"),
                 createSettingRow("Show Sidebar Active Count", "Displays the number of unfinished tasks directly on the sidebar buttons.", chkSidebarCount, "#C586C0"),
-                createSettingRow("Enable Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8")
-
+                createSettingRow("Enable Custom Stats", "Turns on the RPG points system across the entire application and tracks them in Analytics.", chkGlobalStats, "#B5CEA8"),
+                createSettingRow("Expanded Stats Info", "Shows the full stat name, category (Reward/Cost/Penalty), and custom colors on task cards instead of compact icons.", chkExpandedStats, "#B5CEA8")
         );
 
         Label navHeader = new Label("Static Sidebar Texts & Colors");
@@ -244,6 +265,8 @@ public class GeneralSettingsPanel extends VBox {
             appStats.setShowSidebarTaskCount(chkSidebarCount.isSelected());
             appStats.setCheckboxTheme(themeBox.getValue());
             appStats.setFocusInactivityThreshold(inactivitySpinner.getValue());
+            appStats.setExpandStatMiniCards(chkExpandedStats.isSelected());
+            appStats.setPreventEditingHours(preventEditingSpinner.getValue());
 
             WindowsStartupManager.setStartupEnabled(chkStartup.isSelected());
 
@@ -261,6 +284,7 @@ public class GeneralSettingsPanel extends VBox {
         };
 
         fontSizeSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
+        preventEditingSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
         zenSpinner.valueProperty().addListener((obs, oldVal, newVal) -> autoSaveTrigger.run());
         streakSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> { if (!isChanging) autoSaveTrigger.run(); });
         streakSlider.setOnMouseReleased(e -> autoSaveTrigger.run());
@@ -271,6 +295,7 @@ public class GeneralSettingsPanel extends VBox {
         matchOutlineCheck.setOnAction(e -> autoSaveTrigger.run());
         matchTitleColorCheck.setOnAction(e -> autoSaveTrigger.run());
         chkGlobalStats.setOnAction(e -> autoSaveTrigger.run());
+        chkExpandedStats.setOnAction(e -> autoSaveTrigger.run());
         chkTextToTask.setOnAction(e -> autoSaveTrigger.run());
         chkSidebarCount.setOnAction(e -> autoSaveTrigger.run());
         themeBox.setOnAction(e -> autoSaveTrigger.run());

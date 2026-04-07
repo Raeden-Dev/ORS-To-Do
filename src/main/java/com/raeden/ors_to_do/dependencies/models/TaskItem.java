@@ -34,6 +34,11 @@ public class TaskItem implements Serializable {
     private int currentCount = 0;
     private int maxCount = 0;
 
+    // --- NEW: Perma Lock Flag for Counters ---
+    private boolean isPermaLock = false;
+    public boolean isPermaLock() { return isPermaLock; }
+    public void setPermaLock(boolean permaLock) { isPermaLock = permaLock; }
+
     private int rewardPoints = 0;
     private int penaltyPoints = 0;
     private boolean pointsClaimed = false;
@@ -169,6 +174,17 @@ public class TaskItem implements Serializable {
         return taskLinks;
     }
 
+    private Map<String, Integer> statCosts = new HashMap<>();
+
+    public Map<String, Integer> getStatCosts() {
+        if (statCosts == null) statCosts = new HashMap<>();
+        return statCosts;
+    }
+
+    public void setStatCosts(Map<String, Integer> statCosts) {
+        this.statCosts = statCosts;
+    }
+
     private List<String> dependsOnTaskIds = new ArrayList<>();
 
     public List<String> getDependsOnTaskIds() {
@@ -177,11 +193,38 @@ public class TaskItem implements Serializable {
     }
     public void setDependsOnTaskIds(List<String> dependsOnTaskIds) { this.dependsOnTaskIds = dependsOnTaskIds; }
 
+    private Map<String, Integer> statCapRewards = new HashMap<>();
+
+    public Map<String, Integer> getStatCapRewards() {
+        if (statCapRewards == null) statCapRewards = new HashMap<>();
+        return statCapRewards;
+    }
+
+    public void setStatCapRewards(Map<String, Integer> statCapRewards) {
+        this.statCapRewards = statCapRewards;
+    }
+
     // --- NEW: Timed Task Target ---
     private int targetTimeMinutes = 0;
 
     public int getTargetTimeMinutes() { return targetTimeMinutes; }
     public void setTargetTimeMinutes(int targetTimeMinutes) { this.targetTimeMinutes = targetTimeMinutes; }
+
+    // --- NEW: Perk Date Tracking ---
+    private LocalDateTime perkUnlockedDate;
+    private LocalDateTime perkLostDate;
+
+    // --- NEW: Challenge Card Flag ---
+    private boolean isChallengeCard = false;
+
+    public boolean isChallengeCard() { return isChallengeCard; }
+    public void setChallengeCard(boolean challengeCard) { isChallengeCard = challengeCard; }
+
+    public LocalDateTime getPerkUnlockedDate() { return perkUnlockedDate; }
+    public void setPerkUnlockedDate(LocalDateTime perkUnlockedDate) { this.perkUnlockedDate = perkUnlockedDate; }
+
+    public LocalDateTime getPerkLostDate() { return perkLostDate; }
+    public void setPerkLostDate(LocalDateTime perkLostDate) { this.perkLostDate = perkLostDate; }
 
     public boolean isCounterMode() { return isCounterMode; }
     public void setCounterMode(boolean counterMode) { isCounterMode = counterMode; }

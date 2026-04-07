@@ -75,8 +75,8 @@ public class FilterSortHeader extends VBox {
         }
 
         if (config.isHasStreak()) {
-            Label streakLabel = new Label("🔥 " + appStats.getCurrentStreak() + " Day Streak");
-            streakLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FF8C00; -fx-background-color: #331A00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FF8C00; -fx-border-radius: 15;");
+            Label streakLabel = new Label("🔥 Streak: " + config.getCurrentStreak());
+            streakLabel.setStyle("-fx-text-fill: #FF8C00; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-color: #332B00; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #FF8C00; -fx-border-radius: 15;");
             badgesFlow.getChildren().add(streakLabel);
         }
 
@@ -171,7 +171,13 @@ public class FilterSortHeader extends VBox {
 
         sortComboBox.setOnAction(e -> onFilterSortChanged.run());
 
-        filterSortRow.getChildren().addAll(filterSpacer, sortComboBox);
+        filterSortRow.getChildren().add(filterSpacer);
+
+        // --- NEW: Only visually add the sort dropdown if it's NOT a Stat Page ---
+        if (!config.isStatPage()) {
+            filterSortRow.getChildren().add(sortComboBox);
+        }
+
         getChildren().add(filterSortRow);
     }
 
@@ -193,7 +199,6 @@ public class FilterSortHeader extends VBox {
             trueCompleted = completedCount;
         }
 
-        // --- UPDATED: Page-Specific Title Logic ---
         if (config.isStatPage()) {
             availableTasksLabel.setText("Total Stats: " + availableCount);
         } else if (config.isPerkPage()) {
@@ -206,7 +211,6 @@ public class FilterSortHeader extends VBox {
             availableTasksLabel.setText((config.isRewardsPage() ? "Available Items: " : "Active Tasks: ") + availableCount);
         }
 
-        // --- UPDATED: Hide Sub-tasks label on special pages ---
         if (config.isEnableSubTasks() && !config.isRewardsPage() && !config.isNotesPage() && !config.isStatPage() && !config.isPerkPage()) {
             int activeSubTaskCount = 0;
             if (globalDatabase != null) {

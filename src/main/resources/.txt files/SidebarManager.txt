@@ -23,7 +23,6 @@ import javafx.util.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
-// --- FIXED: Upgraded from VBox to BorderPane for strict Top/Center/Bottom layout pinning ---
 public class SidebarManager extends BorderPane {
     private AppStats appStats;
     private GlobalSearchBar searchBar;
@@ -50,21 +49,40 @@ public class SidebarManager extends BorderPane {
         setCenter(null);
         setBottom(null);
 
-        // ==========================================
-        // 1. TOP REGION: Search Bar
-        // ==========================================
         VBox topBox = new VBox();
         topBox.setPadding(new Insets(0, 0, 10, 0));
         topBox.getChildren().add(searchBar);
         setTop(topBox);
 
-        // ==========================================
-        // 2. CENTER REGION: Scrollable Dynamic Sections
-        // ==========================================
         VBox dynamicSectionsBox = new VBox();
         dynamicSectionsBox.setStyle("-fx-background-color: transparent;");
 
         for (SectionConfig config : appStats.getSections()) {
+
+            if (config.isSeparator()) {
+                VBox sepBox = new VBox(2);
+                sepBox.setAlignment(Pos.CENTER);
+                sepBox.setPadding(new Insets(15, 10, 5, 10));
+
+                if (config.getName() != null && !config.getName().isEmpty()) {
+                    Label sepName = new Label(config.getName().toUpperCase());
+                    sepName.setStyle("-fx-text-fill: #858585; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1.5px;");
+
+                    // --- FIXED: Forces the Label to fill horizontal space and center align the text ---
+                    sepName.setMaxWidth(Double.MAX_VALUE);
+                    sepName.setAlignment(Pos.CENTER);
+
+                    sepBox.getChildren().add(sepName);
+                }
+
+                Separator line = new Separator();
+                line.setOpacity(0.15);
+                sepBox.getChildren().add(line);
+
+                dynamicSectionsBox.getChildren().add(sepBox);
+                continue;
+            }
+
             int activeTaskCount = 0;
 
             if (appStats.isShowSidebarTaskCount() && globalDatabase != null) {
@@ -93,13 +111,9 @@ public class SidebarManager extends BorderPane {
 
         setCenter(scrollPane);
 
-        // ==========================================
-        // 3. BOTTOM REGION: Pinned Static Modules
-        // ==========================================
         VBox bottomBox = new VBox();
         bottomBox.setStyle("-fx-background-color: transparent;");
 
-        // --- Interactive Separator ---
         VBox separatorArea = new VBox(2);
         separatorArea.setAlignment(Pos.CENTER);
         separatorArea.setCursor(Cursor.HAND);
@@ -116,7 +130,6 @@ public class SidebarManager extends BorderPane {
         separatorArea.setOnMouseEntered(e -> arrowLabel.setOpacity(1.0));
         separatorArea.setOnMouseExited(e -> arrowLabel.setOpacity(0.0));
 
-        // --- Animated Static Modules Container ---
         VBox staticModulesBox = new VBox();
         staticModulesBox.setMinHeight(0);
 
@@ -142,7 +155,6 @@ public class SidebarManager extends BorderPane {
             staticModulesBox.setOpacity(1);
         }
 
-        // Toggle Animation Logic
         separatorArea.setOnMouseClicked(e -> {
             isStaticExpanded = !isStaticExpanded;
             arrowLabel.setText(isStaticExpanded ? "▼" : "▲");

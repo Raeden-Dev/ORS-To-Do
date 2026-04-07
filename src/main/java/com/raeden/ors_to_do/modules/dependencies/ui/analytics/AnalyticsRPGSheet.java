@@ -41,7 +41,7 @@ public class AnalyticsRPGSheet extends VBox {
             nameLbl.setStyle("-fx-text-fill: " + txtColor + "; -fx-font-size: 16px; -fx-font-weight: bold;");
 
             String capText = stat.getMaxCap() > 0 ? " / " + stat.getMaxCap() : "";
-            Label amountLbl = new Label(stat.getCurrentAmount() + capText + " XP");
+            Label amountLbl = new Label(stat.getCurrentAmount() + capText);
             amountLbl.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px; -fx-font-weight: bold;");
 
             HBox header = new HBox(nameLbl, new Region(), amountLbl);

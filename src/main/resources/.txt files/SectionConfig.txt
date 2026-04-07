@@ -6,17 +6,50 @@ import java.util.List;
 
 public class SectionConfig implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    // ==========================================
+    // 1. CORE INFORMATION & STYLING
+    // ==========================================
     private String id;
     private String name;
     private String sidebarColor = "#569CD6";
 
+    // ==========================================
+    // 2. SPECIAL PAGE MODES
+    // ==========================================
+    private boolean isNotesPage = false;
+    private boolean isRewardsPage = false;
+    private boolean isStatPage = false;
+    private boolean isPerkPage = false;
+
+    // ==========================================
+    // 3. RESET & ARCHIVING LOGIC
+    // ==========================================
     private int resetIntervalHours = 0;
     private boolean autoArchive = false;
     private boolean allowManualArchiving = false;
-    private List<DailyTemplate> autoAddTemplates = new ArrayList<>();
-
     private boolean hasStreak = false;
-    private boolean showAnalytics = false;
+
+    private int currentStreak = 0;
+    private int highestStreak = 0;
+
+    public int getCurrentStreak() { return currentStreak; }
+    public void setCurrentStreak(int currentStreak) {
+        this.currentStreak = currentStreak;
+        if (this.currentStreak > this.highestStreak) this.highestStreak = this.currentStreak;
+    }
+
+    public int getHighestStreak() { return highestStreak; }
+    public void setHighestStreak(int highestStreak) { this.highestStreak = highestStreak; }
+
+    private boolean isSeparator = false;
+
+    public boolean isSeparator() { return isSeparator; }
+    public void setSeparator(boolean separator) { this.isSeparator = separator; }
+
+    // ==========================================
+    // 4. TASK FEATURE TOGGLES
+    // ==========================================
     private boolean enableSubTasks = false;
     private boolean showPriority = false;
     private boolean showDate = false;
@@ -29,22 +62,19 @@ public class SectionConfig implements Serializable {
     private boolean enableLinks = false;
     private boolean enableStatsSystem = false;
     private boolean enableLinkCards = true;
-    private boolean isNotesPage = false;
     private boolean enableIcons = false;
-    private boolean isRewardsPage = false;
     private boolean enableZenMode = false;
     private boolean enableOptionalTasks = false;
-
-    private boolean isStatPage = false;
-    private boolean isPerkPage = false;
-
-    public boolean isStatPage() { return isStatPage; }
-    public void setStatPage(boolean statPage) { this.isStatPage = statPage; }
-    public boolean isPerkPage() { return isPerkPage; }
-    public void setPerkPage(boolean perkPage) { this.isPerkPage = perkPage; }
-
-    // --- NEW: Enable Task Styling Flag ---
     private boolean enableTaskStyling = false;
+    private boolean showAnalytics = false;
+
+    // --- NEW: Timed Tasks Toggle ---
+    private boolean enableTimedTasks = false;
+
+    // ==========================================
+    // 5. LISTS & TEMPLATES
+    // ==========================================
+    private List<DailyTemplate> autoAddTemplates = new ArrayList<>();
 
     public SectionConfig(String id, String name) {
         this.id = id;
@@ -58,24 +88,24 @@ public class SectionConfig implements Serializable {
     public String getSidebarColor() { return sidebarColor != null ? sidebarColor : "#569CD6"; }
     public void setSidebarColor(String sidebarColor) { this.sidebarColor = sidebarColor; }
 
+    public boolean isNotesPage() { return isNotesPage; }
+    public void setNotesPage(boolean isNotesPage) { this.isNotesPage = isNotesPage; }
+    public boolean isRewardsPage() { return isRewardsPage; }
+    public void setRewardsPage(boolean isRewardsPage) { this.isRewardsPage = isRewardsPage; }
+    public boolean isStatPage() { return isStatPage; }
+    public void setStatPage(boolean statPage) { this.isStatPage = statPage; }
+    public boolean isPerkPage() { return isPerkPage; }
+    public void setPerkPage(boolean perkPage) { this.isPerkPage = perkPage; }
+
     public int getResetIntervalHours() { return resetIntervalHours; }
     public void setResetIntervalHours(int resetIntervalHours) { this.resetIntervalHours = resetIntervalHours; }
-
     public boolean isAutoArchive() { return autoArchive; }
     public void setAutoArchive(boolean autoArchive) { this.autoArchive = autoArchive; }
-
     public boolean isAllowManualArchiving() { return allowManualArchiving; }
     public void setAllowManualArchiving(boolean allowManualArchiving) { this.allowManualArchiving = allowManualArchiving; }
-
-    public List<DailyTemplate> getAutoAddTemplates() {
-        if (autoAddTemplates == null) autoAddTemplates = new ArrayList<>();
-        return autoAddTemplates;
-    }
-
     public boolean isHasStreak() { return hasStreak; }
     public void setHasStreak(boolean hasStreak) { this.hasStreak = hasStreak; }
-    public boolean isShowAnalytics() { return showAnalytics; }
-    public void setShowAnalytics(boolean showAnalytics) { this.showAnalytics = showAnalytics; }
+
     public boolean isEnableSubTasks() { return enableSubTasks; }
     public void setEnableSubTasks(boolean enableSubTasks) { this.enableSubTasks = enableSubTasks; }
     public boolean isShowPriority() { return showPriority; }
@@ -100,17 +130,22 @@ public class SectionConfig implements Serializable {
     public void setEnableStatsSystem(boolean enableStatsSystem) { this.enableStatsSystem = enableStatsSystem; }
     public boolean isEnableLinkCards() { return enableLinkCards; }
     public void setEnableLinkCards(boolean enableLinkCards) { this.enableLinkCards = enableLinkCards; }
-    public boolean isNotesPage() { return isNotesPage; }
-    public void setNotesPage(boolean isNotesPage) { this.isNotesPage = isNotesPage; }
     public boolean isEnableIcons() { return enableIcons; }
     public void setEnableIcons(boolean enableIcons) { this.enableIcons = enableIcons; }
-    public boolean isRewardsPage() { return isRewardsPage; }
-    public void setRewardsPage(boolean isRewardsPage) { this.isRewardsPage = isRewardsPage; }
     public boolean isEnableZenMode() { return enableZenMode; }
     public void setEnableZenMode(boolean enableZenMode) { this.enableZenMode = enableZenMode; }
     public boolean isEnableOptionalTasks() { return enableOptionalTasks; }
     public void setEnableOptionalTasks(boolean enableOptionalTasks) { this.enableOptionalTasks = enableOptionalTasks; }
-
     public boolean isEnableTaskStyling() { return enableTaskStyling; }
     public void setEnableTaskStyling(boolean enableTaskStyling) { this.enableTaskStyling = enableTaskStyling; }
+    public boolean isShowAnalytics() { return showAnalytics; }
+    public void setShowAnalytics(boolean showAnalytics) { this.showAnalytics = showAnalytics; }
+
+    public boolean isEnableTimedTasks() { return enableTimedTasks; }
+    public void setEnableTimedTasks(boolean enableTimedTasks) { this.enableTimedTasks = enableTimedTasks; }
+
+    public List<DailyTemplate> getAutoAddTemplates() {
+        if (autoAddTemplates == null) autoAddTemplates = new ArrayList<>();
+        return autoAddTemplates;
+    }
 }

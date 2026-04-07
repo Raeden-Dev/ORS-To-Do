@@ -22,6 +22,7 @@ public class PomodoroTimer extends VBox {
     private AppStats appStats;
     private List<TaskItem> globalDatabase;
     private Runnable refreshCallback;
+    private Runnable onUrgeSurfing; // Trigger for the overlay
 
     private Timeline timeline;
     private int timeLeft = 25 * 60;
@@ -32,44 +33,49 @@ public class PomodoroTimer extends VBox {
     private Label statusLabel;
     private Button startPauseBtn;
     private ComboBox<Integer> timerOptions;
+    private Button urgeBtn; // The new Urge Button
 
     private TextField taskSearchField;
     private ComboBox<TaskItem> taskSelector;
     private List<TaskItem> allFocusableTasks = new ArrayList<>();
 
-    public PomodoroTimer(AppStats appStats, List<TaskItem> globalDatabase, Runnable refreshCallback) {
-        super(15);
+    public PomodoroTimer(AppStats appStats, List<TaskItem> globalDatabase, Runnable refreshCallback, Runnable onUrgeSurfing) {
+        super(20); // Slightly increased spacing for aesthetics
         this.appStats = appStats;
         this.globalDatabase = globalDatabase;
         this.refreshCallback = refreshCallback;
+        this.onUrgeSurfing = onUrgeSurfing;
 
         setAlignment(Pos.TOP_CENTER);
         HBox.setHgrow(this, Priority.ALWAYS);
         setMinWidth(450);
 
-        statusLabel = new Label("FOCUS SESSION");
-        statusLabel.setStyle("-fx-font-size: 32px; -fx-font-weight: bold;");
-        statusLabel.getStyleClass().add("focus-status");
-        VBox.setMargin(statusLabel, new Insets(40, 0, 10, 0));
+        // --- NEW: Sleek Card Aesthetic ---
+        setStyle("-fx-background-color: #252526; -fx-background-radius: 12; -fx-border-color: #3E3E42; -fx-border-width: 1; -fx-border-radius: 12; -fx-padding: 30; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 15, 0, 0, 5);");
 
-        VBox linkBox = new VBox(5);
+        statusLabel = new Label("FOCUS SESSION");
+        statusLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #569CD6; -fx-letter-spacing: 2px;");
+        statusLabel.getStyleClass().add("focus-status");
+        VBox.setMargin(statusLabel, new Insets(10, 0, 0, 0));
+
+        VBox linkBox = new VBox(8);
         linkBox.setAlignment(Pos.CENTER);
         Label linkLabel = new Label("Link Focus to Task:");
-        linkLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 14px; -fx-font-weight: bold;");
+        linkLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 13px; -fx-font-weight: bold;");
 
         taskSearchField = new TextField();
         taskSearchField.setPromptText("🔍 Search tasks...");
-        taskSearchField.setPrefWidth(300);
-        taskSearchField.setMaxWidth(300);
-        taskSearchField.setStyle("-fx-background-color: #2D2D30; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3;");
+        taskSearchField.setPrefWidth(320);
+        taskSearchField.setMaxWidth(320);
+        taskSearchField.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 5; -fx-padding: 8;");
 
         taskSearchField.textProperty().addListener((obs, oldText, newText) -> {
             applyTaskFilter(newText);
         });
 
         taskSelector = new ComboBox<>();
-        taskSelector.setPrefWidth(300);
-        taskSelector.setStyle("-fx-background-color: #3E3E42; -fx-cursor: hand;");
+        taskSelector.setPrefWidth(320);
+        taskSelector.setStyle("-fx-background-color: #3E3E42; -fx-cursor: hand; -fx-border-radius: 5; -fx-background-radius: 5;");
 
         taskSelector.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(TaskItem item, boolean empty) {
@@ -96,22 +102,24 @@ public class PomodoroTimer extends VBox {
 
         linkBox.getChildren().addAll(linkLabel, taskSearchField, taskSelector);
 
+        // --- NEW: Huge, styled time display ---
         timeDisplay = new Label("25:00");
-        timeDisplay.getStyleClass().add("timer-display");
+        timeDisplay.setStyle("-fx-font-size: 85px; -fx-font-weight: bold; -fx-text-fill: #569CD6;"); // Blue for focus
 
         HBox optionsPanel = new HBox(10);
         optionsPanel.setAlignment(Pos.CENTER);
-        Label focusLengthLabel = new Label("Focus Length: ");
-        focusLengthLabel.setStyle("-fx-text-fill: white;");
+        Label focusLengthLabel = new Label("Focus Length (m): ");
+        focusLengthLabel.setStyle("-fx-text-fill: #CCCCCC; -fx-font-size: 13px;");
 
         timerOptions = new ComboBox<>();
-        timerOptions.getItems().addAll(1, 10, 25, 30, 40, 60);
+        timerOptions.getItems().addAll(1, 10, 25, 30, 40, 60, 90, 120);
         timerOptions.setValue(25);
+        timerOptions.setStyle("-fx-background-color: #1E1E1E; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3; -fx-cursor: hand;");
         timerOptions.setOnAction(e -> {
             if (timeline == null || !timeline.getStatus().equals(Timeline.Status.RUNNING)) {
                 if (isFocusMode) {
                     timeLeft = timerOptions.getValue() * 60;
-                    lastTrackedTimeLeft = timeLeft; // Keep tracker in sync
+                    lastTrackedTimeLeft = timeLeft;
                     updateDisplay();
                 }
             }
@@ -121,16 +129,26 @@ public class PomodoroTimer extends VBox {
         HBox btnPanel = new HBox(20);
         btnPanel.setAlignment(Pos.CENTER);
 
-        startPauseBtn = new Button("Start");
-        startPauseBtn.getStyleClass().addAll("action-btn", "massive-btn");
+        startPauseBtn = new Button("START");
+        startPauseBtn.setStyle("-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 12 30; -fx-font-size: 14px; -fx-background-radius: 5;");
 
-        Button resetBtn = new Button("Reset");
-        resetBtn.getStyleClass().addAll("action-btn", "massive-btn");
-        resetBtn.setStyle("-fx-background-color: #E06666; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        Button resetBtn = new Button("RESET");
+        resetBtn.setStyle("-fx-background-color: transparent; -fx-border-color: #E06666; -fx-text-fill: #E06666; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 10 25; -fx-font-size: 14px; -fx-border-radius: 5;");
 
         btnPanel.getChildren().addAll(startPauseBtn, resetBtn);
 
-        getChildren().addAll(statusLabel, linkBox, timeDisplay, optionsPanel, btnPanel);
+        // --- NEW: Urge Surfing Button ---
+        urgeBtn = new Button("🌊 Resist Urge (Breathe)");
+        urgeBtn.setStyle("-fx-background-color: transparent; -fx-border-color: #4EC9B0; -fx-text-fill: #4EC9B0; -fx-border-radius: 5; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 10 25; -fx-font-size: 13px;");
+        urgeBtn.setOnAction(e -> {
+            // Auto pause the timer if running before doing the breathing exercise
+            if (timeline != null && timeline.getStatus() == Timeline.Status.RUNNING) {
+                startPauseBtn.fire();
+            }
+            onUrgeSurfing.run();
+        });
+
+        getChildren().addAll(statusLabel, linkBox, timeDisplay, optionsPanel, btnPanel, new Separator(), urgeBtn);
         setupTimerLogic();
 
         startPauseBtn.setOnAction(e -> {
@@ -146,12 +164,14 @@ public class PomodoroTimer extends VBox {
                     if (refreshCallback != null) refreshCallback.run();
                 }
 
-                startPauseBtn.setText("Resume");
+                startPauseBtn.setText("RESUME");
+                startPauseBtn.setStyle("-fx-background-color: #FF8C00; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 12 30; -fx-font-size: 14px; -fx-background-radius: 5;");
             } else {
                 GlobalActivityTracker.resetActivityTime();
                 lastTrackedTimeLeft = timeLeft; // Sync tracker before un-pausing
                 timeline.play();
-                startPauseBtn.setText("Pause");
+                startPauseBtn.setText("PAUSE");
+                startPauseBtn.setStyle("-fx-background-color: #569CD6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 12 30; -fx-font-size: 14px; -fx-background-radius: 5;");
             }
         });
 
@@ -159,6 +179,12 @@ public class PomodoroTimer extends VBox {
     }
 
     public void refreshTasks() {
+        // Toggle urge button dynamically based on settings
+        if (urgeBtn != null) {
+            urgeBtn.setVisible(appStats.isEnableUrgeButton());
+            urgeBtn.setManaged(appStats.isEnableUrgeButton());
+        }
+
         TaskItem selected = taskSelector.getValue();
 
         allFocusableTasks.clear();
@@ -255,7 +281,9 @@ public class PomodoroTimer extends VBox {
                         if (refreshCallback != null) refreshCallback.run();
                     }
 
-                    startPauseBtn.setText("Resume");
+                    startPauseBtn.setText("RESUME");
+                    startPauseBtn.setStyle("-fx-background-color: #FF8C00; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 12 30; -fx-font-size: 14px; -fx-background-radius: 5;");
+
                     SystemTrayManager.pushNotification("Focus Paused", "Timer paused due to " + appStats.getFocusInactivityThreshold() + " minutes of inactivity.");
                     GlobalActivityTracker.resetActivityTime();
                     return;
@@ -273,11 +301,9 @@ public class PomodoroTimer extends VBox {
 
                     if (totalTracked >= activeTask.getTargetTimeMinutes() * 60) {
 
-                        // Bank the exact time required
                         activeTask.addTimeSpent(elapsedThisSession);
                         lastTrackedTimeLeft = timeLeft;
 
-                        // Find section and complete
                         SectionConfig taskConfig = appStats.getSections().stream().filter(c -> c.getId().equals(activeTask.getSectionId())).findFirst().orElse(null);
                         com.raeden.ors_to_do.modules.dependencies.ui.utils.TaskActionHandler.handleTaskCompletion(activeTask, taskConfig, appStats, globalDatabase, refreshCallback, null);
 
@@ -288,7 +314,7 @@ public class PomodoroTimer extends VBox {
 
                         SystemTrayManager.pushNotification("Timed Task Complete!", "Target focus time reached for: " + activeTask.getTextContent());
 
-                        // Deselect task so timer defaults back to "Free Focus" for the remainder of the session
+                        // Deselect task so timer defaults back to "Free Focus"
                         taskSelector.setValue(null);
                     }
                 }
@@ -322,10 +348,15 @@ public class PomodoroTimer extends VBox {
         isFocusMode = focus;
         timeLeft = isFocusMode ? timerOptions.getValue() * 60 : 5 * 60;
         lastTrackedTimeLeft = timeLeft; // Reset sync
+
         statusLabel.setText(isFocusMode ? "FOCUS SESSION" : "SHORT BREAK");
-        statusLabel.getStyleClass().removeAll("focus-status", "break-status");
-        statusLabel.getStyleClass().add(isFocusMode ? "focus-status" : "break-status");
-        startPauseBtn.setText("Start");
+        statusLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-letter-spacing: 2px; -fx-text-fill: " + (isFocusMode ? "#569CD6;" : "#4EC9B0;"));
+
+        timeDisplay.setStyle("-fx-font-size: 85px; -fx-font-weight: bold; -fx-text-fill: " + (isFocusMode ? "#569CD6;" : "#4EC9B0;"));
+
+        startPauseBtn.setText("START");
+        startPauseBtn.setStyle("-fx-background-color: " + (isFocusMode ? "#569CD6;" : "#4EC9B0;") + " -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 12 30; -fx-font-size: 14px; -fx-background-radius: 5;");
+
         updateDisplay();
     }
 

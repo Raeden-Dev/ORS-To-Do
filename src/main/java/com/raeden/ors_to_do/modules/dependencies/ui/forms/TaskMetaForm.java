@@ -12,7 +12,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TaskMetaForm {
@@ -21,11 +23,13 @@ public class TaskMetaForm {
     private TextField taskTypeField;
     private DatePicker datePicker;
     private TextField timePicker;
-    private TextField targetTimeField; // NEW
+    private TextField targetTimeField;
 
     public void buildUI(GridPane grid, AtomicInteger rowIdx, TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> db) {
         selectedDeps = new ArrayList<>(task.getDependsOnTaskIds());
-        MenuButton dependenciesMenu = buildDependenciesMenu(task, config, db);
+
+        MenuButton dependenciesMenu = buildDependenciesMenu(task, appStats, db);
+
         grid.add(new Label((config != null && config.isRewardsPage()) ? "Unlock Condition:" : "Depends On:"), 0, rowIdx.get());
         grid.add(dependenciesMenu, 1, rowIdx.getAndIncrement());
 
@@ -46,7 +50,6 @@ public class TaskMetaForm {
             grid.add(taskTypeField, 1, rowIdx.getAndIncrement());
         }
 
-        // --- NEW: Timed Tasks Input ---
         if (config == null || config.isEnableTimedTasks()) {
             targetTimeField = new TextField();
             targetTimeField.setMaxWidth(Double.MAX_VALUE);
@@ -82,7 +85,6 @@ public class TaskMetaForm {
         else if (task.isOptional()) task.setPriority(null);
         if (taskTypeField != null) task.setTaskType(taskTypeField.getText().trim());
 
-        // --- NEW: Save Timed Task Target ---
         if (targetTimeField != null) {
             try { task.setTargetTimeMinutes(Math.max(0, Integer.parseInt(targetTimeField.getText().trim()))); }
             catch (Exception e) { task.setTargetTimeMinutes(0); }
@@ -99,31 +101,59 @@ public class TaskMetaForm {
         }
     }
 
-    private MenuButton buildDependenciesMenu(TaskItem task, SectionConfig config, List<TaskItem> db) {
+    // --- FIXED: Replaced flat list with a nested Menu structure grouped by Section ---
+    private MenuButton buildDependenciesMenu(TaskItem task, AppStats appStats, List<TaskItem> db) {
         MenuButton menu = new MenuButton("Dependencies (0)");
         menu.getStyleClass().add("custom-menu-btn");
         menu.setMaxWidth(Double.MAX_VALUE);
-        int depCount = 0;
+        int[] depCount = {0};
 
-        for (TaskItem other : db) {
-            if (other.getId().equals(task.getId()) || other.isFinished() || other.isArchived()) continue;
-            if (config != null && config.getId().equals(other.getSectionId())) {
-                CheckBox cb = new CheckBox(other.getTextContent());
-                cb.setStyle("-fx-text-fill: white;");
-                cb.setSelected(selectedDeps.contains(other.getId()));
-                if (cb.isSelected()) depCount++;
-                cb.setOnAction(e -> {
-                    if (cb.isSelected() && !selectedDeps.contains(other.getId())) selectedDeps.add(other.getId());
-                    else if (!cb.isSelected()) selectedDeps.remove(other.getId());
-                    menu.setText("Dependencies (" + selectedDeps.size() + ")");
-                });
-                CustomMenuItem item = new CustomMenuItem(cb);
-                item.setHideOnClick(false);
-                menu.getItems().add(item);
+        Map<String, Menu> sectionMenus = new HashMap<>();
+        if (appStats != null && appStats.getSections() != null) {
+            for (SectionConfig sc : appStats.getSections()) {
+                Menu m = new Menu(sc.getName());
+                sectionMenus.put(sc.getId(), m);
+                menu.getItems().add(m);
             }
         }
-        menu.setText("Dependencies (" + depCount + ")");
-        if (menu.getItems().isEmpty()) menu.getItems().add(new CustomMenuItem(new Label("No other active tasks")) {{ setDisable(true); }});
+        Menu othersMenu = new Menu("Other Tasks");
+
+        for (TaskItem other : db) {
+            if (other.getId().equals(task.getId()) || other.isArchived()) continue;
+
+            CheckBox cb = new CheckBox(other.getTextContent());
+            cb.setStyle("-fx-text-fill: white;");
+            cb.setSelected(selectedDeps.contains(other.getId()));
+            if (cb.isSelected()) depCount[0]++;
+
+            cb.setOnAction(e -> {
+                if (cb.isSelected() && !selectedDeps.contains(other.getId())) selectedDeps.add(other.getId());
+                else if (!cb.isSelected()) selectedDeps.remove(other.getId());
+                menu.setText("Dependencies (" + selectedDeps.size() + ")");
+            });
+
+            CustomMenuItem item = new CustomMenuItem(cb);
+            item.setHideOnClick(false);
+
+            Menu targetMenu = sectionMenus.get(other.getSectionId());
+            if (targetMenu != null) {
+                targetMenu.getItems().add(item);
+            } else {
+                othersMenu.getItems().add(item);
+            }
+        }
+
+        // Remove empty section folders
+        menu.getItems().removeIf(menuItem -> menuItem instanceof Menu && ((Menu) menuItem).getItems().isEmpty());
+        if (!othersMenu.getItems().isEmpty()) menu.getItems().add(othersMenu);
+
+        menu.setText("Dependencies (" + depCount[0] + ")");
+        if (menu.getItems().isEmpty()) {
+            CustomMenuItem emptyItem = new CustomMenuItem(new Label("No other active tasks"));
+            emptyItem.setDisable(true);
+            menu.getItems().add(emptyItem);
+        }
+
         return menu;
     }
 }

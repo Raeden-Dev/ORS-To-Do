@@ -24,7 +24,6 @@ public class TaskActionControls extends HBox {
         if (config.isTrackTime() && !isNoteMode) {
             int mins = task.getTimeSpentSeconds() / 60;
 
-            // --- NEW: Fraction Display for Timed Tasks ---
             String timeText = task.getTargetTimeMinutes() > 0 ? "⏱ " + mins + "m / " + task.getTargetTimeMinutes() + "m" : "⏱ " + mins + "m";
             Label timeLabel = new Label(timeText);
             timeLabel.setPadding(new Insets(0, 10, 0, 0));
@@ -70,7 +69,10 @@ public class TaskActionControls extends HBox {
             Button buyBtn = new Button(task.isCounterMode() ? "Buy (" + task.getCurrentCount() + "/" + task.getMaxCount() + ")" : "Buy");
             buyBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
             if (task.isFinished()) buyBtn.setDisable(true);
-            buyBtn.setOnAction(e -> TaskActionHandler.handleRewardPurchase(task, appStats, globalDatabase, onUpdate));
+
+            // --- FIXED: Now passing 'config' so stats can be processed! ---
+            buyBtn.setOnAction(e -> TaskActionHandler.handleRewardPurchase(task, config, appStats, globalDatabase, onUpdate));
+
             getChildren().add(buyBtn);
 
         } else if (task.isCounterMode()) {
@@ -79,24 +81,40 @@ public class TaskActionControls extends HBox {
             String btnStyle = "-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;";
             minusBtn.setStyle(btnStyle); plusBtn.setStyle(btnStyle);
 
-            if (task.isPointsClaimed() || task.isFinished()) { minusBtn.setDisable(true); plusBtn.setDisable(true); }
+            boolean isLocked = task.isFinished() && task.isPermaLock();
+            if (isLocked) {
+                minusBtn.setDisable(true);
+            }
+            if (task.isFinished() || isLocked) {
+                plusBtn.setDisable(true);
+            }
 
             Label countLabel = new Label(task.getCurrentCount() + (task.getMaxCount() > 0 ? " / " + task.getMaxCount() : ""));
             countLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 0 5 0 5;");
 
             minusBtn.setOnAction(e -> {
-                if (task.getCurrentCount() > 0 && !task.isPointsClaimed()) {
+                if (task.getCurrentCount() > 0) {
+                    if (task.isPointsClaimed()) {
+                        appStats.setGlobalScore(appStats.getGlobalScore() - task.getRewardPoints());
+                        if (config.isEnableStatsSystem()) {
+                            TaskActionHandler.processRPGStats(task, appStats, false); // false = Rollback
+                        }
+                        task.setPointsClaimed(false);
+                        StorageManager.saveStats(appStats);
+                    }
+
                     task.setCurrentCount(task.getCurrentCount() - 1);
                     task.setFinished(false);
                     StorageManager.saveTasks(globalDatabase); onUpdate.run();
                 }
             });
+
             plusBtn.setOnAction(e -> {
-                if (!task.isPointsClaimed()) {
+                if (!task.isFinished()) {
                     task.setCurrentCount(task.getCurrentCount() + 1);
                     if (task.getMaxCount() > 0 && task.getCurrentCount() >= task.getMaxCount()) {
                         TaskActionHandler.handleTaskCompletion(task, config, appStats, globalDatabase, onUpdate, null);
-                        if (config.isEnableStatsSystem()) { TaskActionHandler.processRPGStats(task, appStats, true); StorageManager.saveStats(appStats); }
+                        if (config.isEnableStatsSystem()) { StorageManager.saveStats(appStats); }
                     } else {
                         StorageManager.saveTasks(globalDatabase); onUpdate.run();
                     }
@@ -108,10 +126,10 @@ public class TaskActionControls extends HBox {
             CheckBox checkBox = new CheckBox();
             checkBox.setSelected(task.isFinished());
 
-            // --- NEW: Time Lock Logic ---
             boolean timeLocked = task.getTargetTimeMinutes() > 0 && (task.getTimeSpentSeconds() / 60) < task.getTargetTimeMinutes();
 
-            if (task.isPointsClaimed() || task.isFinished() || timeLocked) {
+            boolean isLocked = (task.isFinished() && task.isPermaLock()) || timeLocked;
+            if (isLocked) {
                 checkBox.setDisable(true);
             }
 
@@ -124,8 +142,17 @@ public class TaskActionControls extends HBox {
             checkBox.setOnAction(e -> {
                 if (checkBox.isSelected()) {
                     TaskActionHandler.handleTaskCompletion(task, config, appStats, globalDatabase, onUpdate, checkBox);
-                    if (config.isEnableStatsSystem()) { TaskActionHandler.processRPGStats(task, appStats, true); StorageManager.saveStats(appStats); }
+                    if (config.isEnableStatsSystem()) { StorageManager.saveStats(appStats); }
                 } else {
+                    if (task.isPointsClaimed()) {
+                        appStats.setGlobalScore(appStats.getGlobalScore() - task.getRewardPoints());
+                        if (config.isEnableStatsSystem()) {
+                            TaskActionHandler.processRPGStats(task, appStats, false); // false = Rollback
+                        }
+                        task.setPointsClaimed(false);
+                        StorageManager.saveStats(appStats);
+                    }
+
                     task.setFinished(false); StorageManager.saveTasks(globalDatabase); onUpdate.run();
                 }
             });

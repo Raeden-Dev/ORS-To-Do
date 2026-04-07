@@ -21,7 +21,7 @@ public class TaskEditDialog {
 
     public static void showEditDialog(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(config.isNotesPage() ? "Edit Note" : (config.isRewardsPage() ? "Edit Reward" : "Edit Task"));
+        dialog.setTitle(config != null && config.isNotesPage() ? "Edit Note" : (config != null && config.isRewardsPage() ? "Edit Reward" : "Edit Task"));
         styleDialog(dialog);
 
         GridPane grid = new GridPane();
@@ -38,9 +38,9 @@ public class TaskEditDialog {
         TextArea contentField = new TextArea(task.getTextContent() != null ? task.getTextContent() : "");
         contentField.setMaxWidth(Double.MAX_VALUE);
         contentField.setWrapText(true);
-        contentField.setPrefRowCount(config.isNotesPage() ? 6 : 2);
+        contentField.setPrefRowCount(config != null && config.isNotesPage() ? 6 : 2);
 
-        grid.add(new Label(config.isNotesPage() ? "Note Text:" : (config.isRewardsPage() ? "Reward Name:" : "Content:")), 0, rowIdx.get());
+        grid.add(new Label(config != null && config.isNotesPage() ? "Note Text:" : (config != null && config.isRewardsPage() ? "Reward Name:" : "Content:")), 0, rowIdx.get());
         grid.add(contentField, 1, rowIdx.getAndIncrement());
 
         CheckBox linkCardCheck = new CheckBox("Is Link Card?");
@@ -104,7 +104,8 @@ public class TaskEditDialog {
                 styleForm.applyTo(task);
                 if (config == null || !config.isNotesPage()) {
                     metaForm.applyTo(task);
-                    rpgForm.applyTo(task, config, appStats);
+                    // --- FIXED: Removed the extra parameters that were causing the compilation error ---
+                    rpgForm.applyTo(task);
                 }
 
                 StorageManager.saveTasks(globalDatabase);

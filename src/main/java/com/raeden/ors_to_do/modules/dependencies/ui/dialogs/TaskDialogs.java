@@ -9,6 +9,8 @@ import javafx.scene.paint.Color;
 
 import java.util.List;
 
+import static com.raeden.ors_to_do.TaskTrackerApp.APP_VERSION;
+
 public class TaskDialogs {
 
     public static final String[] ICON_LIST = {
@@ -43,7 +45,7 @@ public class TaskDialogs {
 
     public static void showCreditsDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About & Credits");
+        alert.setTitle("About & Credits (" + APP_VERSION + ")");
         alert.setHeaderText("Task Tracker");
         alert.setContentText(
                 "Developed for anyone who wants to keep track of everything in their life.\n\n" +
@@ -56,7 +58,7 @@ public class TaskDialogs {
     public static void showHelpDialog(AppStats stats) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Application Help Guide");
-        dialog.setHeaderText("How to use the application:");
+        dialog.setHeaderText("How to use the application: (" + APP_VERSION + ")");
         styleDialog(dialog);
 
         VBox contentBox = new VBox(15);

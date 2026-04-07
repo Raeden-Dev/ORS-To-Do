@@ -130,11 +130,16 @@ public class SectionEditDialog {
         specialModesBox.setStyle("-fx-border-color: #555555; -fx-border-radius: 5; -fx-padding: 10; -fx-background-color: #252526; -fx-background-radius: 5;");
         Label modeHeader = new Label("Special Page Modes (Select up to One):"); modeHeader.setStyle("-fx-text-fill: #AAAAAA; -fx-font-style: italic; -fx-font-size: 12px;");
         FlowPane modeToggles = new FlowPane(20, 10);
+
         CheckBox notesPageCheck = new CheckBox("Notes Page"); notesPageCheck.setSelected(config.isNotesPage()); notesPageCheck.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
         CheckBox statPageCheck = new CheckBox("Stat Page"); statPageCheck.setSelected(config.isStatPage()); statPageCheck.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
         CheckBox perkPageCheck = new CheckBox("Perk Page"); perkPageCheck.setSelected(config.isPerkPage()); perkPageCheck.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
         CheckBox rewardsPageCheck = new CheckBox("Rewards Shop"); rewardsPageCheck.setSelected(config.isRewardsPage()); rewardsPageCheck.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
-        modeToggles.getChildren().addAll(notesPageCheck, statPageCheck, perkPageCheck, rewardsPageCheck);
+
+        // --- NEW: Challenge Page Toggle ---
+        CheckBox challengePageCheck = new CheckBox("Challenge Page"); challengePageCheck.setSelected(config.isChallengePage()); challengePageCheck.setStyle("-fx-text-fill: #FF8C00; -fx-font-weight: bold;");
+
+        modeToggles.getChildren().addAll(notesPageCheck, statPageCheck, perkPageCheck, rewardsPageCheck, challengePageCheck);
         specialModesBox.getChildren().addAll(modeHeader, modeToggles);
         content.getChildren().add(specialModesBox);
 
@@ -142,9 +147,10 @@ public class SectionEditDialog {
         Runnable updateUIState = () -> {
             boolean isNotes = notesPageCheck.isSelected(); boolean isStat = statPageCheck.isSelected();
             boolean isPerk = perkPageCheck.isSelected(); boolean isReward = rewardsPageCheck.isSelected();
-            boolean isSpecial = isNotes || isStat || isPerk || isReward;
+            boolean isChallenge = challengePageCheck.isSelected();
+            boolean isSpecial = isNotes || isStat || isPerk || isReward || isChallenge;
 
-            if (isStat || isPerk || isReward) {
+            if (isStat || isPerk || isReward || isChallenge) {
                 intervalSpinner.setDisable(true); if (intervalSpinner.getValue() != 0) intervalSpinner.getValueFactory().setValue(0);
                 autoArchiveCheck.setDisable(true); autoArchiveCheck.setSelected(false);
             } else {
@@ -177,10 +183,13 @@ public class SectionEditDialog {
         trackTimeCheck.setOnAction(e -> updateUIState.run());
         enableScoreCheck.setOnAction(e -> updateUIState.run());
         enableStatsSystemCheck.setOnAction(e -> updateUIState.run());
-        rewardsPageCheck.setOnAction(e -> { if(rewardsPageCheck.isSelected()) { notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } updateUIState.run(); });
-        notesPageCheck.setOnAction(e -> { if(notesPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } updateUIState.run(); });
-        statPageCheck.setOnAction(e -> { if(statPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); perkPageCheck.setSelected(false); } updateUIState.run(); });
-        perkPageCheck.setOnAction(e -> { if(perkPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); statPageCheck.setSelected(false); } updateUIState.run(); });
+
+        // --- NEW: Mutually Exclusive Logic ---
+        rewardsPageCheck.setOnAction(e -> { if(rewardsPageCheck.isSelected()) { notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
+        notesPageCheck.setOnAction(e -> { if(notesPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
+        statPageCheck.setOnAction(e -> { if(statPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); perkPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
+        perkPageCheck.setOnAction(e -> { if(perkPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); statPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
+        challengePageCheck.setOnAction(e -> { if(challengePageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); } updateUIState.run(); });
 
         presetBox.setOnAction(e -> {
             SectionConfig p = presetBox.getValue();
@@ -196,6 +205,7 @@ public class SectionEditDialog {
                 enableZenModeCheck.setSelected(p.isEnableZenMode()); enableStatsSystemCheck.setSelected(p.isEnableStatsSystem());
                 enableLinkCardsCheck.setSelected(p.isEnableLinkCards()); notesPageCheck.setSelected(p.isNotesPage());
                 statPageCheck.setSelected(p.isStatPage()); perkPageCheck.setSelected(p.isPerkPage());
+                challengePageCheck.setSelected(p.isChallengePage()); // NEW
                 enableOptionalTasksCheck.setSelected(p.isEnableOptionalTasks()); enableTaskStylingCheck.setSelected(p.isEnableTaskStyling());
                 enableTimedTasksCheck.setSelected(p.isEnableTimedTasks());
                 updateUIState.run();
@@ -219,6 +229,7 @@ public class SectionEditDialog {
                 newPreset.setEnableZenMode(enableZenModeCheck.isSelected()); newPreset.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
                 newPreset.setEnableLinkCards(enableLinkCardsCheck.isSelected()); newPreset.setNotesPage(notesPageCheck.isSelected());
                 newPreset.setStatPage(statPageCheck.isSelected()); newPreset.setPerkPage(perkPageCheck.isSelected());
+                newPreset.setChallengePage(challengePageCheck.isSelected()); // NEW
                 newPreset.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected()); newPreset.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
                 newPreset.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
 
@@ -242,7 +253,8 @@ public class SectionEditDialog {
                 config.setEnableSubTasks(enableSubTasksCheck.isSelected()); config.setShowDate(showDateCheck.isSelected());
                 config.setShowPrefix(showPrefixCheck.isSelected()); config.setShowTags(showTagsCheck.isSelected());
                 config.setEnableScore(enableScoreCheck.isSelected()); config.setEnableLinks(enableLinksCheck.isSelected());
-                config.setRewardsPage(rewardsPageCheck.isSelected()); config.setStatPage(statPageCheck.isSelected()); config.setPerkPage(perkPageCheck.isSelected());
+                config.setRewardsPage(rewardsPageCheck.isSelected()); config.setStatPage(statPageCheck.isSelected());
+                config.setPerkPage(perkPageCheck.isSelected()); config.setChallengePage(challengePageCheck.isSelected()); // NEW
                 config.setAutoArchive(autoArchiveCheck.isSelected()); config.setShowPriority(showPriorityCheck.isSelected());
                 config.setTrackTime(trackTimeCheck.isSelected()); config.setShowTaskType(showTaskTypeCheck.isSelected());
                 config.setAllowFavorite(favoriteCheck.isSelected()); config.setShowAnalytics(showAnalyticsCheck.isSelected());
