@@ -3,7 +3,6 @@ package com.raeden.ors_to_do.modules.dependencies.services;
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
-import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -23,6 +22,9 @@ public class NotificationManager {
     // Tracks the current active block for timed sections so we don't spam notifications
     private static Map<String, Long> sectionBlockIndices = new HashMap<>();
     private static Map<String, Integer> sectionNotifiedThresholds = new HashMap<>();
+
+    // --- FIXED: In-memory tracker for dynamic deadline notifications ---
+    private static Map<String, LocalDateTime> lastTaskNotificationTime = new HashMap<>();
 
     public static void start(AppStats appStats, List<TaskItem> db, Stage stage) {
         if (timeline != null) timeline.stop();
@@ -45,7 +47,6 @@ public class NotificationManager {
         if (!appStats.isEnableNotifications()) return;
 
         LocalDateTime now = LocalDateTime.now();
-        boolean tasksSaved = false;
 
         // --- CHECK 1: Inactivity (> 4 hours away) ---
         if (!notifiedInactivity && java.time.Duration.between(lastInteractionTime, now).toHours() >= 4) {
@@ -75,28 +76,41 @@ public class NotificationManager {
             notifiedInactivity = true;
         }
 
-        // --- CHECK 2: Upcoming Deadlines ---
+        // --- FIXED CHECK 2: Upcoming Deadlines (Dynamic Frequency) ---
+        int freqHours = appStats.getDeadlineNotificationFrequencyHours();
+
         for(TaskItem t : db) {
             if(t.isFinished() || t.isArchived() || t.getDeadline() == null) continue;
 
             long minutesLeft = java.time.Duration.between(now, t.getDeadline()).toMinutes();
+            if (minutesLeft <= 0) continue; // Skip if already expired
+
             double hoursLeft = minutesLeft / 60.0;
 
-            if (hoursLeft <= 24 && hoursLeft > 12 && !t.isNotified24h()) {
-                t.setNotified24h(true); tasksSaved = true;
-                SystemTrayManager.pushNotification("Deadline Approaching", "<24h left for: " + t.getTextContent());
-            } else if (hoursLeft <= 12 && hoursLeft > 4 && !t.isNotified12h()) {
-                t.setNotified12h(true); tasksSaved = true;
-                SystemTrayManager.pushNotification("Deadline Approaching", "<12h left for: " + t.getTextContent());
-            } else if (hoursLeft <= 4 && hoursLeft > 2 && !t.isNotified4h()) {
-                t.setNotified4h(true); tasksSaved = true;
-                SystemTrayManager.pushNotification("Urgent Deadline", "<4h left for: " + t.getTextContent());
-            } else if (hoursLeft <= 2 && hoursLeft > 0 && !t.isNotified2h()) {
-                t.setNotified2h(true); tasksSaved = true;
-                SystemTrayManager.pushNotification("Critical Deadline", "Less than 2 hours left for: " + t.getTextContent());
+            // Only start notifying if the deadline is within the next 24 hours
+            if (hoursLeft <= 24) {
+                LocalDateTime lastNotified = lastTaskNotificationTime.get(t.getId());
+                boolean shouldNotify = false;
+
+                if (lastNotified == null) {
+                    shouldNotify = true;
+                } else {
+                    long hoursSinceLastNotification = java.time.Duration.between(lastNotified, now).toHours();
+                    if (hoursSinceLastNotification >= freqHours) {
+                        shouldNotify = true;
+                    }
+                }
+
+                if (shouldNotify) {
+                    long h = minutesLeft / 60;
+                    long m = minutesLeft % 60;
+                    String timeLeftStr = (h > 0 ? h + "h " : "") + m + "m left";
+
+                    SystemTrayManager.pushNotification("Deadline Approaching", timeLeftStr + " for: " + t.getTextContent());
+                    lastTaskNotificationTime.put(t.getId(), now);
+                }
             }
         }
-        if (tasksSaved) StorageManager.saveTasks(db);
 
         // --- CHECK 3: Timed Section Warnings (75%, 50%, 25%, 10%) ---
         LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();

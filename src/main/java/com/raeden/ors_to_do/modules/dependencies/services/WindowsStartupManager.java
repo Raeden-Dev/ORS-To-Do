@@ -1,38 +1,40 @@
 package com.raeden.ors_to_do.modules.dependencies.services;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class WindowsStartupManager {
-    private static final String APP_NAME = "ORSTaskTracker";
+    private static final String APP_NAME = "TaskTracker_AutoStart.vbs";
 
     public static void setStartupEnabled(boolean enable) {
         try {
-            // Ensure this only runs on Windows systems
             if (!System.getProperty("os.name").toLowerCase().contains("win")) return;
+
+            String startupFolder = System.getenv("APPDATA") + "\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\";
+            File vbsFile = new File(startupFolder + APP_NAME);
 
             if (enable) {
                 String path = getApplicationPath();
-                // Format the command depending on if it's a jar or an exe
-                String execCmd = path.endsWith(".jar") ? "javaw -jar \"" + path + "\"" : "\"" + path + "\"";
-
-                String[] command = {
-                        "reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                        "/v", APP_NAME,
-                        "/t", "REG_SZ",
-                        "/d", execCmd,
-                        "/f"
-                };
-                Runtime.getRuntime().exec(command);
+                createVbsScript(vbsFile, path);
+                System.out.println("Startup VBS created at: " + vbsFile.getAbsolutePath());
             } else {
-                String[] command = {
-                        "reg", "delete", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                        "/v", APP_NAME,
-                        "/f"
-                };
-                Runtime.getRuntime().exec(command);
+                if (vbsFile.exists()) {
+                    vbsFile.delete();
+                    System.out.println("Startup VBS removed.");
+                }
             }
         } catch (Exception e) {
-            System.out.println("Failed to modify registry for Windows startup: " + e.getMessage());
+            System.out.println("Failed to modify Windows startup: " + e.getMessage());
+        }
+    }
+
+    private static void createVbsScript(File vbsFile, String exePath) throws IOException {
+        String script = "Set WshShell = CreateObject(\"WScript.Shell\")\n" +
+                "WshShell.Run \"\"\"" + exePath + "\"\"\", 0, False";
+
+        try (FileWriter writer = new FileWriter(vbsFile)) {
+            writer.write(script);
         }
     }
 
@@ -42,7 +44,6 @@ public class WindowsStartupManager {
             if (path.endsWith(".jar") || path.endsWith(".exe")) {
                 return path;
             } else {
-                // Fallback for IDE testing / un-packaged environments
                 return System.getProperty("user.dir") + File.separator + "Task-Tracker.exe";
             }
         } catch (Exception e) {

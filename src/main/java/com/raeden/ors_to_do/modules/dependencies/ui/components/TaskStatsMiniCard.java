@@ -22,6 +22,25 @@ public class TaskStatsMiniCard extends FlowPane {
             return;
         }
 
+        String baseLabelStyle = "-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 10; -fx-border-radius: 10; -fx-font-weight: bold;";
+
+        // --- NEW: Render Global Points FIRST (so they appear at the beginning) ---
+        if (config != null && config.isEnableScore()) {
+            if (task.getRewardPoints() > 0) {
+                containsStats = true;
+                Label ptsLabel = new Label("+" + task.getRewardPoints() + " Pts");
+                ptsLabel.setStyle("-fx-text-fill: #FFD700; -fx-border-color: #FFD700; -fx-background-color: #332B00; " + baseLabelStyle);
+                getChildren().add(ptsLabel);
+            }
+            if (task.getPenaltyPoints() > 0) {
+                containsStats = true;
+                Label penLabel = new Label("-" + task.getPenaltyPoints() + " Pts");
+                penLabel.setStyle("-fx-text-fill: #FF6666; -fx-border-color: #FF6666; -fx-background-color: #331A1A; " + baseLabelStyle);
+                getChildren().add(penLabel);
+            }
+        }
+
+        // --- Render Custom RPG Stats ---
         if (config != null && config.isEnableStatsSystem() && appStats.isGlobalStatsEnabled()) {
             boolean isExpandedMode = appStats.isExpandStatMiniCards();
 
@@ -39,7 +58,7 @@ public class TaskStatsMiniCard extends FlowPane {
                     String statIcon = (stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None")) ? stat.getIconSymbol() + " " : "";
                     String bgColor = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
 
-                    String commonStyle = "-fx-font-size: 11px; -fx-background-color: " + bgColor + "; -fx-padding: 2 6; -fx-background-radius: 10; -fx-border-radius: 10; -fx-font-weight: bold;";
+                    String commonStyle = baseLabelStyle + " -fx-background-color: " + bgColor + ";";
 
                     String rewardStyle = "-fx-text-fill: #4EC9B0; -fx-border-color: #4EC9B0; " + commonStyle;
                     String capStyle = "-fx-text-fill: #C586C0; -fx-border-color: #C586C0; " + commonStyle;

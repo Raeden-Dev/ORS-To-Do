@@ -21,15 +21,12 @@ public class StorageManager {
 
     private static final String APP_DIR = System.getenv("APPDATA") + File.separator + "TaskTracker";
 
-    // --- NEW: JSON Files ---
     private static final String DATA_FILE = APP_DIR + File.separator + "tasks.json";
     private static final String STATS_FILE = APP_DIR + File.separator + "stats.json";
 
-    // --- LEGACY: Old Binary Files for Migration ---
     private static final String LEGACY_DATA_FILE = APP_DIR + File.separator + "tasks.dat";
     private static final String LEGACY_STATS_FILE = APP_DIR + File.separator + "stats.dat";
 
-    // --- GSON SETUP: Required to safely parse Java 8 Time objects ---
     private static final Gson gson = new GsonBuilder()
             .setPrettyPrinting()
             .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
@@ -40,22 +37,19 @@ public class StorageManager {
             .registerTypeAdapter(LocalTime.class, (JsonDeserializer<LocalTime>) (json, typeOfT, context) -> LocalTime.parse(json.getAsString(), DateTimeFormatter.ISO_LOCAL_TIME))
             .create();
 
-    // --- JSON: Safe Save Engine with Rolling Backups ---
     private static void safeSaveJson(Object data, String baseFilename) {
         File directory = new File(APP_DIR);
         if (!directory.exists()) directory.mkdirs();
 
         File tempFile = new File(baseFilename + ".tmp");
 
-        // 1. Write to temporary JSON file (UTF-8 to support emojis/icons)
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8)) {
             gson.toJson(data, writer);
         } catch (IOException e) {
             System.err.println("Failed to write temp JSON file for " + baseFilename + ": " + e.getMessage());
-            return; // Abort save, keep old files intact
+            return;
         }
 
-        // 2. Rotate backups and commit
         try {
             for (int i = 2; i >= 1; i--) {
                 File src = new File(baseFilename + ".bak" + i);
@@ -74,7 +68,6 @@ public class StorageManager {
         }
     }
 
-    // --- JSON: Safe Load Engine with Auto-Recovery ---
     private static <T> T safeLoadJson(String baseFilename, Type type) {
         String[] filesToTry = { baseFilename, baseFilename + ".bak1", baseFilename + ".bak2", baseFilename + ".bak3" };
 
@@ -95,7 +88,6 @@ public class StorageManager {
         return null;
     }
 
-    // --- LEGACY: Old Binary File Loader for Migration ---
     private static Object loadLegacyDat(String filename) {
         File f = new File(filename);
         if (f.exists()) {
@@ -108,31 +100,35 @@ public class StorageManager {
         return null;
     }
 
-    // ==========================================
-    // --- Public API ---
-    // ==========================================
-
     public static void saveTasks(List<TaskItem> tasks) {
         safeSaveJson(tasks, DATA_FILE);
     }
 
     @SuppressWarnings("unchecked")
     public static List<TaskItem> loadTasks() {
-        // 1. Try loading the modern JSON file
         Type type = new TypeToken<List<TaskItem>>(){}.getType();
         List<TaskItem> loaded = safeLoadJson(DATA_FILE, type);
-        if (loaded != null) return loaded;
 
-        // 2. MIGRATION: If JSON fails/doesn't exist, look for the old .dat file
-        Object legacy = loadLegacyDat(LEGACY_DATA_FILE);
-        if (legacy != null) {
-            System.out.println("🔄 Migrating Tasks from Legacy .dat to .json format...");
-            List<TaskItem> legacyTasks = (List<TaskItem>) legacy;
-            saveTasks(legacyTasks); // Immediately secure it as JSON
-            return legacyTasks;
+        if (loaded == null) {
+            Object legacy = loadLegacyDat(LEGACY_DATA_FILE);
+            if (legacy != null) {
+                System.out.println("🔄 Migrating Tasks from Legacy .dat to .json format...");
+                loaded = (List<TaskItem>) legacy;
+            } else {
+                loaded = new ArrayList<>();
+            }
         }
 
-        return new ArrayList<>(); // Return empty list on total fresh install
+        // --- FIXED: Compatibility Integrity Check ---
+        for (TaskItem task : loaded) {
+            if (task.getStatRewards() == null) task.setStatRewards(new java.util.HashMap<>());
+            if (task.getStatCapRewards() == null) task.setStatCapRewards(new java.util.HashMap<>());
+            if (task.getStatCosts() == null) task.setStatCosts(new java.util.HashMap<>());
+            if (task.getStatPenalties() == null) task.setStatPenalties(new java.util.HashMap<>());
+            if (task.getStatRequirements() == null) task.setStatRequirements(new java.util.HashMap<>());
+        }
+
+        return loaded;
     }
 
     public static void saveStats(AppStats stats) {
@@ -140,19 +136,22 @@ public class StorageManager {
     }
 
     public static AppStats loadStats() {
-        // 1. Try loading the modern JSON file
         AppStats loaded = safeLoadJson(STATS_FILE, AppStats.class);
-        if (loaded != null) return loaded;
 
-        // 2. MIGRATION: If JSON fails/doesn't exist, look for the old .dat file
-        Object legacy = loadLegacyDat(LEGACY_STATS_FILE);
-        if (legacy != null) {
-            System.out.println("🔄 Migrating AppStats from Legacy .dat to .json format...");
-            AppStats legacyStats = (AppStats) legacy;
-            saveStats(legacyStats); // Immediately secure it as JSON
-            return legacyStats;
+        if (loaded == null) {
+            Object legacy = loadLegacyDat(LEGACY_STATS_FILE);
+            if (legacy != null) {
+                System.out.println("🔄 Migrating AppStats from Legacy .dat to .json format...");
+                loaded = (AppStats) legacy;
+            } else {
+                loaded = new AppStats();
+            }
         }
 
-        return new AppStats(); // Return fresh stats object on first run
+        // --- FIXED: Initialize potentially missing fields from older versions ---
+        if (loaded.getFocusStatRewards() == null) loaded.setFocusStatRewards(new java.util.HashMap<>());
+        if (loaded.getUrgeQuotes() == null) loaded.setUrgeQuotes(new ArrayList<>());
+
+        return loaded;
     }
 }

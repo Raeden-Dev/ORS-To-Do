@@ -12,6 +12,7 @@ import javafx.scene.layout.Priority;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 public class TemplateRow extends HBox {
@@ -83,6 +84,19 @@ public class TemplateRow extends HBox {
             clone.setRewardPoints(t.getRewardPoints()); clone.setPenaltyPoints(t.getPenaltyPoints());
             clone.setOptional(t.isOptional());
             if (t.getSubTaskLines() != null) clone.setSubTaskLines(new ArrayList<>(t.getSubTaskLines()));
+
+            // --- FIXED: Ensure NEW properties duplicate perfectly ---
+            clone.setCustomOutlineColor(t.getCustomOutlineColor());
+            clone.setCustomSideboxColor(t.getCustomSideboxColor());
+            clone.setRepeatingMode(t.isRepeatingMode());
+            clone.setRepetitionCount(t.getRepetitionCount());
+
+            if (t.getStatRewards() != null) clone.setStatRewards(new HashMap<>(t.getStatRewards()));
+            if (t.getStatCapRewards() != null) clone.setStatCapRewards(new HashMap<>(t.getStatCapRewards()));
+            if (t.getStatCosts() != null) clone.setStatCosts(new HashMap<>(t.getStatCosts()));
+            if (t.getStatPenalties() != null) clone.setStatPenalties(new HashMap<>(t.getStatPenalties()));
+            if (t.getStatRequirements() != null) clone.setStatRequirements(new HashMap<>(t.getStatRequirements()));
+
             templates.add(index + 1, clone);
             onUpdate.run();
         });

@@ -1,16 +1,20 @@
 package com.raeden.ors_to_do.modules;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.models.Debuff;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.ChallengeCard;
+import com.raeden.ors_to_do.modules.dependencies.ui.cards.DebuffCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.PerkCard;
+import com.raeden.ors_to_do.modules.dependencies.ui.cards.RepeatableTaskCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.StatCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.TaskCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.components.DynamicInputPanel;
 import com.raeden.ors_to_do.modules.dependencies.ui.components.FilterSortHeader;
+import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.DebuffManagerDialog;
 import com.raeden.ors_to_do.modules.dependencies.ui.layout.ZenModeOverlay;
 import com.raeden.ors_to_do.modules.dependencies.ui.menus.DynamicContextMenu;
 import com.raeden.ors_to_do.modules.dependencies.ui.utils.DynamicSortHelper;
@@ -76,7 +80,7 @@ public class DynamicModule extends StackPane {
                 Node target = (Node) e.getTarget();
                 boolean isTaskCard = false;
                 while (target != null) {
-                    if (target instanceof TaskCard) { isTaskCard = true; break; }
+                    if (target instanceof TaskCard || target instanceof RepeatableTaskCard) { isTaskCard = true; break; }
                     target = target.getParent();
                 }
                 if (!isTaskCard) bgMenu.show(scrollPane, e.getScreenX(), e.getScreenY());
@@ -172,8 +176,13 @@ public class DynamicModule extends StackPane {
             listContainer.getChildren().add(emptyLabel);
         } else {
             Runnable onUpdateTrigger = () -> { refreshList(); if (syncCallback != null) syncCallback.run(); };
+
             for (TaskItem task : tasksToDisplay) {
-                listContainer.getChildren().add(new TaskCard(task, config, appStats, globalDatabase, onUpdateTrigger, activeTimelines, this::reorderTasks));
+                if (task.isRepeatingMode()) {
+                    listContainer.getChildren().add(new RepeatableTaskCard(task, config, appStats, globalDatabase, onUpdateTrigger, activeTimelines, this::reorderTasks));
+                } else {
+                    listContainer.getChildren().add(new TaskCard(task, config, appStats, globalDatabase, onUpdateTrigger, activeTimelines, this::reorderTasks));
+                }
             }
         }
 
@@ -181,6 +190,42 @@ public class DynamicModule extends StackPane {
     }
 
     private void loadStatPage() {
+        // Clear expired debuffs
+        boolean changed = appStats.getActiveDebuffs().removeIf(d -> d.getExpiryDate() != null && java.time.LocalDateTime.now().isAfter(d.getExpiryDate()));
+        if (changed) StorageManager.saveStats(appStats);
+
+        HBox headerBox = new HBox(10);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        Label debuffLabel = new Label("Active Debuffs");
+        debuffLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #FF6666;");
+
+        // --- FIXED: Renamed Button to "Debuff Manager" ---
+        Button manageDebuffsBtn = new Button("⚙ Debuff Manager");
+        manageDebuffsBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 4 10; -fx-border-radius: 3; -fx-background-radius: 3;");
+        manageDebuffsBtn.setOnAction(e -> {
+            DebuffManagerDialog.show(appStats, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); });
+        });
+
+        // The spacer pushes the Debuff Manager button to the far right.
+        // If you ever add a "History" button, just place it in the addAll() list right before manageDebuffsBtn.
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        headerBox.getChildren().addAll(debuffLabel, spacer, manageDebuffsBtn);
+
+        listContainer.getChildren().add(headerBox);
+
+        FlowPane debuffPane = new FlowPane(10, 10);
+        for (Debuff d : appStats.getActiveDebuffs()) {
+            debuffPane.getChildren().add(new DebuffCard(d, appStats, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); }));
+        }
+
+        if (appStats.getActiveDebuffs().isEmpty()) {
+            Label noDebuffs = new Label("You are completely healthy.");
+            noDebuffs.setStyle("-fx-text-fill: #858585; -fx-font-style: italic;");
+            debuffPane.getChildren().add(noDebuffs);
+        }
+        listContainer.getChildren().addAll(debuffPane, new Separator());
+
         if (!appStats.isGlobalStatsEnabled() || appStats.getCustomStats().isEmpty()) {
             Label emptyMsg = new Label("No custom stats available. Go to Settings to create them.");
             emptyMsg.setStyle("-fx-text-fill: #555555; -fx-font-size: 16px; -fx-font-style: italic; -fx-padding: 30 0 0 0;");
@@ -191,10 +236,9 @@ public class DynamicModule extends StackPane {
                 listContainer.getChildren().add(new StatCard(stat, appStats, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); }));
             }
         }
-        filterSortHeader.updateBadges(appStats.getCustomStats().size(), 0);
+        filterSortHeader.updateBadges(appStats.getCustomStats().size(), appStats.getActiveDebuffs().size());
     }
 
-    // --- FIXED: Added sorting and active count tracking for Perks ---
     private void loadPerkPage() {
         List<TaskItem> perks = new ArrayList<>();
         int totalCount = 0;

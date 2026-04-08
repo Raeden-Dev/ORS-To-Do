@@ -14,7 +14,6 @@ import static com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManag
 
 public class TaskActionHandler {
 
-    // --- FIXED: Added SectionConfig to parameters to check if stats are enabled ---
     public static void handleRewardPurchase(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {
         if (appStats.getGlobalScore() < task.getCostPoints()) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Not enough points! You need " + task.getCostPoints() + " but only have " + appStats.getGlobalScore() + ".");
@@ -24,7 +23,6 @@ public class TaskActionHandler {
             return;
         }
 
-        // --- NEW: Check what stats this reward gives and show it in the confirmation ---
         StringBuilder modifierStr = new StringBuilder();
         if (config != null && config.isEnableStatsSystem()) {
             for (CustomStat stat : appStats.getCustomStats()) {
@@ -62,7 +60,6 @@ public class TaskActionHandler {
                     task.setFinished(true);
                 }
 
-                // --- NEW: Process the stats from the reward ---
                 if (config != null && config.isEnableStatsSystem()) {
                     processRPGStats(task, appStats, true);
                 }
@@ -82,11 +79,9 @@ public class TaskActionHandler {
         boolean hasModifiers = hasRewards || hasCosts || hasCapRewards;
 
         List<String> reqSections = appStats.getRequireConfirmationSections();
-
         boolean needsConfirmation = (hasModifiers && task.isPermaLock()) || reqSections.contains("ALL") || reqSections.contains(config.getId());
 
         if (needsConfirmation && !task.isPointsClaimed()) {
-
             String promptText;
             String titleText;
 
@@ -143,6 +138,24 @@ public class TaskActionHandler {
         if (task.isCounterMode() && task.getMaxCount() > 0) task.setCurrentCount(task.getMaxCount());
         for (SubTask sub : task.getSubTasks()) sub.setFinished(true);
 
+        // --- NEW: Process Debuff Cleansing ---
+        if (appStats.getActiveDebuffs() != null && !appStats.getActiveDebuffs().isEmpty() && !task.isPointsClaimed()) {
+            boolean cleansed = false;
+            java.util.Iterator<Debuff> it = appStats.getActiveDebuffs().iterator();
+            while (it.hasNext()) {
+                Debuff d = it.next();
+                if (d.getRequiredTaskCompletions() > 0) {
+                    d.setCurrentTaskCompletions(d.getCurrentTaskCompletions() + 1);
+                    if (d.getCurrentTaskCompletions() >= d.getRequiredTaskCompletions()) {
+                        it.remove();
+                        cleansed = true;
+                        pushNotification("Debuff Cleansed!", "You have overcome: " + d.getName());
+                    }
+                }
+            }
+            if (cleansed) StorageManager.saveStats(appStats);
+        }
+
         if (hasModifiers && !task.isPointsClaimed()) {
             task.setPointsClaimed(true);
 
@@ -156,22 +169,40 @@ public class TaskActionHandler {
     public static void processRPGStats(TaskItem task, AppStats appStats, boolean isCompletion) {
         if (!appStats.isGlobalStatsEnabled()) return;
 
+        // Clean expired debuffs
+        if (appStats.getActiveDebuffs() != null) {
+            appStats.getActiveDebuffs().removeIf(d -> d.getExpiryDate() != null && java.time.LocalDateTime.now().isAfter(d.getExpiryDate()));
+        }
+
         for (CustomStat stat : appStats.getCustomStats()) {
             int capAmt = getStatValue(task.getStatCapRewards(), stat);
             int rewardAmt = getStatValue(task.getStatRewards(), stat);
             int costAmt = getStatValue(task.getStatCosts(), stat);
 
+            // --- Apply Debuff Modifiers to the calculations ---
+            int effectiveCap = stat.getMaxCap();
+            if (appStats.getActiveDebuffs() != null) {
+                for (Debuff d : appStats.getActiveDebuffs()) {
+                    if (d.getStatGainMultipliers().containsKey(stat.getId())) {
+                        rewardAmt = (int) Math.round(rewardAmt * d.getStatGainMultipliers().get(stat.getId()));
+                    }
+                    if (d.getStatCapReductions().containsKey(stat.getId())) {
+                        effectiveCap -= d.getStatCapReductions().get(stat.getId());
+                    }
+                }
+            }
+            effectiveCap = Math.max(1, effectiveCap);
+
             if (isCompletion) {
-                // 1. Apply Max Cap Increases FIRST
                 if (capAmt > 0 && stat.getMaxCap() > 0) {
                     stat.setMaxCap(stat.getMaxCap() + capAmt);
+                    effectiveCap += capAmt;
                 }
 
-                // 2. Apply Rewards (+XP)
                 if (rewardAmt > 0) {
                     int newAmount = stat.getCurrentAmount() + rewardAmt;
-                    if (stat.getMaxCap() > 0 && newAmount > stat.getMaxCap()) {
-                        newAmount = stat.getMaxCap();
+                    if (stat.getMaxCap() > 0 && newAmount > effectiveCap) {
+                        newAmount = effectiveCap;
                     }
                     stat.setCurrentAmount(newAmount);
                     stat.setLifetimeEarned(stat.getLifetimeEarned() + rewardAmt);
@@ -181,36 +212,31 @@ public class TaskActionHandler {
                     appStats.getLastStatGainDates().put(stat.getId(), java.time.LocalDate.now());
                 }
 
-                // 3. Apply Completion Costs (-XP)
                 if (costAmt > 0) {
                     stat.setCurrentAmount(Math.max(0, stat.getCurrentAmount() - costAmt));
                     stat.setLifetimeLost(stat.getLifetimeLost() + costAmt);
                 }
 
             } else {
-                // Rollback Logic
-
-                // 1. Remove Rewards (AND add to Lifetime Lost)
                 if (rewardAmt > 0) {
                     stat.setCurrentAmount(Math.max(0, stat.getCurrentAmount() - rewardAmt));
                     stat.setLifetimeLost(stat.getLifetimeLost() + rewardAmt);
                 }
 
-                // 2. Refund Costs
                 if (costAmt > 0) {
                     int newAmount = stat.getCurrentAmount() + costAmt;
-                    if (stat.getMaxCap() > 0 && newAmount > stat.getMaxCap()) {
-                        newAmount = stat.getMaxCap();
+                    if (stat.getMaxCap() > 0 && newAmount > effectiveCap) {
+                        newAmount = effectiveCap;
                     }
                     stat.setCurrentAmount(newAmount);
                 }
 
-                // 3. Rollback Max Cap Increases LAST
                 if (capAmt > 0 && stat.getMaxCap() > 0) {
                     stat.setMaxCap(Math.max(1, stat.getMaxCap() - capAmt));
+                    effectiveCap = Math.max(1, effectiveCap - capAmt);
 
-                    if (stat.getCurrentAmount() > stat.getMaxCap()) {
-                        stat.setCurrentAmount(stat.getMaxCap());
+                    if (stat.getCurrentAmount() > effectiveCap) {
+                        stat.setCurrentAmount(effectiveCap);
                     }
                 }
             }

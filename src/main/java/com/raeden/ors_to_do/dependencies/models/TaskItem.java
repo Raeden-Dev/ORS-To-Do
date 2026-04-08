@@ -204,6 +204,16 @@ public class TaskItem implements Serializable {
         this.statCapRewards = statCapRewards;
     }
 
+    // --- NEW: Repeating Task Properties ---
+    private boolean isRepeatingMode = false;
+    private int repetitionCount = 0;
+
+    public boolean isRepeatingMode() { return isRepeatingMode; }
+    public void setRepeatingMode(boolean repeatingMode) { isRepeatingMode = repeatingMode; }
+
+    public int getRepetitionCount() { return repetitionCount; }
+    public void setRepetitionCount(int repetitionCount) { this.repetitionCount = repetitionCount; }
+
     // --- NEW: Timed Task Target ---
     private int targetTimeMinutes = 0;
 

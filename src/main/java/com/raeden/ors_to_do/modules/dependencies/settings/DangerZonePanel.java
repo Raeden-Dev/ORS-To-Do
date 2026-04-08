@@ -40,9 +40,12 @@ public class DangerZonePanel extends VBox {
 
         // 1. Dynamic Section Wipe Buttons (Keep Red)
         for (SectionConfig section : appStats.getSections()) {
-            Button wipeBtn = createDangerButton("Wipe " + section.getName(), "#FF6666");
-            wipeBtn.setOnAction(e -> wipeList(globalDatabase, section.getId(), refreshCallback));
-            wipePane.getChildren().add(wipeBtn);
+            // --- FIXED: Prevent Separators from generating Wipe Buttons ---
+            if (!section.isSeparator()) {
+                Button wipeBtn = createDangerButton("Wipe " + section.getName(), "#FF6666");
+                wipeBtn.setOnAction(e -> wipeList(globalDatabase, section.getId(), refreshCallback));
+                wipePane.getChildren().add(wipeBtn);
+            }
         }
 
         // 2. Wipe Archive Button (Purple)
@@ -148,7 +151,6 @@ public class DangerZonePanel extends VBox {
         wipePane.getChildren().add(fullResetBtn);
     }
 
-    // --- MODIFIED: Now accepts a colorHex string ---
     private Button createDangerButton(String text, String colorHex) {
         Button btn = new Button(text);
         btn.setPrefWidth(BUTTON_WIDTH);

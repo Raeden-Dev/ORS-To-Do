@@ -12,9 +12,6 @@ import java.util.HashMap;
 public class AppStats implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // ==========================================
-    // 1. GENERAL APP SETTINGS & BEHAVIORS
-    // ==========================================
     private Boolean runInBackground = null;
     private boolean runOnStartup = false;
     private boolean alwaysOnTop = false;
@@ -25,8 +22,10 @@ public class AppStats implements Serializable {
     private int taskFontSize = 14;
     private String checkboxTheme = "Default";
     private int zenModeThreshold = 20;
-    private int focusInactivityThreshold = 5; // 0 = Disabled, otherwise in Minutes
+    private int focusInactivityThreshold = 5;
     private int minDailyCompletionPercent = 100;
+
+    private int deadlineNotificationFrequencyHours = 24;
 
     private boolean matchTitleColor = false;
     private Boolean matchDailyRectColor = null;
@@ -36,9 +35,6 @@ public class AppStats implements Serializable {
     private String archiveMenuText = "Archive Task";
     private String deleteMenuText = "Delete";
 
-    // ==========================================
-    // 2. SIDEBAR & UI NAVIGATION STRINGS
-    // ==========================================
     private String navQuickText = "Quick To-Do";
     private String navDailyText = "Daily To-Do";
     private String navWorkText = "Work List";
@@ -52,9 +48,6 @@ public class AppStats implements Serializable {
     private String navArchiveColor = "#C586C0";
     private String navSettingsColor = "#858585";
 
-    // ==========================================
-    // 3. RPG SYSTEM & ANALYTICS
-    // ==========================================
     private boolean globalStatsEnabled = false;
     private int globalScore = 0;
     private int currentStreak = 0;
@@ -65,17 +58,10 @@ public class AppStats implements Serializable {
     private LocalDateTime analyticsResetTimestamp;
 
     private List<CustomStat> customStats = new ArrayList<>();
-    private Map<String, Integer> statXpMap = new HashMap<>(); // <StatID, CurrentXP>
+    private Map<String, Integer> statXpMap = new HashMap<>();
     private Map<String, LocalDate> lastStatGainDates = new HashMap<>();
-
     private String highestStreakSection = "None";
 
-    public String getHighestStreakSection() { return highestStreakSection != null ? highestStreakSection : "None"; }
-    public void setHighestStreakSection(String highestStreakSection) { this.highestStreakSection = highestStreakSection; }
-
-    // ==========================================
-    // 4. TASK CONFIGURATIONS & DATA
-    // ==========================================
     private List<SectionConfig> sections = new ArrayList<>();
     private List<SectionConfig> sectionPresets = new ArrayList<>();
     private List<String> requireConfirmationSections = new ArrayList<>();
@@ -87,9 +73,10 @@ public class AppStats implements Serializable {
     ));
     private List<DailyTemplate> baseDailies = new ArrayList<>();
 
-    // ==========================================
-    // 5. LOGS, HISTORIES & DRAFTS
-    // ==========================================
+    // --- NEW: DEBUFF SYSTEM ---
+    private List<Debuff> activeDebuffs = new ArrayList<>();
+    private List<Debuff> debuffTemplates = new ArrayList<>();
+
     private LocalDate lastOpenedDate = LocalDate.now();
     private Map<LocalDate, Double> historyLog = new LinkedHashMap<>();
     private Map<LocalDate, int[]> advancedHistoryLog = new LinkedHashMap<>();
@@ -97,126 +84,83 @@ public class AppStats implements Serializable {
     private String brainDumpText = "";
     private Map<OriginModule, String> pendingDrafts = new HashMap<>();
 
-
-    // ==========================================
-    // GETTERS & SETTERS: Group 1 (App Settings)
-    // ==========================================
     public boolean isRunInBackground() { return runInBackground == null ? true : runInBackground; }
     public void setRunInBackground(boolean runInBackground) { this.runInBackground = runInBackground; }
-
     public boolean isRunOnStartup() { return runOnStartup; }
     public void setRunOnStartup(boolean runOnStartup) { this.runOnStartup = runOnStartup; }
-
     public boolean isAlwaysOnTop() { return alwaysOnTop; }
     public void setAlwaysOnTop(boolean alwaysOnTop) { this.alwaysOnTop = alwaysOnTop; }
-
     public boolean isEnableNotifications() { return enableNotifications; }
     public void setEnableNotifications(boolean enableNotifications) { this.enableNotifications = enableNotifications; }
-
     public boolean isEnableTextToTask() { return enableTextToTask; }
     public void setEnableTextToTask(boolean enableTextToTask) { this.enableTextToTask = enableTextToTask; }
-
     public boolean isShowSidebarTaskCount() { return showSidebarTaskCount; }
     public void setShowSidebarTaskCount(boolean showSidebarTaskCount) { this.showSidebarTaskCount = showSidebarTaskCount; }
-
     public int getTaskFontSize() { return taskFontSize == 0 ? 14 : taskFontSize; }
     public void setTaskFontSize(int taskFontSize) { this.taskFontSize = taskFontSize; }
-
     public String getCheckboxTheme() { return checkboxTheme == null ? "Default" : checkboxTheme; }
     public void setCheckboxTheme(String checkboxTheme) { this.checkboxTheme = checkboxTheme; }
-
     public int getZenModeThreshold() { return zenModeThreshold <= 0 ? 20 : zenModeThreshold; }
     public void setZenModeThreshold(int zenModeThreshold) { this.zenModeThreshold = zenModeThreshold; }
-
     public int getFocusInactivityThreshold() { return focusInactivityThreshold; }
     public void setFocusInactivityThreshold(int focusInactivityThreshold) { this.focusInactivityThreshold = focusInactivityThreshold; }
-
     public int getMinDailyCompletionPercent() { return minDailyCompletionPercent < 10 ? 100 : minDailyCompletionPercent; }
     public void setMinDailyCompletionPercent(int minDailyCompletionPercent) { this.minDailyCompletionPercent = minDailyCompletionPercent; }
-
+    public int getDeadlineNotificationFrequencyHours() { return deadlineNotificationFrequencyHours <= 0 ? 1 : deadlineNotificationFrequencyHours; }
+    public void setDeadlineNotificationFrequencyHours(int hrs) { this.deadlineNotificationFrequencyHours = hrs; }
     public boolean isMatchTitleColor() { return matchTitleColor; }
     public void setMatchTitleColor(boolean matchTitleColor) { this.matchTitleColor = matchTitleColor; }
-
     public boolean isMatchDailyRectColor() { return matchDailyRectColor != null && matchDailyRectColor; }
     public void setMatchDailyRectColor(boolean matchDailyRectColor) { this.matchDailyRectColor = matchDailyRectColor; }
-
     public boolean isMatchPriorityOutline() { return matchPriorityOutline; }
     public void setMatchPriorityOutline(boolean matchPriorityOutline) { this.matchPriorityOutline = matchPriorityOutline; }
-
     public String getEditMenuText() { return editMenuText; }
     public void setEditMenuText(String editMenuText) { this.editMenuText = editMenuText; }
-
     public String getArchiveMenuText() { return archiveMenuText; }
     public void setArchiveMenuText(String archiveMenuText) { this.archiveMenuText = archiveMenuText; }
-
     public String getDeleteMenuText() { return deleteMenuText; }
     public void setDeleteMenuText(String deleteMenuText) { this.deleteMenuText = deleteMenuText; }
-
-
-    // ==========================================
-    // GETTERS & SETTERS: Group 2 (UI Navigation)
-    // ==========================================
     public String getNavQuickText() { return navQuickText; }
     public void setNavQuickText(String navQuickText) { this.navQuickText = navQuickText; }
-
     public String getNavDailyText() { return navDailyText; }
     public void setNavDailyText(String navDailyText) { this.navDailyText = navDailyText; }
-
     public String getNavWorkText() { return navWorkText; }
     public void setNavWorkText(String navWorkText) { this.navWorkText = navWorkText; }
-
     public String getNavFocusText() { return navFocusText; }
     public void setNavFocusText(String navFocusText) { this.navFocusText = navFocusText; }
-
     public String getNavAnalyticsText() { return navAnalyticsText != null ? navAnalyticsText : "Analytics"; }
     public void setNavAnalyticsText(String navAnalyticsText) { this.navAnalyticsText = navAnalyticsText; }
-
     public String getNavArchiveText() { return navArchiveText; }
     public void setNavArchiveText(String navArchiveText) { this.navArchiveText = navArchiveText; }
-
     public String getNavSettingsText() { return navSettingsText; }
     public void setNavSettingsText(String navSettingsText) { this.navSettingsText = navSettingsText; }
-
     public String getNavFocusColor() { return navFocusColor != null ? navFocusColor : "#E06666"; }
     public void setNavFocusColor(String navFocusColor) { this.navFocusColor = navFocusColor; }
-
     public String getNavAnalyticsColor() { return navAnalyticsColor != null ? navAnalyticsColor : "#F2C94C"; }
     public void setNavAnalyticsColor(String navAnalyticsColor) { this.navAnalyticsColor = navAnalyticsColor; }
-
     public String getNavArchiveColor() { return navArchiveColor != null ? navArchiveColor : "#C586C0"; }
     public void setNavArchiveColor(String navArchiveColor) { this.navArchiveColor = navArchiveColor; }
-
     public String getNavSettingsColor() { return navSettingsColor != null ? navSettingsColor : "#858585"; }
     public void setNavSettingsColor(String navSettingsColor) { this.navSettingsColor = navSettingsColor; }
-
-
-    // ==========================================
-    // GETTERS & SETTERS: Group 3 (RPG & Stats)
-    // ==========================================
     public boolean isGlobalStatsEnabled() { return globalStatsEnabled; }
     public void setGlobalStatsEnabled(boolean globalStatsEnabled) { this.globalStatsEnabled = globalStatsEnabled; }
-
     public int getGlobalScore() { return globalScore; }
     public void setGlobalScore(int globalScore) { this.globalScore = globalScore; }
-
     public int getCurrentStreak() { return currentStreak; }
     public void setCurrentStreak(int currentStreak) {
         this.currentStreak = currentStreak;
         if (this.currentStreak > this.highestStreak) this.highestStreak = this.currentStreak;
     }
-
     public int getHighestStreak() { return highestStreak; }
     public void setHighestStreak(int highestStreak) { this.highestStreak = highestStreak; }
-
+    public String getHighestStreakSection() { return highestStreakSection != null ? highestStreakSection : "None"; }
+    public void setHighestStreakSection(String highestStreakSection) { this.highestStreakSection = highestStreakSection; }
     public int getLifetimeDeletedTasks() { return lifetimeDeletedTasks; }
     public void setLifetimeDeletedTasks(int lifetimeDeletedTasks) { this.lifetimeDeletedTasks = lifetimeDeletedTasks; }
-
     public int getLifetimePointsSpent() { return lifetimePointsSpent; }
     public void setLifetimePointsSpent(int lifetimePointsSpent) { this.lifetimePointsSpent = lifetimePointsSpent; }
-
     public int getRewardsClaimed() { return rewardsClaimed; }
     public void setRewardsClaimed(int rewardsClaimed) { this.rewardsClaimed = rewardsClaimed; }
-
     public LocalDateTime getAnalyticsResetTimestamp() { return analyticsResetTimestamp; }
     public void setAnalyticsResetTimestamp(LocalDateTime analyticsResetTimestamp) { this.analyticsResetTimestamp = analyticsResetTimestamp; }
 
@@ -225,6 +169,19 @@ public class AppStats implements Serializable {
         return customStats;
     }
     public void setCustomStats(List<CustomStat> customStats) { this.customStats = customStats; }
+
+    // --- NEW: Debuff Getters ---
+    public List<Debuff> getActiveDebuffs() {
+        if (activeDebuffs == null) activeDebuffs = new ArrayList<>();
+        return activeDebuffs;
+    }
+    public void setActiveDebuffs(List<Debuff> activeDebuffs) { this.activeDebuffs = activeDebuffs; }
+
+    public List<Debuff> getDebuffTemplates() {
+        if (debuffTemplates == null) debuffTemplates = new ArrayList<>();
+        return debuffTemplates;
+    }
+    public void setDebuffTemplates(List<Debuff> debuffTemplates) { this.debuffTemplates = debuffTemplates; }
 
     public Map<String, Integer> getStatXpMap() {
         if (statXpMap == null) statXpMap = new HashMap<>();
@@ -237,10 +194,6 @@ public class AppStats implements Serializable {
         return lastStatGainDates;
     }
 
-
-    // ==========================================
-    // GETTERS & SETTERS: Group 4 (Task Configs)
-    // ==========================================
     public List<SectionConfig> getSections() {
         if (sections == null) sections = new ArrayList<>();
         return sections;
@@ -270,13 +223,8 @@ public class AppStats implements Serializable {
         return baseDailies;
     }
 
-
-    // ==========================================
-    // GETTERS & SETTERS: Group 5 (Logs & History)
-    // ==========================================
     public LocalDate getLastOpenedDate() { return lastOpenedDate; }
     public void setLastOpenedDate(LocalDate lastOpenedDate) { this.lastOpenedDate = lastOpenedDate; }
-
     public Map<LocalDate, Double> getHistoryLog() { return historyLog; }
     public Map<LocalDate, int[]> getAdvancedHistoryLog() { return advancedHistoryLog; }
 
@@ -292,18 +240,15 @@ public class AppStats implements Serializable {
     public Map<OriginModule, String> getPendingDrafts() { return pendingDrafts; }
 
     private boolean expandStatMiniCards = false;
-
     public boolean isExpandStatMiniCards() { return expandStatMiniCards; }
     public void setExpandStatMiniCards(boolean expandStatMiniCards) { this.expandStatMiniCards = expandStatMiniCards; }
 
     private int preventEditingHours = 0;
-
     public int getPreventEditingHours() { return preventEditingHours; }
     public void setPreventEditingHours(int preventEditingHours) { this.preventEditingHours = preventEditingHours; }
 
-    // --- NEW: Urge Surfing Settings ---
     private boolean enableUrgeButton = true;
-    private int urgeSessionDurationSeconds = 120; // Default 2 minutes
+    private int urgeSessionDurationSeconds = 120;
     private List<String> urgeQuotes = new ArrayList<>();
 
     public boolean isEnableUrgeButton() { return enableUrgeButton; }
@@ -312,9 +257,28 @@ public class AppStats implements Serializable {
     public int getUrgeSessionDurationSeconds() { return urgeSessionDurationSeconds; }
     public void setUrgeSessionDurationSeconds(int urgeSessionDurationSeconds) { this.urgeSessionDurationSeconds = urgeSessionDurationSeconds; }
 
+    private String userBirthDateStr = "2005-01-01";
+    private int userTargetAge = 80;
+    private int lifetimeDeletedNotes = 0;
+    private int lifetimeFullFocusSessions = 0;
+
+    public java.time.LocalDate getUserBirthDate() {
+        try { return java.time.LocalDate.parse(userBirthDateStr); }
+        catch (Exception e) { return null; }
+    }
+    public void setUserBirthDate(java.time.LocalDate date) { this.userBirthDateStr = date != null ? date.toString() : null; }
+
+    public int getUserTargetAge() { return userTargetAge; }
+    public void setUserTargetAge(int userTargetAge) { this.userTargetAge = userTargetAge; }
+
+    public int getLifetimeDeletedNotes() { return lifetimeDeletedNotes; }
+    public void setLifetimeDeletedNotes(int lifetimeDeletedNotes) { this.lifetimeDeletedNotes = lifetimeDeletedNotes; }
+
+    public int getLifetimeFullFocusSessions() { return lifetimeFullFocusSessions; }
+    public void setLifetimeFullFocusSessions(int lifetimeFullFocusSessions) { this.lifetimeFullFocusSessions = lifetimeFullFocusSessions; }
+
     public List<String> getUrgeQuotes() {
         if (urgeQuotes == null) urgeQuotes = new ArrayList<>();
-        // Load default quotes if the user hasn't set any yet
         if (urgeQuotes.isEmpty()) {
             urgeQuotes.add("This urge is just a feeling, and feelings pass.");
             urgeQuotes.add("Ride the wave. You don't have to act on it.");
@@ -324,9 +288,18 @@ public class AppStats implements Serializable {
         return urgeQuotes;
     }
     public void setUrgeQuotes(List<String> urgeQuotes) { this.urgeQuotes = urgeQuotes; }
-    // ==========================================
-    // HELPER METHODS
-    // ==========================================
+
+    private int focusRewardPoints = 0;
+    private java.util.Map<String, Integer> focusStatRewards = new java.util.HashMap<>();
+
+    public int getFocusRewardPoints() { return focusRewardPoints; }
+    public void setFocusRewardPoints(int focusRewardPoints) { this.focusRewardPoints = focusRewardPoints; }
+
+    public java.util.Map<String, Integer> getFocusStatRewards() {
+        if (focusStatRewards == null) focusStatRewards = new java.util.HashMap<>();
+        return focusStatRewards;
+    }
+    public void setFocusStatRewards(java.util.Map<String, Integer> focusStatRewards) { this.focusStatRewards = focusStatRewards; }
 
     public void addHistoryRecord(LocalDate date, double completionPercentage) {
         historyLog.put(date, completionPercentage);
@@ -349,12 +322,7 @@ public class AppStats implements Serializable {
         }
     }
 
-    /**
-     * Creates a deep copy of all variables from another AppStats object.
-     * Updated to include all 12 previously missing variables.
-     */
     public void copyFrom(AppStats other) {
-        // Group 1: General Settings
         this.runInBackground = other.runInBackground;
         this.runOnStartup = other.runOnStartup;
         this.alwaysOnTop = other.alwaysOnTop;
@@ -372,8 +340,8 @@ public class AppStats implements Serializable {
         this.editMenuText = other.editMenuText;
         this.archiveMenuText = other.archiveMenuText;
         this.deleteMenuText = other.deleteMenuText;
+        this.deadlineNotificationFrequencyHours = other.deadlineNotificationFrequencyHours;
 
-        // Group 2: UI Navigation Strings & Colors
         this.navQuickText = other.navQuickText;
         this.navDailyText = other.navDailyText;
         this.navWorkText = other.navWorkText;
@@ -386,7 +354,6 @@ public class AppStats implements Serializable {
         this.navArchiveColor = other.navArchiveColor;
         this.navSettingsColor = other.navSettingsColor;
 
-        // Group 3: RPG System & Analytics
         this.globalStatsEnabled = other.globalStatsEnabled;
         this.globalScore = other.globalScore;
         this.currentStreak = other.currentStreak;
@@ -396,19 +363,20 @@ public class AppStats implements Serializable {
         this.rewardsClaimed = other.rewardsClaimed;
         this.analyticsResetTimestamp = other.analyticsResetTimestamp;
 
-        // Deep copy Maps & Lists for Stats
         this.customStats = new ArrayList<>(other.customStats);
         this.statXpMap = new HashMap<>(other.statXpMap);
         this.lastStatGainDates = new HashMap<>(other.lastStatGainDates);
 
-        // Group 4: Task Configs & Data
+        // --- Copy Debuffs ---
+        this.activeDebuffs = new ArrayList<>(other.getActiveDebuffs());
+        this.debuffTemplates = new ArrayList<>(other.getDebuffTemplates());
+
         this.sections = new ArrayList<>(other.sections);
         this.sectionPresets = new ArrayList<>(other.sectionPresets);
         this.requireConfirmationSections = new ArrayList<>(other.requireConfirmationSections);
         this.customPriorities = new ArrayList<>(other.customPriorities);
         this.baseDailies = new ArrayList<>(other.baseDailies);
 
-        // Group 5: Logs, Histories & Drafts
         this.lastOpenedDate = other.lastOpenedDate;
         this.historyLog = new LinkedHashMap<>(other.historyLog);
         this.advancedHistoryLog = new LinkedHashMap<>(other.advancedHistoryLog);

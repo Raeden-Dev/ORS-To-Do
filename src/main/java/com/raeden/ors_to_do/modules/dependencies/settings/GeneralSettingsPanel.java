@@ -98,9 +98,9 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
 
-        // --- NEW: Urge Settings Launch Button ---
+        // --- FIXED: Explicitly set text-fill to white to override any generic label/button CSS ---
         Button urgeSettingsBtn = new Button("Configure Urge Surfing...");
-        urgeSettingsBtn.getStyleClass().add("custom-menu-btn");
+        urgeSettingsBtn.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; -fx-cursor: hand; -fx-text-fill: white; -fx-font-weight: bold;");
         urgeSettingsBtn.setOnAction(e -> {
             UrgeSettingsDialog.show(appStats, () -> {
                 StorageManager.saveStats(appStats);
@@ -201,7 +201,6 @@ public class GeneralSettingsPanel extends VBox {
                 createSettingRow("Task Font Size", "Adjusts the size of the text across all task cards.", fontSizeSpinner, "#569CD6"),
                 createSettingRow("Checkbox Theme", "Changes the visual style and color of the completion checkboxes.", themeBox, "#DCDCAA"),
                 createSettingRow("Zen Mode", "Number of active tasks required before Zen Mode becomes available.", zenSpinner, "#FF6666"),
-                // --- NEW: Urge Surfing Setting Row ---
                 createSettingRow("Urge Surfing Tool", "Configure the breathing session duration and custom quotes to help resist bad habits.", urgeSettingsBtn, "#4EC9B0"),
                 createSettingRow("Prevent Editing (Hours)", "Number of hours after creation before a task is permanently locked from being edited. (0 = Disabled)", preventEditingSpinner, "#FF8C00"),
                 createSettingRow("Require Completion Confirmation", "Prompts for confirmation before completing tasks in selected sections.", confirmMenu, "#FF6666"),

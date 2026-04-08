@@ -1,6 +1,7 @@
 package com.raeden.ors_to_do.modules;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
+import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.SubTask;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
@@ -41,11 +42,9 @@ public class ArchivedModule extends BorderPane {
         Button clearArchiveBtn = new Button("Empty Archive");
         clearArchiveBtn.setStyle("-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         clearArchiveBtn.setOnAction(e -> {
-            // --- NEW: 3-way Export & Delete Prompt ---
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Would you like to export your archived tasks to a text file before deleting them permanently?", ButtonType.YES, ButtonType.NO, ButtonType.CANCEL);
             alert.setHeaderText("Export Archive Data?");
 
-            // Inject dark theme
             TaskDialogs.styleDialog(alert);
 
             alert.showAndWait().ifPresent(res -> {
@@ -72,8 +71,7 @@ public class ArchivedModule extends BorderPane {
                             ex.printStackTrace();
                         }
                     } else {
-                        // Abort deletion if the user cancelled the file save dialog
-                        return;
+                        return; // Abort deletion if user cancels file save
                     }
                 }
 
@@ -178,6 +176,7 @@ public class ArchivedModule extends BorderPane {
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
+        // Render Global Points
         if (task.getRewardPoints() > 0 || task.getPenaltyPoints() > 0) {
             String badgeStr = "";
             if (task.getRewardPoints() > 0) badgeStr += "🏆 +" + task.getRewardPoints() + "  ";
@@ -189,6 +188,7 @@ public class ArchivedModule extends BorderPane {
             mainRow.getChildren().add(ptsLabel);
         }
 
+        // Render Focus Time
         if (task.getTimeSpentSeconds() > 0) {
             int mins = task.getTimeSpentSeconds() / 60;
             Label timeLabel = new Label("⏱ " + mins + "m");
@@ -197,9 +197,64 @@ public class ArchivedModule extends BorderPane {
             mainRow.getChildren().add(timeLabel);
         }
 
+        completeRow.getChildren().add(mainRow);
+
+        // --- NEW: Render RPG Stats in Archive ---
+        if (appStats.isGlobalStatsEnabled()) {
+            FlowPane statsFlow = new FlowPane(10, 5);
+            statsFlow.setPadding(new Insets(0, 10, 10, 40)); // Indent to align with task text
+            boolean hasAnyStats = false;
+
+            String baseLabelStyle = "-fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 10; -fx-border-radius: 10; -fx-font-weight: bold;";
+
+            for (CustomStat stat : appStats.getCustomStats()) {
+                String statId = stat.getId();
+
+                boolean hasReward = task.getStatRewards() != null && task.getStatRewards().containsKey(statId);
+                boolean hasCapReward = task.getStatCapRewards() != null && task.getStatCapRewards().containsKey(statId);
+                boolean hasCost = task.getStatCosts() != null && task.getStatCosts().containsKey(statId);
+                boolean hasPenalty = task.getStatPenalties() != null && task.getStatPenalties().containsKey(statId);
+
+                if (hasReward || hasCapReward || hasCost || hasPenalty) {
+                    hasAnyStats = true;
+
+                    String statIcon = (stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None")) ? stat.getIconSymbol() + " " : "";
+                    String bgColor = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
+
+                    String commonStyle = baseLabelStyle + " -fx-background-color: " + bgColor + ";";
+                    String rewardStyle = "-fx-text-fill: #4EC9B0; -fx-border-color: #4EC9B0; " + commonStyle;
+                    String capStyle = "-fx-text-fill: #C586C0; -fx-border-color: #C586C0; " + commonStyle;
+                    String costStyle = "-fx-text-fill: #FF8C00; -fx-border-color: #FF8C00; " + commonStyle;
+                    String penaltyStyle = "-fx-text-fill: #E06666; -fx-border-color: #E06666; " + commonStyle;
+
+                    if (hasCapReward) {
+                        Label lbl = new Label("▲ " + task.getStatCapRewards().get(statId) + " Max " + stat.getName());
+                        lbl.setStyle(capStyle); statsFlow.getChildren().add(lbl);
+                    }
+                    if (hasReward) {
+                        Label lbl = new Label("+" + task.getStatRewards().get(statId) + " " + stat.getName());
+                        lbl.setStyle(rewardStyle); statsFlow.getChildren().add(lbl);
+                    }
+                    if (hasCost) {
+                        Label lbl = new Label("~" + task.getStatCosts().get(statId) + " " + stat.getName());
+                        lbl.setStyle(costStyle); statsFlow.getChildren().add(lbl);
+                    }
+                    if (hasPenalty) {
+                        Label lbl = new Label("-" + task.getStatPenalties().get(statId) + " " + stat.getName());
+                        lbl.setStyle(penaltyStyle); statsFlow.getChildren().add(lbl);
+                    }
+                }
+            }
+
+            if (hasAnyStats) {
+                completeRow.getChildren().add(statsFlow);
+            }
+        }
+
+        // Render SubTasks
         if (!task.getSubTasks().isEmpty()) {
             VBox subTaskBox = new VBox(5);
-            subTaskBox.setPadding(new Insets(0, 10, 10, 40));
+            subTaskBox.setPadding(new Insets(0, 10, 10, 40)); // Also indented
 
             for (SubTask sub : task.getSubTasks()) {
                 Label subText = new Label("- " + sub.getTextContent());
@@ -209,9 +264,7 @@ public class ArchivedModule extends BorderPane {
                 subText.setStyle("-fx-font-size: " + subSize + "px; " + strike + "-fx-text-fill: #858585;");
                 subTaskBox.getChildren().add(subText);
             }
-            completeRow.getChildren().addAll(mainRow, subTaskBox);
-        } else {
-            completeRow.getChildren().add(mainRow);
+            completeRow.getChildren().add(subTaskBox);
         }
 
         attachContextMenu(completeRow, task);

@@ -12,6 +12,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.util.HashMap;
 import java.util.List;
 
 public class TemplateManagerPanel extends VBox {
@@ -130,8 +131,24 @@ public class TemplateManagerPanel extends VBox {
                     if (!st.trim().isEmpty()) newTask.getSubTasks().add(new SubTask(st.trim()));
                 }
             }
+
+            // --- FIXED: Apply All Styling and Repetition Properties ---
             if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+            if (template.getCustomOutlineColor() != null) newTask.setCustomOutlineColor(template.getCustomOutlineColor());
+            if (template.getCustomSideboxColor() != null) newTask.setCustomSideboxColor(template.getCustomSideboxColor());
+
+            newTask.setRepeatingMode(template.isRepeatingMode());
+            newTask.setRepetitionCount(template.getRepetitionCount());
+
             newTask.setOptional(template.isOptional());
+
+            if (selected.isEnableStatsSystem()) {
+                if (template.getStatRewards() != null) newTask.setStatRewards(new HashMap<>(template.getStatRewards()));
+                if (template.getStatCapRewards() != null) newTask.setStatCapRewards(new HashMap<>(template.getStatCapRewards()));
+                if (template.getStatCosts() != null) newTask.setStatCosts(new HashMap<>(template.getStatCosts()));
+                if (template.getStatPenalties() != null) newTask.setStatPenalties(new HashMap<>(template.getStatPenalties()));
+                if (template.getStatRequirements() != null) newTask.setStatRequirements(new HashMap<>(template.getStatRequirements()));
+            }
 
             globalDatabase.add(newTask);
         }

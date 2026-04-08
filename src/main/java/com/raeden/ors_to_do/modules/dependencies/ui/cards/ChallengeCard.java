@@ -15,6 +15,7 @@ import javafx.scene.paint.Color;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +33,7 @@ public class ChallengeCard extends VBox {
         VBox requirementsBox = new VBox(5);
         requirementsBox.setPadding(new Insets(10, 0, 0, 0));
 
-        // 1. Check Stat Requirements
+        // 1. Check Stat Requirements (Unlock Conditions)
         for (Map.Entry<String, Integer> req : challengeTask.getStatRequirements().entrySet()) {
             CustomStat foundStat = appStats.getCustomStats().stream().filter(s -> s.getId().equals(req.getKey())).findFirst().orElse(null);
             if (foundStat != null) {
@@ -69,6 +70,13 @@ public class ChallengeCard extends VBox {
             }
         }
 
+        // --- NEW: Deadline Check ---
+        boolean isExpired = false;
+        if (challengeTask.getDeadline() != null && !isCompleted) {
+            isExpired = LocalDateTime.now().isAfter(challengeTask.getDeadline());
+            if (isExpired) meetsRequirements = false;
+        }
+
         // 3. 15-Minute Setup Phase
         LocalDateTime creationTime = challengeTask.getDateCreated();
         boolean isSetupPhase = LocalDateTime.now().isBefore(creationTime.plusMinutes(15));
@@ -87,12 +95,13 @@ public class ChallengeCard extends VBox {
             requirementsBox.getChildren().add(0, compLbl);
         }
 
-        // Styling
+        // Dynamic Custom Colors
         String bgColor = challengeTask.getColorHex() != null && !challengeTask.getColorHex().equals("transparent") ? challengeTask.getColorHex() : "#2D2D30";
         String outlineColor = challengeTask.getCustomOutlineColor() != null && !challengeTask.getCustomOutlineColor().equals("transparent") ? challengeTask.getCustomOutlineColor() : "#FF8C00";
         String iconColor = challengeTask.getIconColor() != null && !challengeTask.getIconColor().equals("transparent") ? challengeTask.getIconColor() : "#FFFFFF";
         String iconStr = (challengeTask.getIconSymbol() != null && !challengeTask.getIconSymbol().equals("None")) ? challengeTask.getIconSymbol() + " " : "⚔️ ";
 
+        // Visual Styling & Glow
         if (isCompleted) {
             setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 15; -fx-background-radius: 5; -fx-border-color: " + outlineColor + "; -fx-border-width: 2; -fx-border-radius: 5; -fx-effect: dropshadow(three-pass-box, " + outlineColor + ", 10, 0.2, 0, 0);");
         } else if (!isLocked) {
@@ -111,6 +120,27 @@ public class ChallengeCard extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        // --- NEW: Render Deadline Next to Type Label ---
+        if (challengeTask.getDeadline() != null && !isCompleted) {
+            Label timeLbl = new Label();
+            Duration duration = Duration.between(LocalDateTime.now(), challengeTask.getDeadline());
+
+            if (isExpired) {
+                timeLbl.setText("Expired!");
+                timeLbl.setStyle("-fx-text-fill: #FF4444; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: #331A1A; -fx-padding: 2 6; -fx-background-radius: 3; -fx-border-color: #FF4444; -fx-border-radius: 3;");
+            } else {
+                long days = duration.toDays();
+                long hours = duration.toHours() % 24;
+                long minutes = duration.toMinutes() % 60;
+
+                if (days > 0) timeLbl.setText("Expires in " + days + "d " + hours + "h");
+                else timeLbl.setText("Expires in " + hours + "h " + minutes + "m");
+
+                timeLbl.setStyle("-fx-text-fill: #E0E0E0; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: #3E3E42; -fx-padding: 2 6; -fx-background-radius: 3;");
+            }
+            header.getChildren().add(timeLbl);
+        }
+
         Label typeLabel = new Label("CHALLENGE");
         typeLabel.setStyle("-fx-text-fill: " + outlineColor + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-border-color: " + outlineColor + "; -fx-border-radius: 3; -fx-padding: 2 5;");
 
@@ -121,14 +151,14 @@ public class ChallengeCard extends VBox {
 
         header.getChildren().addAll(nameLabel, spacer, typeLabel, editBtn);
 
-        // --- LOOT BOX ---
-        HBox lootBox = new HBox(10);
+        // --- FIXED: LOOT BOX (Changed to FlowPane to prevent truncation) ---
+        FlowPane lootBox = new FlowPane(10, 5);
         lootBox.setAlignment(Pos.CENTER_LEFT);
         boolean hasLoot = false;
 
         if (challengeTask.getRewardPoints() > 0) {
             Label l = new Label("+" + challengeTask.getRewardPoints() + " Global Pts");
-            l.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 12px; -fx-font-weight: bold;");
+            l.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-color: #332B00; -fx-padding: 2 6; -fx-background-radius: 5;");
             lootBox.getChildren().add(l);
             hasLoot = true;
         }
@@ -136,15 +166,19 @@ public class ChallengeCard extends VBox {
         for (CustomStat s : appStats.getCustomStats()) {
             int rVal = challengeTask.getStatRewards().getOrDefault(s.getId(), 0);
             int cVal = challengeTask.getStatCapRewards().getOrDefault(s.getId(), 0);
+
+            // --- FIXED: Assigning custom colors to stat labels ---
+            String txtColor = s.getTextColor() != null ? s.getTextColor() : "#4EC9B0";
+
             if (rVal > 0) {
                 Label l = new Label("+" + rVal + " " + s.getName() + " XP");
-                l.setStyle("-fx-text-fill: #4EC9B0; -fx-font-size: 12px; -fx-font-weight: bold;");
+                l.setStyle("-fx-text-fill: " + txtColor + "; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-color: #1E1E1E; -fx-padding: 2 6; -fx-background-radius: 5;");
                 lootBox.getChildren().add(l);
                 hasLoot = true;
             }
             if (cVal > 0) {
                 Label l = new Label("+" + cVal + " " + s.getName() + " Cap");
-                l.setStyle("-fx-text-fill: #C586C0; -fx-font-size: 12px; -fx-font-weight: bold;");
+                l.setStyle("-fx-text-fill: #C586C0; -fx-font-size: 12px; -fx-font-weight: bold; -fx-background-color: #1E1E1E; -fx-padding: 2 6; -fx-background-radius: 5;");
                 lootBox.getChildren().add(l);
                 hasLoot = true;
             }
@@ -154,7 +188,7 @@ public class ChallengeCard extends VBox {
         if (hasLoot) {
             Label lootTitle = new Label("🎁 Rewards:");
             lootTitle.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 11px;");
-            HBox wrap = new HBox(5, lootTitle, lootBox);
+            VBox wrap = new VBox(5, lootTitle, lootBox);
             wrap.setAlignment(Pos.CENTER_LEFT);
             centerBox.getChildren().add(wrap);
         }
@@ -210,7 +244,7 @@ public class ChallengeCard extends VBox {
             getChildren().addAll(new Separator(), requirementsBox);
         }
 
-        // --- NEW: Context Menu for Deletion ---
+        // --- Context Menu for Deletion ---
         ContextMenu contextMenu = new ContextMenu();
         MenuItem deleteItem = new MenuItem("Permanently Delete Challenge");
         deleteItem.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
@@ -249,6 +283,33 @@ public class ChallengeCard extends VBox {
         descInput.setPrefRowCount(3);
         content.getChildren().addAll(new Label("Challenge Name:"), nameInput, new Label("Description & Rules:"), descInput);
 
+        // --- NEW: Deadline Config for Challenges ---
+        content.getChildren().add(new Separator());
+        Label timeLabel = new Label("Challenge Timeline:");
+        timeLabel.setStyle("-fx-text-fill: #E0E0E0; -fx-font-weight: bold;");
+        content.getChildren().add(timeLabel);
+
+        GridPane timeGrid = new GridPane();
+        timeGrid.setHgap(15); timeGrid.setVgap(10);
+
+        DatePicker datePicker = new DatePicker();
+        datePicker.setMaxWidth(Double.MAX_VALUE);
+        if (challengeTask.getDeadline() != null) datePicker.setValue(challengeTask.getDeadline().toLocalDate());
+
+        TextField timePicker = new TextField();
+        timePicker.setMaxWidth(Double.MAX_VALUE);
+        timePicker.setPromptText("HH:mm (24h)");
+        if (challengeTask.getDeadline() != null) timePicker.setText(challengeTask.getDeadline().toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")));
+
+        timePicker.setDisable(datePicker.getValue() == null);
+        datePicker.valueProperty().addListener((obs, oldVal, newVal) -> timePicker.setDisable(newVal == null));
+
+        timeGrid.add(new Label("Deadline Date:"), 0, 0);
+        timeGrid.add(datePicker, 1, 0);
+        timeGrid.add(new Label("Exact Time:"), 0, 1);
+        timeGrid.add(timePicker, 1, 1);
+        content.getChildren().add(timeGrid);
+
         content.getChildren().add(new Separator());
         Label styleLabel = new Label("Appearance & Styling:");
         styleLabel.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
@@ -257,6 +318,7 @@ public class ChallengeCard extends VBox {
         GridPane styleGrid = new GridPane();
         styleGrid.setHgap(15); styleGrid.setVgap(10);
         ColumnConstraints col1 = new ColumnConstraints();
+        col1.setMinWidth(150); // Prevent squishing
         ColumnConstraints col2 = new ColumnConstraints(); col2.setHgrow(Priority.ALWAYS);
         styleGrid.getColumnConstraints().addAll(col1, col2);
 
@@ -303,6 +365,7 @@ public class ChallengeCard extends VBox {
         GridPane lootGrid = new GridPane();
         lootGrid.setHgap(10); lootGrid.setVgap(10);
         ColumnConstraints lcol1 = new ColumnConstraints();
+        lcol1.setMinWidth(150);
         ColumnConstraints lcol2 = new ColumnConstraints(); lcol2.setHgrow(Priority.ALWAYS);
         ColumnConstraints lcol3 = new ColumnConstraints(); lcol3.setHgrow(Priority.ALWAYS);
         lootGrid.getColumnConstraints().addAll(lcol1, lcol2, lcol3);
@@ -321,7 +384,9 @@ public class ChallengeCard extends VBox {
         Map<String, TextField> capFields = new HashMap<>();
 
         for (CustomStat stat : appStats.getCustomStats()) {
-            lootGrid.add(new Label(stat.getName()), 0, r);
+            Label statNameLabel = new Label(stat.getName());
+            statNameLabel.setStyle("-fx-text-fill: " + (stat.getTextColor() != null ? stat.getTextColor() : "white") + ";");
+            lootGrid.add(statNameLabel, 0, r);
 
             TextField rF = new TextField(); rF.setMaxWidth(Double.MAX_VALUE);
             if (challengeTask.getStatRewards().containsKey(stat.getId())) rF.setText(String.valueOf(challengeTask.getStatRewards().get(stat.getId())));
@@ -450,9 +515,14 @@ public class ChallengeCard extends VBox {
 
         ScrollPane scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefSize(500, 650);
+        scrollPane.setPrefSize(550, 700); // Widened to match standard TaskEditDialog
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         scrollPane.setBorder(Border.EMPTY);
+
+        String scrollCss = ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
+                ".scroll-bar:vertical .track, .scroll-bar:horizontal .track { -fx-background-color: #1E1E1E; -fx-border-color: transparent; } " +
+                ".scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb { -fx-background-color: #555555; -fx-background-radius: 5; }";
+        scrollPane.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(scrollCss.getBytes()));
 
         dialog.getDialogPane().setContent(scrollPane);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -466,6 +536,17 @@ public class ChallengeCard extends VBox {
                 challengeTask.setColorHex(toHexString(bgColorPicker.getValue()));
                 challengeTask.setCustomOutlineColor(toHexString(outlinePicker.getValue()));
                 challengeTask.setDependsOnTaskIds(selectedDeps);
+
+                // Save Deadline
+                if (datePicker.getValue() != null) {
+                    try {
+                        LocalTime time = LocalTime.MIDNIGHT;
+                        if (!timePicker.getText().trim().isEmpty()) time = LocalTime.parse(timePicker.getText().trim(), DateTimeFormatter.ofPattern("HH:mm"));
+                        challengeTask.setDeadline(LocalDateTime.of(datePicker.getValue(), time));
+                    } catch (Exception ex) { challengeTask.setDeadline(LocalDateTime.of(datePicker.getValue(), LocalTime.MIDNIGHT)); }
+                } else {
+                    challengeTask.setDeadline(null);
+                }
 
                 try { challengeTask.setRewardPoints(Math.max(0, Integer.parseInt(globalPtsField.getText().trim()))); } catch(Exception ignore){}
 

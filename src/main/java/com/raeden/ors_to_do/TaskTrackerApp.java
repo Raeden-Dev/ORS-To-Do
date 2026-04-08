@@ -8,7 +8,6 @@ import com.raeden.ors_to_do.modules.*;
 import com.raeden.ors_to_do.modules.dependencies.*;
 
 import com.raeden.ors_to_do.modules.dependencies.services.*;
-// --- NEW: Added NotificationManager Import ---
 import com.raeden.ors_to_do.modules.dependencies.ui.layout.GlobalSearchBar;
 import com.raeden.ors_to_do.modules.dependencies.ui.layout.SidebarManager;
 import javafx.application.Application;
@@ -17,13 +16,14 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import java.util.List;
 import java.util.Optional;
 
 public class TaskTrackerApp extends Application {
-    public static final String APP_VERSION = "v1.41";
+    public static final String APP_VERSION = "v1.43";
 
     private List<TaskItem> taskDatabase;
     private AppStats appStats;
@@ -36,8 +36,8 @@ public class TaskTrackerApp extends Application {
     private DynamicModule currentDynamicPanel;
 
     private boolean isFirstMinimize = true;
+    public static Stage MAIN_STAGE; // --- FIXED: Expose stage for dialogs ---
 
-    // --- Extracted UI Components ---
     private GlobalSearchBar globalSearchBar;
     private SidebarManager sidebarManager;
     private QuickCaptureManager quickCaptureManager;
@@ -94,6 +94,8 @@ public class TaskTrackerApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        MAIN_STAGE = primaryStage;
+
         if (!SingleInstanceManager.registerInstance(APP_VERSION, primaryStage)) {
             System.out.println("An instance of " + APP_VERSION + " is already running. Exiting.");
             Platform.exit();
@@ -151,13 +153,12 @@ public class TaskTrackerApp extends Application {
 
         rootLayout.setLeft(sidebarManager);
 
-        Scene scene = new Scene(rootLayout, 1000, 700);
+        // --- FIXED: Widened the base resolution of the app ---
+        Scene scene = new Scene(rootLayout, 1100, 700);
 
         java.net.URL cssUrl = getClass().getResource("/styles.css");
         if (cssUrl != null) {
             scene.getStylesheets().add(cssUrl.toExternalForm());
-        } else {
-            System.out.println("Warning: styles.css not found. App will run with default JavaFX styling.");
         }
 
         primaryStage.setTitle("Task-Tracker");
@@ -167,8 +168,6 @@ public class TaskTrackerApp extends Application {
             java.io.InputStream iconStream = getClass().getResourceAsStream("/icon.png");
             if (iconStream != null) {
                 primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
-            } else {
-                System.out.println("Warning: Window icon.png not found.");
             }
         } catch (Exception e) {
             System.out.println("Error loading window icon.");
@@ -180,7 +179,6 @@ public class TaskTrackerApp extends Application {
         if (!appStats.getSections().isEmpty()) navigateToModule(appStats.getSections().get(0).getId());
         else navigateToModule("SETTINGS");
 
-        // --- NEW: Start Background Notification Engine ---
         NotificationManager.start(appStats, taskDatabase, primaryStage);
         GlobalActivityTracker.init();
     }

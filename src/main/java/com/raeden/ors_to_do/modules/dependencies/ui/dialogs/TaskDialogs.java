@@ -1,11 +1,13 @@
 package com.raeden.ors_to_do.modules.dependencies.ui.dialogs;
 
+import com.raeden.ors_to_do.TaskTrackerApp;
 import com.raeden.ors_to_do.dependencies.models.*;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.stage.Window;
 
 import java.util.List;
 
@@ -72,7 +74,7 @@ public class TaskDialogs {
         scroll.getStylesheets().add("data:text/css;base64," +
                 java.util.Base64.getEncoder().encodeToString(".scroll-pane > .viewport { -fx-background-color: transparent; } .scroll-bar:vertical { -fx-opacity: 0.7; }".getBytes()));
 
-        boolean b = contentBox.getChildren().addAll(
+        contentBox.getChildren().addAll(
                 createHelpCard("🏆" + " Complete Control", "You are in charge of what you want to turn this application into. Whether a simple to-do app or a full rpg game system where the game is your life.", "yellow"),
                 createHelpCard("♠" + " Stylized UI", "If you fancy nice and sleek looks, you can use your creativity to bring some color into the tasks or this application.", "aqua"),
                 createHelpCard("⚡" + " Gamifying", "Gain skills or perks through completed challenges or achieving a certain level of a stat. You have to work hard to maintain your perks as well!", "purple"),
@@ -89,27 +91,27 @@ public class TaskDialogs {
 
         dialog.getDialogPane().setContent(scroll);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
-
         dialog.showAndWait();
     }
 
     private static VBox createHelpCard(String title, String description, String titleColor) {
         VBox card = new VBox(5);
         card.setStyle("-fx-background-color: #2D2D30; -fx-padding: 10; -fx-border-color: #3E3E42; -fx-border-radius: 5; -fx-background-radius: 5;");
-
         Label tLabel = new Label(title);
-        // Apply the specific color passed to the method
         tLabel.setStyle("-fx-text-fill: " + titleColor + "; -fx-font-weight: bold; -fx-font-size: 14px;");
-
         Label dLabel = new Label(description);
         dLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 13px;");
         dLabel.setWrapText(true);
-
         card.getChildren().addAll(tLabel, dLabel);
         return card;
     }
 
     public static void styleDialog(Dialog<?> dialog) {
+        // --- FIXED: Bind to the exact monitor the main app is on ---
+        if (TaskTrackerApp.MAIN_STAGE != null) {
+            dialog.initOwner(TaskTrackerApp.MAIN_STAGE);
+        }
+
         String css = ".dialog-pane { -fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; } " +
                 ".dialog-pane > *.content.label { -fx-text-fill: #E0E0E0; } " +
                 ".dialog-pane .header-panel { -fx-background-color: #2D2D30; -fx-border-bottom-color: #3E3E42; -fx-border-width: 0 0 1 0; } " +
@@ -184,7 +186,6 @@ public class TaskDialogs {
         });
     }
 
-    // --- NEW: Checkbox Theme CSS Generator ---
     public static String getCheckboxThemeCss(String theme) {
         if ("Dark".equals(theme)) {
             return ".check-box .box { -fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; } .check-box:selected .mark { -fx-background-color: #858585; }";
@@ -195,7 +196,6 @@ public class TaskDialogs {
         } else if ("Purple".equals(theme)) {
             return ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #C586C0; } .check-box:selected .mark { -fx-background-color: #C586C0; }";
         }
-        // Default (White)
         return ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #555555; } .check-box:selected .mark { -fx-background-color: white; }";
     }
 
@@ -204,7 +204,6 @@ public class TaskDialogs {
         return String.format("#%02X%02X%02X", (int) (color.getRed() * 255), (int) (color.getGreen() * 255), (int) (color.getBlue() * 255));
     }
 
-    // --- FORWARDING METHODS (Keeps existing code from breaking) ---
     public static void showAddSubTaskDialog(TaskItem task, List<TaskItem> globalDatabase, Runnable onUpdate) {
         SubTaskDialogs.showAddSubTaskDialog(task, globalDatabase, onUpdate);
     }

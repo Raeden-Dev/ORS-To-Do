@@ -21,8 +21,53 @@ WRITTEN BY ME FOR v1.45 Update
     - Once I complete this card, I can never revert it or lose it (Through archive, however I can delete it)
 > Similar to Zen Button, An Urge Button located in Focus hub, this is designed to gain me back my focus from bad habits or habits I want to get rid of by doing a breathing session for some time and showing a random quote below it.
     - There is a Urge settings button in general configuration which opens a dialog box where I can disable it or add quotes and stuff and set my breathing or whatever session
+
 > StatCard now should show the "Max stat" beside it, add a small "?" button before the numbers that opens description of the stat in a TaskStatsMiniCard
     -The Total Stats above should have boxes similar to the screenshot after it called:
     - Low Attributes: X (X is the number of attribute I have that is <25% of its max) [Red color]
     - High Attributes: Y (Y is the number of attribute I have that is >25% of its max) [Green color]
     - Max Attributes: Z (Z is the number of attribute I have that is 100% of its max) [Light Blue color]
+    - A "History" button in Total Stats page in place of where there was filtering dropdown. This opens a dialog box that shows my latest stat gains (whatever stat I gained) and from whatever task, also include the date
+> Add these to global analytics:
+    - Challenges completed (
+    - Notes created (Sub-texts: Archived, Deleted)
+    - Perks Gained (Sub-texts: Lost, Most Active)
+    - Rewards Claimed
+    - Lifetime Full Focus (Completed the focus session I turned on without stopping it in mid)
+> Analytics page should show my current age and time until a certain age. I can set both up by double clicking the card
+> For challenge cards:
+    - Add deadlines
+    - If I have a lot of rewards, Everything doesnt show (Texts get cut off)
+> Should be able to add stat rewards to auto-generating tasks (Again, should be able to do everything the section config has applied)
+> Template Edit dialog doesn't have the randomize color button and I cant even edit the style of the card even tho in original daily task section, the card styling is turned on.
+> Archived tasks should also save and show the stats / rewards I got from it
+> Point rewards doesnt show in TaskMiniCard (Score should always be at the very beginning)
+> Line separators are showing in Danger Zone while they shouldnt
+> New Repeatable Task Cards
+    - Instead of a checkbox/counter it has a repeat icon type (with arrow in the end and circular) which I can click to increase the card's rep (repetition)
+    - e.g: I went to the gym (So I click on it and get some stat or score), instead of permanently completing the card, it says as it is but increases its counter
+    - A number shows before it which shows how many times I did that certain task
+    - I can hook any stat / score into it
+    - New option in section config called "Allow Repeating Tasks" which needs to be turned on to access this feature
+    - In task edit dialog I will have the checkbox to turn on "Repeating Mode" to turn the card into a repeating task
+    - Repeating cards have same properties / size as normal task cards
+> Fix some texts being cut off in "Create New Section" dialog
+> For 'Edit Task' dialog:
+    - A starting number for counter (min / max)
+    - The rpg stat rewards doesnt copy over when I duplicate a task
+> In generation configuration section at settings page:
+    - Urge surfing tool button has black text on button that is unreadable
+> You get reward for completing a focus session completely without stopping (Stat reward or point reward)
+> Crucial Updates for the TaskTracker app:
+    - Need to make the TaskTracker app overall window a bit wider (Like 100px or something)
+    - Pages get messed up if I open an older version of the app and re-open my original one. Fix this issue.
+    - I keep getting notification for deadline if it is approaching, notifications should be sent every hour (I should be able to configure it through general configuration section through a counter)
+    - For multiple monitors in a pc (I have 3 monitors), if I move task tracker to a another monitor and open a dialog, the dialog opens in my main window whereas it should appear just above my app
+    - When I minimize with multiple monitors, it goes back to the app in the main window instead of the monitor display its currently in
+    - TaskTracker doesnt turn on after windows boot up (I didnt not create an installer and install this btw)
+> Fix task card elements getting truncated when task text is too long
+> New "Debuff" cards in stat page:
+    - I can create debuffs there. To remove a debuff I have to complete certain tasks X times
+    - I should be able to create and save debuff templates similar to section config dialog
+    - While I have a debuff I can reduce certain stats gains or reduce max stat cap
+    - Some debuffs can go away on their own after a certain time with a timer

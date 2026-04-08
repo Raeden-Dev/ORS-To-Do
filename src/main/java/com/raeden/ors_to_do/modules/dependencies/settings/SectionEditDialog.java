@@ -89,6 +89,8 @@ public class SectionEditDialog {
         CheckBox enableStatsSystemCheck = new CheckBox("Enable Custom Stats"); enableStatsSystemCheck.setSelected(config.isEnableStatsSystem());
         CheckBox enableZenModeCheck = new CheckBox("Allow Zen Mode"); enableZenModeCheck.setSelected(config.isEnableZenMode());
         CheckBox enableTaskStylingCheck = new CheckBox("Enable Task Styling"); enableTaskStylingCheck.setSelected(config.isEnableTaskStyling());
+        CheckBox enableTimedTasksCheck = new CheckBox("Allow Timed Tasks"); enableTimedTasksCheck.setSelected(config.isEnableTimedTasks());
+
         CheckBox streakCheck = new CheckBox("Enable Streak System"); streakCheck.setSelected(config.isHasStreak());
         CheckBox autoArchiveCheck = new CheckBox("Auto-Archive Completed"); autoArchiveCheck.setSelected(config.isAutoArchive());
         CheckBox showPriorityCheck = new CheckBox("Show Priority Toggles"); showPriorityCheck.setSelected(config.isShowPriority());
@@ -99,7 +101,8 @@ public class SectionEditDialog {
         CheckBox enableIconsCheck = new CheckBox("Enable Task Icons"); enableIconsCheck.setSelected(config.isEnableIcons());
         CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks"); enableOptionalTasksCheck.setSelected(config.isEnableOptionalTasks());
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards"); enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
-        CheckBox enableTimedTasksCheck = new CheckBox("Allow Timed Tasks"); enableTimedTasksCheck.setSelected(config.isEnableTimedTasks());
+        // --- NEW: Toggle for repeating tasks ---
+        CheckBox allowRepeatingTasksCheck = new CheckBox("Allow Repeating Tasks"); allowRepeatingTasksCheck.setSelected(config.isAllowRepeatingTasks());
 
         featuresGrid.add(createToggle(allowManualArchiveCheck, "Enables right-click to send tasks to Archive."), 0, 0);
         featuresGrid.add(createToggle(enableSubTasksCheck, "Allows creating nested to-do items inside a card."), 0, 1);
@@ -123,6 +126,7 @@ public class SectionEditDialog {
         featuresGrid.add(createToggle(enableIconsCheck, "Allows attaching custom color-coded symbols to tasks."), 1, 7);
         featuresGrid.add(createToggle(enableOptionalTasksCheck, "Allows tasks that grant bonus points but do not count to totals."), 1, 8);
         featuresGrid.add(createToggle(enableLinkCardsCheck, "Allows creating tasks that act purely as clickable shortcuts."), 1, 9);
+        featuresGrid.add(createToggle(allowRepeatingTasksCheck, "Turns cards into unlimited clickers to farm stats/points."), 1, 10);
         content.getChildren().addAll(featuresGrid, new Separator());
 
         // --- Special Modes Box ---
@@ -135,8 +139,6 @@ public class SectionEditDialog {
         CheckBox statPageCheck = new CheckBox("Stat Page"); statPageCheck.setSelected(config.isStatPage()); statPageCheck.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
         CheckBox perkPageCheck = new CheckBox("Perk Page"); perkPageCheck.setSelected(config.isPerkPage()); perkPageCheck.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
         CheckBox rewardsPageCheck = new CheckBox("Rewards Shop"); rewardsPageCheck.setSelected(config.isRewardsPage()); rewardsPageCheck.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold;");
-
-        // --- NEW: Challenge Page Toggle ---
         CheckBox challengePageCheck = new CheckBox("Challenge Page"); challengePageCheck.setSelected(config.isChallengePage()); challengePageCheck.setStyle("-fx-text-fill: #FF8C00; -fx-font-weight: bold;");
 
         modeToggles.getChildren().addAll(notesPageCheck, statPageCheck, perkPageCheck, rewardsPageCheck, challengePageCheck);
@@ -165,11 +167,12 @@ public class SectionEditDialog {
                 enableZenModeCheck.setDisable(true); enableZenModeCheck.setSelected(false);
                 showPriorityCheck.setDisable(!isReward); if (!isReward) showPriorityCheck.setSelected(false);
                 enableTimedTasksCheck.setDisable(true); enableTimedTasksCheck.setSelected(false);
+                allowRepeatingTasksCheck.setDisable(true); allowRepeatingTasksCheck.setSelected(false);
             } else {
                 boolean subTasks = enableSubTasksCheck.isSelected(); boolean links = enableLinkCardsCheck.isSelected(); boolean focus = trackTimeCheck.isSelected();
                 enableSubTasksCheck.setDisable(links); enableLinkCardsCheck.setDisable(subTasks || focus); trackTimeCheck.setDisable(links);
                 enableZenModeCheck.setDisable(false); showPriorityCheck.setDisable(false);
-                enableTimedTasksCheck.setDisable(false);
+                enableTimedTasksCheck.setDisable(false); allowRepeatingTasksCheck.setDisable(false);
             }
 
             streakCheck.setDisable(!hasInterval); if (!hasInterval) streakCheck.setSelected(false);
@@ -184,7 +187,6 @@ public class SectionEditDialog {
         enableScoreCheck.setOnAction(e -> updateUIState.run());
         enableStatsSystemCheck.setOnAction(e -> updateUIState.run());
 
-        // --- NEW: Mutually Exclusive Logic ---
         rewardsPageCheck.setOnAction(e -> { if(rewardsPageCheck.isSelected()) { notesPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
         notesPageCheck.setOnAction(e -> { if(notesPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); statPageCheck.setSelected(false); perkPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
         statPageCheck.setOnAction(e -> { if(statPageCheck.isSelected()) { rewardsPageCheck.setSelected(false); notesPageCheck.setSelected(false); perkPageCheck.setSelected(false); challengePageCheck.setSelected(false); } updateUIState.run(); });
@@ -205,9 +207,10 @@ public class SectionEditDialog {
                 enableZenModeCheck.setSelected(p.isEnableZenMode()); enableStatsSystemCheck.setSelected(p.isEnableStatsSystem());
                 enableLinkCardsCheck.setSelected(p.isEnableLinkCards()); notesPageCheck.setSelected(p.isNotesPage());
                 statPageCheck.setSelected(p.isStatPage()); perkPageCheck.setSelected(p.isPerkPage());
-                challengePageCheck.setSelected(p.isChallengePage()); // NEW
+                challengePageCheck.setSelected(p.isChallengePage());
                 enableOptionalTasksCheck.setSelected(p.isEnableOptionalTasks()); enableTaskStylingCheck.setSelected(p.isEnableTaskStyling());
                 enableTimedTasksCheck.setSelected(p.isEnableTimedTasks());
+                allowRepeatingTasksCheck.setSelected(p.isAllowRepeatingTasks());
                 updateUIState.run();
             }
         });
@@ -229,9 +232,10 @@ public class SectionEditDialog {
                 newPreset.setEnableZenMode(enableZenModeCheck.isSelected()); newPreset.setEnableStatsSystem(enableStatsSystemCheck.isSelected());
                 newPreset.setEnableLinkCards(enableLinkCardsCheck.isSelected()); newPreset.setNotesPage(notesPageCheck.isSelected());
                 newPreset.setStatPage(statPageCheck.isSelected()); newPreset.setPerkPage(perkPageCheck.isSelected());
-                newPreset.setChallengePage(challengePageCheck.isSelected()); // NEW
+                newPreset.setChallengePage(challengePageCheck.isSelected());
                 newPreset.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected()); newPreset.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
                 newPreset.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
+                newPreset.setAllowRepeatingTasks(allowRepeatingTasksCheck.isSelected());
 
                 appStats.getSectionPresets().add(newPreset); presetBox.getItems().add(newPreset); presetBox.setValue(newPreset);
                 StorageManager.saveStats(appStats);
@@ -254,15 +258,15 @@ public class SectionEditDialog {
                 config.setShowPrefix(showPrefixCheck.isSelected()); config.setShowTags(showTagsCheck.isSelected());
                 config.setEnableScore(enableScoreCheck.isSelected()); config.setEnableLinks(enableLinksCheck.isSelected());
                 config.setRewardsPage(rewardsPageCheck.isSelected()); config.setStatPage(statPageCheck.isSelected());
-                config.setPerkPage(perkPageCheck.isSelected()); config.setChallengePage(challengePageCheck.isSelected()); // NEW
+                config.setPerkPage(perkPageCheck.isSelected()); config.setChallengePage(challengePageCheck.isSelected());
                 config.setAutoArchive(autoArchiveCheck.isSelected()); config.setShowPriority(showPriorityCheck.isSelected());
                 config.setTrackTime(trackTimeCheck.isSelected()); config.setShowTaskType(showTaskTypeCheck.isSelected());
                 config.setAllowFavorite(favoriteCheck.isSelected()); config.setShowAnalytics(showAnalyticsCheck.isSelected());
                 config.setEnableIcons(enableIconsCheck.isSelected()); config.setEnableZenMode(enableZenModeCheck.isSelected());
                 config.setEnableStatsSystem(enableStatsSystemCheck.isSelected()); config.setEnableLinkCards(enableLinkCardsCheck.isSelected());
                 config.setNotesPage(notesPageCheck.isSelected()); config.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected());
-                config.setEnableTaskStyling(enableTaskStylingCheck.isSelected());
-                config.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
+                config.setEnableTaskStyling(enableTaskStylingCheck.isSelected()); config.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
+                config.setAllowRepeatingTasks(allowRepeatingTasksCheck.isSelected());
 
                 if (isNew) appStats.getSections().add(config);
                 onSave.run();

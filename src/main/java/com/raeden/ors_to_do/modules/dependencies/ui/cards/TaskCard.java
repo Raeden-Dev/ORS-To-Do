@@ -59,12 +59,10 @@ public class TaskCard extends VBox {
         mainRow.setPadding(new Insets(10));
         if (task.isLinkCard()) mainRow.setCursor(javafx.scene.Cursor.HAND);
 
-        // --- FIXED: Enforce 'Prevent Editing' setting on double-click ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 int lockHours = appStats.getPreventEditingHours();
 
-                // Check if the setting is > 0 and the current time is PAST the lock time
                 if (lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
                     Alert alert = new Alert(Alert.AlertType.WARNING, "This task was created over " + lockHours + " hour(s) ago and is locked from editing.");
                     alert.setHeaderText("Editing Locked");
@@ -86,28 +84,39 @@ public class TaskCard extends VBox {
 
         mainRow.getChildren().addAll(metaBox, textContainer);
 
-        // 5. Expandable Stats & Deadline
+        // 5. Generate Expandable Stats & Deadline
         TaskStatsMiniCard statsMiniCard = new TaskStatsMiniCard(task, config, appStats, isLocked);
+        Button eyeBtn = null;
         if (statsMiniCard.hasAnyStats() && !isNoteMode && !isLocked) {
-            Button eyeBtn = new Button("✦");
+            eyeBtn = new Button("✦");
+            eyeBtn.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
             eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
+
+            Button finalEyeBtn = eyeBtn; // Lambda requirement
             eyeBtn.setOnAction(e -> {
                 task.setStatsExpanded(!task.isStatsExpanded());
                 statsMiniCard.setVisible(task.isStatsExpanded());
                 statsMiniCard.setManaged(task.isStatsExpanded());
-                eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
+                finalEyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
                 StorageManager.saveTasks(globalDatabase);
             });
-            mainRow.getChildren().add(eyeBtn);
         }
 
+        TaskDeadlineLabel deadlineLbl = null;
+        TaskActionControls actionControls = null;
         if (!isLocked && !task.isLinkCard()) {
             if (task.getDeadline() != null && !isNoteMode) {
-                mainRow.getChildren().add(new TaskDeadlineLabel(task, config, appStats, globalDatabase, onUpdate, activeTimelines, metaFontSize));
+                deadlineLbl = new TaskDeadlineLabel(task, config, appStats, globalDatabase, onUpdate, activeTimelines, metaFontSize);
+                deadlineLbl.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
             }
-            // 6. Append Right-Side Action Controls
-            mainRow.getChildren().add(new TaskActionControls(task, config, appStats, globalDatabase, onUpdate, baseFontSize, metaFontSize, isNoteMode));
+            actionControls = new TaskActionControls(task, config, appStats, globalDatabase, onUpdate, baseFontSize, metaFontSize, isNoteMode);
+            actionControls.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
         }
+
+        // --- FIXED: Inject elements into the row in the exact requested order ---
+        if (deadlineLbl != null) mainRow.getChildren().add(deadlineLbl);
+        if (eyeBtn != null) mainRow.getChildren().add(eyeBtn);
+        if (actionControls != null) mainRow.getChildren().add(actionControls);
 
         // 7. Assemble Card Components
         SubTaskRenderer subTaskBox = new SubTaskRenderer(task, config, appStats, globalDatabase, onUpdate);
@@ -118,6 +127,44 @@ public class TaskCard extends VBox {
 
         // 8. Context Menu
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
+
+        MenuItem duplicateItem = new MenuItem("Duplicate Task");
+        duplicateItem.setOnAction(e -> {
+            TaskItem cloneTask = new TaskItem(task.getTextContent() + " (Copy)", task.getPriority(), task.getSectionId());
+            cloneTask.setTaskType(task.getTaskType());
+            cloneTask.setRewardPoints(task.getRewardPoints());
+            cloneTask.setPenaltyPoints(task.getPenaltyPoints());
+            cloneTask.setIconSymbol(task.getIconSymbol());
+            cloneTask.setIconColor(task.getIconColor());
+            cloneTask.setColorHex(task.getColorHex());
+            cloneTask.setCustomOutlineColor(task.getCustomOutlineColor());
+            cloneTask.setOptional(task.isOptional());
+            cloneTask.setPrefix(task.getPrefix());
+            cloneTask.setPrefixColor(task.getPrefixColor());
+            cloneTask.setLinkCard(task.isLinkCard());
+            cloneTask.setLinkActionPath(task.getLinkActionPath());
+
+            if (task.getStatRewards() != null) cloneTask.setStatRewards(new java.util.HashMap<>(task.getStatRewards()));
+            if (task.getStatCapRewards() != null) cloneTask.setStatCapRewards(new java.util.HashMap<>(task.getStatCapRewards()));
+            if (task.getStatCosts() != null) cloneTask.setStatCosts(new java.util.HashMap<>(task.getStatCosts()));
+            if (task.getStatPenalties() != null) cloneTask.setStatPenalties(new java.util.HashMap<>(task.getStatPenalties()));
+            if (task.getStatRequirements() != null) cloneTask.setStatRequirements(new java.util.HashMap<>(task.getStatRequirements()));
+
+            cloneTask.setRepeatingMode(task.isRepeatingMode());
+            cloneTask.setRepetitionCount(task.getRepetitionCount());
+
+            for (com.raeden.ors_to_do.dependencies.models.SubTask st : task.getSubTasks()) {
+                cloneTask.getSubTasks().add(new com.raeden.ors_to_do.dependencies.models.SubTask(st.getTextContent()));
+            }
+
+            globalDatabase.add(globalDatabase.indexOf(task) + 1, cloneTask);
+            StorageManager.saveTasks(globalDatabase);
+            onUpdate.run();
+        });
+
+        contextMenu.getItems().removeIf(item -> "Duplicate Task".equals(item.getText()));
+        contextMenu.getItems().add(1, duplicateItem);
+
         this.setOnContextMenuRequested(e -> {
             contextMenu.show(this, e.getScreenX(), e.getScreenY());
             e.consume();
@@ -131,6 +178,7 @@ public class TaskCard extends VBox {
         boolean hasLinks = config.isEnableLinks() && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty();
         boolean hasSubTasks = config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
         Button expandBtn = new Button(task.isExpanded() ? "▼" : "▶");
+        expandBtn.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
         expandBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AAAAAA; -fx-font-weight: bold; -fx-padding: 0 5 0 0; -fx-cursor: hand; -fx-font-size: " + metaFontSize + "px;");
         if (isLocked || (!hasSubTasks && !hasLinks)) { expandBtn.setVisible(false); expandBtn.setManaged(false); }
         expandBtn.setOnAction(e -> { task.setExpanded(!task.isExpanded()); StorageManager.saveTasks(db); onUpdate.run(); });
@@ -139,11 +187,12 @@ public class TaskCard extends VBox {
         if (!isLocked) {
             if (task.isOptional()) {
                 Label opt = new Label("[OPTIONAL]");
+                opt.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 opt.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + metaFontSize + "px; -fx-font-weight: bold; -fx-padding: 0 5 0 0;");
                 metaBox.getChildren().add(opt);
             }
             Region sideRect = new Region();
-            sideRect.setMinWidth(5); sideRect.setPrefWidth(5);
+            sideRect.setMinWidth(5); sideRect.setPrefWidth(5); // Explicitly strict
             if (isNoteMode) sideRect.setPrefHeight(30); else { sideRect.setPrefHeight(25); sideRect.setMaxHeight(25); }
 
             String fillColor = "#FFFFFF";
@@ -154,27 +203,33 @@ public class TaskCard extends VBox {
 
             if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
                 Label icon = new Label(task.getIconSymbol());
+                icon.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 icon.setStyle("-fx-text-fill: " + (task.getIconColor() != null ? task.getIconColor() : "#FFFFFF") + "; -fx-font-size: " + (baseFontSize + 2) + "px;");
                 metaBox.getChildren().add(icon);
             }
             metaBox.getChildren().add(sideRect);
 
             if (config.isAllowFavorite() && task.isFavorite() && !isNoteMode) {
-                Label star = new Label("[⭐]"); star.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + baseFontSize + "px; -fx-font-weight: bold;");
+                Label star = new Label("[⭐]");
+                star.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
+                star.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + baseFontSize + "px; -fx-font-weight: bold;");
                 metaBox.getChildren().add(star);
             }
             if (config.isShowDate() && !isNoteMode && !task.isLinkCard()) {
                 Label dLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
+                dLabel.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 dLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: " + metaFontSize + "px;");
                 metaBox.getChildren().add(dLabel);
             }
             if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
                 Label pLabel = new Label(task.getPrefix());
+                pLabel.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 pLabel.setStyle("-fx-text-fill: " + (task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0") + "; -fx-font-size: " + baseFontSize + "px;");
                 metaBox.getChildren().add(pLabel);
             }
             if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty() && !isNoteMode) {
                 Label tLabel = new Label("[" + task.getTaskType() + "]");
+                tLabel.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 tLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: " + metaFontSize + "px;");
                 metaBox.getChildren().add(tLabel);
             }
@@ -189,13 +244,24 @@ public class TaskCard extends VBox {
 
         if (isLocked) {
             textContainer.setAlignment(Pos.CENTER);
-            Label lockIcon = new Label("🔒"); lockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + (baseFontSize + 2) + "px;");
+            Label lockIcon = new Label("🔒");
+            lockIcon.setMinWidth(Region.USE_PREF_SIZE);
+            lockIcon.setStyle("-fx-text-fill: #FF6666; -fx-font-size: " + (baseFontSize + 2) + "px;");
+
             Label lockMsg = new Label("Complete [" + (blockingTaskNames.size() == 1 ? blockingTaskNames.get(0) : blockingTaskNames.size() + " tasks") + "] to unlock");
             lockMsg.setStyle(fontStyle + "-fx-text-fill: #858585; -fx-font-style: italic;");
+
+            lockMsg.setWrapText(true);
+            lockMsg.setMinWidth(10);
+            lockMsg.setMinHeight(Region.USE_PREF_SIZE);
+            HBox.setHgrow(lockMsg, Priority.ALWAYS);
+            lockMsg.setMaxWidth(Double.MAX_VALUE);
+
             textContainer.getChildren().addAll(lockIcon, lockMsg);
 
             if (blockingTaskNames.size() > 1) {
                 Label helpIcon = new Label("?");
+                helpIcon.setMinWidth(Region.USE_PREF_SIZE);
                 helpIcon.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px; -fx-cursor: help; -fx-background-color: #1E1E1E; -fx-padding: 0 5; -fx-background-radius: 10; -fx-border-color: #569CD6; -fx-border-radius: 10;");
                 HBox.setMargin(helpIcon, new Insets(0, 0, 0, 5));
                 Tooltip.install(helpIcon, new Tooltip("Required Tasks:\n• " + String.join("\n• ", blockingTaskNames)));
@@ -204,12 +270,19 @@ public class TaskCard extends VBox {
         } else {
             textContainer.setAlignment(Pos.CENTER_LEFT);
             Label textLabel = new Label(task.getTextContent());
+
             textLabel.setWrapText(true);
+            textLabel.setMinWidth(10);
+            textLabel.setMinHeight(Region.USE_PREF_SIZE);
+            HBox.setHgrow(textLabel, Priority.ALWAYS);
+            textLabel.setMaxWidth(Double.MAX_VALUE);
+
             textLabel.setStyle(fontStyle + "-fx-strikethrough: " + (task.isFinished() && !isNoteMode && !task.isLinkCard()) + "; -fx-text-fill: #E0E0E0;");
             textContainer.getChildren().add(textLabel);
 
             if (task.isLinkCard()) {
                 Label linkInd = new Label("↗");
+                linkInd.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 linkInd.setStyle("-fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-font-size: " + metaFontSize + "px; -fx-padding: 0 0 0 5;");
                 textContainer.getChildren().add(linkInd);
             }

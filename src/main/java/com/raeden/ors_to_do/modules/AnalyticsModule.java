@@ -1,6 +1,7 @@
 package com.raeden.ors_to_do.modules;
 
 import com.raeden.ors_to_do.dependencies.models.*;
+import com.raeden.ors_to_do.modules.dependencies.ui.analytics.AgeCountdownCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.analytics.AnalyticsHeroCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.analytics.AnalyticsRPGSheet;
 import com.raeden.ors_to_do.modules.dependencies.ui.analytics.AnalyticsSectionBreakdown;
@@ -51,11 +52,44 @@ public class AnalyticsModule extends BorderPane {
         int highPriorityCompleted = 0; int penaltiesSuffered = 0; int subTasksCrushed = 0;
         int[] dayCounts = new int[7];
 
+        int challengesCompleted = 0;
+        int notesCreated = 0;
+        int notesArchived = 0;
+        int perksGained = 0;
+        int perksLost = 0;
+        String mostActivePerk = "None";
+        int highestPerkLevel = -1;
+        int rewardsClaimed = 0;
+
         CustomPriority highestPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(appStats.getCustomPriorities().size() - 1);
         Map<String, Integer> sectionTasksMap = new HashMap<>();
         Map<String, Integer> sectionTimeMap = new HashMap<>();
 
         for (TaskItem task : globalDatabase) {
+            SectionConfig taskConfig = null;
+            if (task.getSectionId() != null) {
+                taskConfig = appStats.getSections().stream()
+                        .filter(c -> c.getId().equals(task.getSectionId()))
+                        .findFirst().orElse(null);
+            }
+
+            if (taskConfig != null) {
+                if (taskConfig.isNotesPage()) {
+                    notesCreated++;
+                    if (task.isArchived()) notesArchived++;
+                }
+                if (taskConfig.isPerkPage()) {
+                    if (task.getPerkUnlockedDate() != null || task.getPerkLevel() > 0) perksGained++;
+                    if (task.getPerkLostDate() != null) perksLost++;
+                    if (task.getPerkLevel() > highestPerkLevel) {
+                        highestPerkLevel = task.getPerkLevel();
+                        mostActivePerk = task.getTextContent();
+                    }
+                }
+                if (taskConfig.isChallengePage() && task.isFinished()) challengesCompleted++;
+                if (taskConfig.isRewardsPage() && task.isFinished()) rewardsClaimed++;
+            }
+
             if (task.isPenaltyApplied()) penaltiesSuffered++;
             for (SubTask sub : task.getSubTasks()) if (sub.isFinished()) subTasksCrushed++;
 
@@ -94,14 +128,26 @@ public class AnalyticsModule extends BorderPane {
 
         String highestStreakSub = appStats.getHighestStreakSection() != null && !appStats.getHighestStreakSection().equals("None")
                 ? "in " + appStats.getHighestStreakSection() : "";
+
         // 3. Render Widgets
-        FlowPane heroFlow = new FlowPane(20, 20);
+
+        // --- FIXED: Render Age Countdown completely outside the FlowPane on its own row ---
+        AgeCountdownCard ageCard = new AgeCountdownCard(appStats, this::refreshData);
+        dashboardContent.getChildren().add(ageCard);
+
+        FlowPane heroFlow = new FlowPane(15, 15); // Tighter spacing for the smaller cards
         heroFlow.setAlignment(Pos.CENTER_LEFT);
+
         heroFlow.getChildren().addAll(
                 new AnalyticsHeroCard("🏆 Global Score", String.valueOf(appStats.getGlobalScore()), "#FFD700"),
                 new AnalyticsHeroCard("🔥 Highest Streak", String.valueOf(appStats.getHighestStreak()), highestStreakSub, "#FF8C00"),
                 new AnalyticsHeroCard("✅ Lifetime Tasks", String.valueOf(lifetimeCompletedTasks), "#4EC9B0"),
                 new AnalyticsHeroCard("⏱ Lifetime Focus", String.format("%dh %dm", hours, mins), "#569CD6"),
+                new AnalyticsHeroCard("⚔️ Challenges Done", String.valueOf(challengesCompleted), "#FF8C00"),
+                new AnalyticsHeroCard("✨ Perks Gained", String.valueOf(perksGained), "Lost: " + perksLost + " | Top: " + mostActivePerk, "#FFD700"),
+                new AnalyticsHeroCard("🛍️ Rewards Claimed", String.valueOf(rewardsClaimed), "#569CD6"),
+                new AnalyticsHeroCard("🧘 Full Focus Sessions", String.valueOf(appStats.getLifetimeFullFocusSessions()), "#C586C0"),
+                new AnalyticsHeroCard("📝 Notes Created", String.valueOf(notesCreated), "Archived: " + notesArchived + " | Deleted: " + appStats.getLifetimeDeletedNotes(), "#4EC9B0"),
                 new AnalyticsHeroCard("🗑 Tasks Deleted", String.valueOf(appStats.getLifetimeDeletedTasks()), "#FF6666"),
                 new AnalyticsHeroCard("🎯 High Prio Crushed", String.valueOf(highPriorityCompleted), "#C586C0"),
                 new AnalyticsHeroCard("💀 Missed Deadlines", String.valueOf(penaltiesSuffered), "#FF4444"),

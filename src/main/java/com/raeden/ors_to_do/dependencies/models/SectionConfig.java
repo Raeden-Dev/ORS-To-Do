@@ -21,7 +21,6 @@ public class SectionConfig implements Serializable {
     private boolean isRewardsPage = false;
     private boolean isStatPage = false;
     private boolean isPerkPage = false;
-    // --- NEW: Challenge Page Mode ---
     private boolean isChallengePage = false;
 
     // ==========================================
@@ -69,8 +68,10 @@ public class SectionConfig implements Serializable {
     private boolean enableOptionalTasks = false;
     private boolean enableTaskStyling = false;
     private boolean showAnalytics = false;
-
     private boolean enableTimedTasks = false;
+
+    // --- NEW: Allow Repeating Tasks ---
+    private boolean allowRepeatingTasks = false;
 
     // ==========================================
     // 5. LISTS & TEMPLATES
@@ -97,7 +98,6 @@ public class SectionConfig implements Serializable {
     public void setStatPage(boolean statPage) { this.isStatPage = statPage; }
     public boolean isPerkPage() { return isPerkPage; }
     public void setPerkPage(boolean perkPage) { this.isPerkPage = perkPage; }
-    // --- NEW: Challenge Page Getter/Setter ---
     public boolean isChallengePage() { return isChallengePage; }
     public void setChallengePage(boolean challengePage) { this.isChallengePage = challengePage; }
 
@@ -144,9 +144,12 @@ public class SectionConfig implements Serializable {
     public void setEnableTaskStyling(boolean enableTaskStyling) { this.enableTaskStyling = enableTaskStyling; }
     public boolean isShowAnalytics() { return showAnalytics; }
     public void setShowAnalytics(boolean showAnalytics) { this.showAnalytics = showAnalytics; }
-
     public boolean isEnableTimedTasks() { return enableTimedTasks; }
     public void setEnableTimedTasks(boolean enableTimedTasks) { this.enableTimedTasks = enableTimedTasks; }
+
+    // --- NEW: Getter/Setter ---
+    public boolean isAllowRepeatingTasks() { return allowRepeatingTasks; }
+    public void setAllowRepeatingTasks(boolean allowRepeatingTasks) { this.allowRepeatingTasks = allowRepeatingTasks; }
 
     public List<DailyTemplate> getAutoAddTemplates() {
         if (autoAddTemplates == null) autoAddTemplates = new ArrayList<>();

@@ -7,10 +7,12 @@ import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.forms.TaskMetaForm;
 import com.raeden.ors_to_do.modules.dependencies.ui.forms.TaskRPGForm;
 import com.raeden.ors_to_do.modules.dependencies.ui.forms.TaskStyleForm;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.Border;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 
 import java.util.List;
@@ -28,10 +30,9 @@ public class TaskEditDialog {
         GridPane grid = new GridPane();
         grid.setHgap(15); grid.setVgap(10);
 
-        // --- FIXED: Protected the labels by forcing a minimum width of 150px ---
         ColumnConstraints col1 = new ColumnConstraints();
-        col1.setMinWidth(150);
-        col1.setPrefWidth(150);
+        col1.setMinWidth(170);
+        col1.setPrefWidth(170);
 
         ColumnConstraints col2 = new ColumnConstraints();
         col2.setHgrow(Priority.ALWAYS);
@@ -71,6 +72,52 @@ public class TaskEditDialog {
         grid.add(linkCardCheck, 0, rowIdx.get());
         grid.add(linkPathField, 1, rowIdx.getAndIncrement());
 
+        // --- NEW: Repeating Task Toggle & Repetition Spinner ---
+        CheckBox repeatingTaskCheck = new CheckBox("Make Repeating Task?");
+        repeatingTaskCheck.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
+
+        Spinner<Integer> repCounterSpinner = new Spinner<>(0, 999999, Math.max(0, task.getRepetitionCount()));
+        repCounterSpinner.setEditable(true);
+        repCounterSpinner.setPrefWidth(100);
+        HBox repBox = new HBox(10, new Label("Set Counter:"), repCounterSpinner);
+        repBox.setAlignment(Pos.CENTER_LEFT);
+
+        boolean sectionAllowsRepeating = config != null && config.isAllowRepeatingTasks();
+
+        if (!sectionAllowsRepeating || task.isLinkCard() || hasSubTasks) {
+            repeatingTaskCheck.setDisable(true);
+            repeatingTaskCheck.setSelected(false);
+            repeatingTaskCheck.setText("Make Repeating Task? (Disabled)");
+            repBox.setVisible(false);
+        } else {
+            repeatingTaskCheck.setSelected(task.isRepeatingMode());
+            repBox.setVisible(task.isRepeatingMode());
+        }
+
+        grid.add(repeatingTaskCheck, 0, rowIdx.get());
+        grid.add(repBox, 1, rowIdx.getAndIncrement());
+
+        // Ensure Mutually Exclusive Link vs Repeating Logic
+        linkCardCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                repeatingTaskCheck.setSelected(false);
+                repeatingTaskCheck.setDisable(true);
+                repBox.setVisible(false);
+            } else if (sectionAllowsRepeating && !hasSubTasks) {
+                repeatingTaskCheck.setDisable(false);
+            }
+        });
+
+        repeatingTaskCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            repBox.setVisible(newVal);
+            if (newVal) {
+                linkCardCheck.setSelected(false);
+                linkCardCheck.setDisable(true);
+            } else if (sectionAllowsLinks && !hasSubTasks && !task.isOptional()) {
+                linkCardCheck.setDisable(false);
+            }
+        });
+
         // 2. Initialize Helper Forms
         TaskStyleForm styleForm = new TaskStyleForm();
         TaskMetaForm metaForm = new TaskMetaForm();
@@ -86,14 +133,13 @@ public class TaskEditDialog {
 
         ScrollPane scrollPane = new ScrollPane(grid);
         scrollPane.setFitToWidth(true);
-        // Slightly widened to 550 to accommodate the protected label column
-        scrollPane.setPrefSize(550, 650);
+        scrollPane.setPrefSize(850, 700);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         scrollPane.setBorder(Border.EMPTY);
 
-        // --- FIXED: Custom Dark Theme Scrollbar Styling ---
         String scrollCss =
-                ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
+                ".label { -fx-min-width: USE_PREF_SIZE; } " +
+                        ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
                         ".scroll-bar:vertical .track, .scroll-bar:horizontal .track { -fx-background-color: #1E1E1E; -fx-border-color: transparent; } " +
                         ".scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb { -fx-background-color: #555555; -fx-background-radius: 5; } " +
                         ".scroll-bar:vertical .thumb:hover, .scroll-bar:horizontal .thumb:hover { -fx-background-color: #888888; } " +
@@ -122,7 +168,11 @@ public class TaskEditDialog {
                     task.setLinkActionPath("");
                 }
 
-                // Delegate Save Operations
+                task.setRepeatingMode(repeatingTaskCheck.isSelected());
+                if (repeatingTaskCheck.isSelected()) {
+                    task.setRepetitionCount(repCounterSpinner.getValue());
+                }
+
                 styleForm.applyTo(task);
                 if (config == null || !config.isNotesPage()) {
                     metaForm.applyTo(task);
