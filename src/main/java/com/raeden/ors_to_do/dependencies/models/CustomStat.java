@@ -32,13 +32,17 @@ public class CustomStat implements Serializable {
         this.textColor = textColor;
     }
 
-    // --- NEW: Calculate lowered cap for UI rendering ---
+    // --- FIXED: Calculates lowered cap using Stacks for UI rendering ---
     public int getEffectiveMaxCap(java.util.List<Debuff> activeDebuffs) {
         int cap = maxCap;
         if (activeDebuffs != null) {
             for (Debuff d : activeDebuffs) {
                 if (d.getStatCapReductions().containsKey(id)) {
-                    cap -= d.getStatCapReductions().get(id);
+                    int reduction = d.getStatCapReductions().get(id);
+                    if (d.isAllowStacking() && d.getStatCapReductionStackIncreasers().containsKey(id)) {
+                        reduction += d.getStatCapReductionStackIncreasers().get(id) * (d.getCurrentStacks() - 1);
+                    }
+                    cap -= reduction;
                 }
             }
         }

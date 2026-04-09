@@ -12,14 +12,13 @@ public class DebuffManagerDialog {
 
     public static void show(AppStats appStats, Runnable onUpdate) {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Debuff Manager"); // --- FIXED: Renamed Dialog ---
+        dialog.setTitle("Debuff Manager");
         TaskDialogs.styleDialog(dialog);
 
         VBox content = new VBox(15);
         content.setPrefSize(500, 550);
         content.setPadding(new Insets(10));
 
-        // --- FIXED: Dark background, bright blue outline style ---
         Button addBtn = new Button("Create New Debuff Template");
         addBtn.setStyle("-fx-background-color: #1E1E1E; -fx-border-color: #569CD6; -fx-text-fill: #569CD6; -fx-font-weight: bold; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 8 15;");
 
@@ -27,7 +26,6 @@ public class DebuffManagerDialog {
         listView.setStyle("-fx-background-color: #1E1E1E; -fx-control-inner-background: #1E1E1E; -fx-border-color: transparent;");
         VBox.setVgrow(listView, Priority.ALWAYS);
 
-        // Remove default blue selection highlighting from the list view
         listView.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(".list-cell:filled:selected:focused, .list-cell:filled:selected { -fx-background-color: transparent; }".getBytes()));
 
         Runnable refreshList = () -> {
@@ -43,7 +41,6 @@ public class DebuffManagerDialog {
                     setGraphic(null);
                     setStyle("-fx-background-color: transparent;");
                 } else {
-                    // --- FIXED: Render as a styled Card ---
                     VBox card = new VBox(8);
                     card.setStyle("-fx-background-color: #252526; -fx-border-color: " + item.getColorHex() + "88; -fx-border-width: 1; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 12;");
 
@@ -59,7 +56,27 @@ public class DebuffManagerDialog {
                     Button inflictBtn = new Button("Inflict");
                     inflictBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: #FF6666; -fx-cursor: hand; -fx-font-weight: bold;");
                     inflictBtn.setOnAction(e -> {
-                        appStats.getActiveDebuffs().add(item.cloneAsActive());
+                        boolean applied = false;
+                        for (Debuff active : appStats.getActiveDebuffs()) {
+                            if (active.getId().equals(item.getId()) || active.getName().equals(item.getName())) {
+                                if (item.isAllowStacking()) {
+                                    if (active.getCurrentStacks() < item.getMaxStacks()) {
+                                        active.setCurrentStacks(active.getCurrentStacks() + 1);
+                                        applied = true;
+                                        break;
+                                    } else {
+                                        Alert a = new Alert(Alert.AlertType.WARNING, "Max stacks (" + item.getMaxStacks() + ") reached for this debuff!");
+                                        TaskDialogs.styleDialog(a); a.show();
+                                        return;
+                                    }
+                                } else {
+                                    Alert a = new Alert(Alert.AlertType.WARNING, "This debuff is already active and does not allow stacking!");
+                                    TaskDialogs.styleDialog(a); a.show();
+                                    return;
+                                }
+                            }
+                        }
+                        if (!applied) appStats.getActiveDebuffs().add(item.cloneAsActive());
                         StorageManager.saveStats(appStats);
                         onUpdate.run();
                     });

@@ -4,6 +4,7 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomPriority;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.models.DailyTemplate;
+import com.raeden.ors_to_do.dependencies.models.Debuff;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.geometry.Insets;
@@ -28,14 +29,10 @@ public class TemplateEditDialog {
         VBox mainContent = new VBox(15);
         mainContent.setPadding(new Insets(10));
 
-        // ==========================================
-        // 1. UNIFIED FORM GRID
-        // ==========================================
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(12);
 
-        // Lock the Label column to an exact width for perfect alignment
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setMinWidth(135);
         col1.setPrefWidth(135);
@@ -44,19 +41,15 @@ public class TemplateEditDialog {
         grid.getColumnConstraints().addAll(col1, col2);
 
         int r = 0;
-
-        // Exact pixel widths to align perfectly to the right edge
         double FULL_WIDTH = 420.0;
-        double HALF_WIDTH = 205.0; // 205 + 10px gap + 205 = 420px
+        double HALF_WIDTH = 205.0;
 
-        // --- Task Text ---
         TextField textField = new TextField(template != null ? template.getText() : "");
         textField.setPrefWidth(FULL_WIDTH);
         textField.setMaxWidth(FULL_WIDTH);
         grid.add(new Label("Task Text:"), 0, r);
         grid.add(textField, 1, r++);
 
-        // --- Active Days ---
         Label daysLabel = new Label("Active Days:");
         daysLabel.setStyle("-fx-text-fill: white;");
         HBox daysBox = new HBox(8);
@@ -70,7 +63,6 @@ public class TemplateEditDialog {
         grid.add(daysLabel, 0, r);
         grid.add(daysBox, 1, r++);
 
-        // --- Optional Toggle ---
         CheckBox optionalCheck = new CheckBox("Is Optional Task?");
         optionalCheck.setStyle("-fx-text-fill: #FFD700; -fx-font-weight: bold;");
         optionalCheck.setSelected(template != null && template.isOptional());
@@ -80,64 +72,53 @@ public class TemplateEditDialog {
         }
         grid.add(optionalCheck, 1, r++);
 
-        // --- Separator (Replaces Visual Customization Header) ---
         Separator visualSep = new Separator();
         GridPane.setMargin(visualSep, new Insets(5, 0, 5, 0));
         grid.add(visualSep, 0, r++, 2, 1);
 
-        // --- Background Color ---
         ColorPicker bgColorPicker = new ColorPicker();
         bgColorPicker.setValue(template != null && template.getBgColor() != null && !template.getBgColor().equals("transparent") ? Color.web(template.getBgColor()) : Color.TRANSPARENT);
         bgColorPicker.setPrefWidth(FULL_WIDTH); bgColorPicker.setMaxWidth(FULL_WIDTH);
         grid.add(new Label("Background Color:"), 0, r);
         grid.add(bgColorPicker, 1, r++);
 
-        // --- Outline Color ---
         ColorPicker outlineColorPicker = new ColorPicker();
         outlineColorPicker.setValue(template != null && template.getCustomOutlineColor() != null && !template.getCustomOutlineColor().equals("transparent") ? Color.web(template.getCustomOutlineColor()) : Color.TRANSPARENT);
         outlineColorPicker.setPrefWidth(FULL_WIDTH); outlineColorPicker.setMaxWidth(FULL_WIDTH);
         grid.add(new Label("Outline Color:"), 0, r);
         grid.add(outlineColorPicker, 1, r++);
 
-        // --- Sidebox Color ---
         ColorPicker sideboxColorPicker = new ColorPicker();
         sideboxColorPicker.setValue(template != null && template.getCustomSideboxColor() != null && !template.getCustomSideboxColor().equals("transparent") ? Color.web(template.getCustomSideboxColor()) : Color.TRANSPARENT);
         sideboxColorPicker.setPrefWidth(FULL_WIDTH); sideboxColorPicker.setMaxWidth(FULL_WIDTH);
         grid.add(new Label("Sidebox Color:"), 0, r);
         grid.add(sideboxColorPicker, 1, r++);
 
-        // --- Prefix ---
         TextField prefixField = new TextField();
         ColorPicker prefixColor = new ColorPicker(Color.web("#4EC9B0"));
         if (section.isShowPrefix()) {
             prefixField.setText(template != null && template.getPrefix() != null ? template.getPrefix() : "");
             prefixColor.setValue(Color.web(template != null && template.getPrefixColor() != null ? template.getPrefixColor() : "#4EC9B0"));
-
             prefixField.setPrefWidth(HALF_WIDTH); prefixField.setMaxWidth(HALF_WIDTH);
             prefixColor.setPrefWidth(HALF_WIDTH); prefixColor.setMaxWidth(HALF_WIDTH);
-
             HBox prefixHBox = new HBox(10, prefixField, prefixColor);
             grid.add(new Label("Prefix (Optional):"), 0, r);
             grid.add(prefixHBox, 1, r++);
         }
 
-        // --- Icon ---
         ComboBox<String> iconBox = new ComboBox<>();
         ColorPicker iconColorPicker = new ColorPicker(Color.WHITE);
         if (section.isEnableIcons()) {
             iconBox.getItems().addAll(TaskDialogs.ICON_LIST);
             iconBox.setValue(template != null && template.getIconSymbol() != null ? template.getIconSymbol() : "None");
             iconColorPicker.setValue(Color.web(template != null && template.getIconColor() != null ? template.getIconColor() : "#FFFFFF"));
-
             iconBox.setPrefWidth(HALF_WIDTH); iconBox.setMaxWidth(HALF_WIDTH);
             iconColorPicker.setPrefWidth(HALF_WIDTH); iconColorPicker.setMaxWidth(HALF_WIDTH);
-
             HBox iconHBox = new HBox(10, iconBox, iconColorPicker);
             grid.add(new Label("Task Icon:"), 0, r);
             grid.add(iconHBox, 1, r++);
         }
 
-        // --- Randomize Style ---
         Button randomBtn = new Button("🎲 Randomize Style");
         randomBtn.setPrefWidth(FULL_WIDTH); randomBtn.setMaxWidth(FULL_WIDTH);
         randomBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
@@ -153,7 +134,6 @@ public class TemplateEditDialog {
         });
         grid.add(randomBtn, 1, r++);
 
-        // --- Priority ---
         ComboBox<CustomPriority> prioBox = new ComboBox<>();
         if (section.isShowPriority()) {
             prioBox.getItems().addAll(appStats.getCustomPriorities());
@@ -174,7 +154,6 @@ public class TemplateEditDialog {
         });
         if (template != null && template.isOptional() && section.isShowPriority()) { prioBox.setDisable(true); prioBox.setValue(null); }
 
-        // --- Task Type ---
         TextField workTypeField = new TextField();
         if (section.isShowTaskType()) {
             workTypeField.setText(template != null && template.getTaskType() != null ? template.getTaskType() : "");
@@ -183,37 +162,28 @@ public class TemplateEditDialog {
             grid.add(workTypeField, 1, r++);
         }
 
-        // --- Reward / Penalty Points ---
         TextField rewardField = new TextField("0");
         TextField penaltyField = new TextField("0");
         if (section.isEnableScore()) {
             rewardField.setText(template != null ? String.valueOf(template.getRewardPoints()) : "0");
             penaltyField.setText(template != null ? String.valueOf(template.getPenaltyPoints()) : "0");
-
-            // Exact calculation: 140 + 10 (gap) + 120 (label) + 10 (gap) + 140 = 420px
             rewardField.setPrefWidth(140); rewardField.setMaxWidth(140);
             penaltyField.setPrefWidth(140); penaltyField.setMaxWidth(140);
-
             Label penLabel = new Label("Penalty Points:");
             penLabel.setStyle("-fx-text-fill: #E0E0E0;");
-            penLabel.setPrefWidth(120);
-            penLabel.setAlignment(Pos.CENTER_RIGHT);
-
+            penLabel.setPrefWidth(120); penLabel.setAlignment(Pos.CENTER_RIGHT);
             HBox ptsBox = new HBox(10, rewardField, penLabel, penaltyField);
             ptsBox.setAlignment(Pos.CENTER_LEFT);
-
             grid.add(new Label("Reward Points:"), 0, r);
             grid.add(ptsBox, 1, r++);
         }
 
-        // --- Sub-Tasks ---
         TextArea subTasksArea = new TextArea();
         if (section.isEnableSubTasks()) {
             subTasksArea.setPromptText("Enter sub-tasks...\nOne sub-task per line");
             subTasksArea.setPrefRowCount(3);
             subTasksArea.setStyle("-fx-control-inner-background: #2D2D30; -fx-text-fill: white;");
             if (template != null && template.getSubTaskLines() != null) subTasksArea.setText(String.join("\n", template.getSubTaskLines()));
-
             subTasksArea.setPrefWidth(FULL_WIDTH); subTasksArea.setMaxWidth(FULL_WIDTH);
             grid.add(new Label("Sub-Tasks:"), 0, r);
             grid.add(subTasksArea, 1, r++);
@@ -221,16 +191,33 @@ public class TemplateEditDialog {
 
         mainContent.getChildren().add(grid);
 
-        // ==========================================
-        // 2. RPG STATS GRID
-        // ==========================================
         Map<String, TextField> statRewardFields = new HashMap<>();
         Map<String, TextField> statCapFields = new HashMap<>();
         Map<String, TextField> statCostFields = new HashMap<>();
         Map<String, TextField> statPenFields = new HashMap<>();
+        MenuButton debuffMenuBtn = new MenuButton("Select Debuffs to Inflict"); // --- NEW
 
         if (section.isEnableStatsSystem()) {
             mainContent.getChildren().add(new Separator());
+
+            // --- NEW: Debuff Infliction Dropdown ---
+            if (appStats.getDebuffTemplates() != null && !appStats.getDebuffTemplates().isEmpty()) {
+                debuffMenuBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+                for (Debuff d : appStats.getDebuffTemplates()) {
+                    CheckMenuItem cmi = new CheckMenuItem(d.getName());
+                    cmi.setUserData(d.getId());
+                    if (template != null && template.getInflictedDebuffIds().contains(d.getId())) {
+                        cmi.setSelected(true);
+                    }
+                    debuffMenuBtn.getItems().add(cmi);
+                }
+                HBox dbRow = new HBox(15);
+                Label dbLbl = new Label("Inflict Debuffs:");
+                dbLbl.setPrefWidth(135); dbLbl.setStyle("-fx-text-fill: white;");
+                dbRow.getChildren().addAll(dbLbl, debuffMenuBtn);
+                mainContent.getChildren().add(dbRow);
+            }
+
             Label rpgHeader = new Label("RPG Stat Modifiers:");
             rpgHeader.setStyle("-fx-text-fill: #B5CEA8; -fx-font-weight: bold;");
             mainContent.getChildren().add(rpgHeader);
@@ -238,7 +225,6 @@ public class TemplateEditDialog {
             GridPane rpgGrid = new GridPane();
             rpgGrid.setHgap(10); rpgGrid.setVgap(10);
 
-            // Colored Headers
             Label lblRew = new Label("+ Reward"); lblRew.setStyle("-fx-text-fill: #4EC9B0; -fx-font-weight: bold;");
             Label lblCap = new Label("+ Max Cap"); lblCap.setStyle("-fx-text-fill: #C586C0; -fx-font-weight: bold;");
             Label lblCost = new Label("- Cost"); lblCost.setStyle("-fx-text-fill: #FF8C00; -fx-font-weight: bold;");
@@ -336,6 +322,15 @@ public class TemplateEditDialog {
                 }
 
                 if (section.isEnableStatsSystem()) {
+                    // --- NEW: Save Debuffs ---
+                    List<String> selDebuffs = new ArrayList<>();
+                    for (MenuItem item : debuffMenuBtn.getItems()) {
+                        if (item instanceof CheckMenuItem && ((CheckMenuItem)item).isSelected()) {
+                            selDebuffs.add((String) item.getUserData());
+                        }
+                    }
+                    tToSave.setInflictedDebuffIds(selDebuffs);
+
                     Map<String, Integer> nRewards = new HashMap<>(); Map<String, Integer> nCaps = new HashMap<>();
                     Map<String, Integer> nCosts = new HashMap<>(); Map<String, Integer> nPens = new HashMap<>();
 
@@ -349,7 +344,6 @@ public class TemplateEditDialog {
                     tToSave.setStatRewards(nRewards); tToSave.setStatCapRewards(nCaps);
                     tToSave.setStatCosts(nCosts); tToSave.setStatPenalties(nPens);
 
-                    // Preserve old requirements invisibly if they existed
                     if (template != null && template.getStatRequirements() != null) {
                         tToSave.setStatRequirements(new HashMap<>(template.getStatRequirements()));
                     }

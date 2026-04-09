@@ -79,6 +79,7 @@ public class TaskEditDialog {
         Spinner<Integer> repCounterSpinner = new Spinner<>(0, 999999, Math.max(0, task.getRepetitionCount()));
         repCounterSpinner.setEditable(true);
         repCounterSpinner.setPrefWidth(100);
+
         HBox repBox = new HBox(10, new Label("Set Counter:"), repCounterSpinner);
         repBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -133,13 +134,13 @@ public class TaskEditDialog {
 
         ScrollPane scrollPane = new ScrollPane(grid);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefSize(850, 700);
+        scrollPane.setPrefSize(600, 550);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         scrollPane.setBorder(Border.EMPTY);
 
+        // --- FIXED: Removed invalid '.label' CSS rule entirely to stop the crashing ---
         String scrollCss =
-                ".label { -fx-min-width: USE_PREF_SIZE; } " +
-                        ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
+                ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
                         ".scroll-bar:vertical .track, .scroll-bar:horizontal .track { -fx-background-color: #1E1E1E; -fx-border-color: transparent; } " +
                         ".scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb { -fx-background-color: #555555; -fx-background-radius: 5; } " +
                         ".scroll-bar:vertical .thumb:hover, .scroll-bar:horizontal .thumb:hover { -fx-background-color: #888888; } " +
@@ -169,11 +170,13 @@ public class TaskEditDialog {
                 }
 
                 task.setRepeatingMode(repeatingTaskCheck.isSelected());
+
                 if (repeatingTaskCheck.isSelected()) {
                     task.setRepetitionCount(repCounterSpinner.getValue());
                 }
 
                 styleForm.applyTo(task);
+
                 if (config == null || !config.isNotesPage()) {
                     metaForm.applyTo(task);
                     rpgForm.applyTo(task);

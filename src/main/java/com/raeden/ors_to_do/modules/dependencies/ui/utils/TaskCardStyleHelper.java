@@ -38,7 +38,7 @@ public class TaskCardStyleHelper {
         return bgStyle + borderStyle;
     }
 
-    public static void setupDragAndDrop(TaskCard cardNode, VBox primaryCard, TaskItem task, String originalStyle, BiConsumer<String, String> onReorder) {
+    public static void setupDragAndDrop(VBox cardNode, VBox primaryCard, TaskItem task, String originalStyle, BiConsumer<String, String> onReorder) {
         if (onReorder == null) return;
 
         cardNode.setOnDragDetected(event -> {

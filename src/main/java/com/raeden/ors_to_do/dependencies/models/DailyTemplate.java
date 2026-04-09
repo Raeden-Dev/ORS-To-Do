@@ -10,39 +10,32 @@ import java.util.Map;
 
 public class DailyTemplate implements Serializable {
     private static final long serialVersionUID = 1L;
-    private String prefix;
-    private String text;
-    private String prefixColor;
 
-    // --- Visual Styling ---
+    private String text;
+    private String prefix;
+    private String prefixColor;
+    private String iconSymbol;
+    private String iconColor;
+
     private String bgColor;
     private String customOutlineColor;
     private String customSideboxColor;
 
-    private List<DayOfWeek> activeDays;
-
-    private String iconSymbol;
-    private String iconColor;
-    public String getIconSymbol() { return iconSymbol; }
-    public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
-    public String getIconColor() { return iconColor; }
-    public void setIconColor(String iconColor) { this.iconColor = iconColor; }
-
     private String priorityName;
-    private int rewardPoints;
-    private int penaltyPoints;
     private String taskType;
-    private List<String> subTaskLines;
 
     private boolean isOptional = false;
-    public boolean isOptional() { return isOptional; }
-    public void setOptional(boolean optional) { isOptional = optional; }
-
-    // --- NEW: Repeating Task Properties ---
     private boolean isRepeatingMode = false;
     private int repetitionCount = 0;
+    private int rewardPoints;
+    private int penaltyPoints;
 
-    // --- RPG Stat Maps ---
+    private List<DayOfWeek> activeDays;
+    private List<String> subTaskLines;
+
+    // --- NEW: Debuffs inflicted upon completion ---
+    private List<String> inflictedDebuffIds = new ArrayList<>();
+
     private Map<String, Integer> statRewards = new HashMap<>();
     private Map<String, Integer> statCapRewards = new HashMap<>();
     private Map<String, Integer> statCosts = new HashMap<>();
@@ -58,20 +51,50 @@ public class DailyTemplate implements Serializable {
         this.subTaskLines = new ArrayList<>();
     }
 
+    public String getText() { return text; }
+    public void setText(String text) { this.text = text; }
+
+    public String getPrefix() { return prefix; }
+    public void setPrefix(String prefix) { this.prefix = prefix; }
+
+    public String getPrefixColor() { return prefixColor; }
+    public void setPrefixColor(String prefixColor) { this.prefixColor = prefixColor; }
+
+    public String getIconSymbol() { return iconSymbol; }
+    public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
+
+    public String getIconColor() { return iconColor; }
+    public void setIconColor(String iconColor) { this.iconColor = iconColor; }
+
+    public String getBgColor() { return bgColor; }
+    public void setBgColor(String bgColor) { this.bgColor = bgColor; }
+
+    public String getCustomOutlineColor() { return customOutlineColor; }
+    public void setCustomOutlineColor(String customOutlineColor) { this.customOutlineColor = customOutlineColor; }
+
+    public String getCustomSideboxColor() { return customSideboxColor; }
+    public void setCustomSideboxColor(String customSideboxColor) { this.customSideboxColor = customSideboxColor; }
+
     public String getPriorityName() { return priorityName; }
     public void setPriorityName(String priorityName) { this.priorityName = priorityName; }
-    public int getRewardPoints() { return rewardPoints; }
-    public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
-    public int getPenaltyPoints() { return penaltyPoints; }
-    public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
+
     public String getTaskType() { return taskType; }
     public void setTaskType(String taskType) { this.taskType = taskType; }
 
-    public List<String> getSubTaskLines() {
-        if (subTaskLines == null) subTaskLines = new ArrayList<>();
-        return subTaskLines;
-    }
-    public void setSubTaskLines(List<String> subTaskLines) { this.subTaskLines = subTaskLines; }
+    public boolean isOptional() { return isOptional; }
+    public void setOptional(boolean optional) { this.isOptional = optional; }
+
+    public boolean isRepeatingMode() { return isRepeatingMode; }
+    public void setRepeatingMode(boolean repeatingMode) { this.isRepeatingMode = repeatingMode; }
+
+    public int getRepetitionCount() { return repetitionCount; }
+    public void setRepetitionCount(int repetitionCount) { this.repetitionCount = repetitionCount; }
+
+    public int getRewardPoints() { return rewardPoints; }
+    public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
+
+    public int getPenaltyPoints() { return penaltyPoints; }
+    public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
 
     public List<DayOfWeek> getActiveDays() {
         if (activeDays == null) activeDays = new ArrayList<>(Arrays.asList(DayOfWeek.values()));
@@ -79,24 +102,17 @@ public class DailyTemplate implements Serializable {
     }
     public void setActiveDays(List<DayOfWeek> activeDays) { this.activeDays = activeDays; }
 
-    public String getPrefix() { return prefix; }
-    public void setPrefix(String prefix) { this.prefix = prefix; }
-    public String getText() { return text; }
-    public void setText(String text) { this.text = text; }
-    public String getPrefixColor() { return prefixColor; }
-    public void setPrefixColor(String prefixColor) { this.prefixColor = prefixColor; }
+    public List<String> getSubTaskLines() {
+        if (subTaskLines == null) subTaskLines = new ArrayList<>();
+        return subTaskLines;
+    }
+    public void setSubTaskLines(List<String> subTaskLines) { this.subTaskLines = subTaskLines; }
 
-    public String getBgColor() { return bgColor; }
-    public void setBgColor(String bgColor) { this.bgColor = bgColor; }
-    public String getCustomOutlineColor() { return customOutlineColor; }
-    public void setCustomOutlineColor(String customOutlineColor) { this.customOutlineColor = customOutlineColor; }
-    public String getCustomSideboxColor() { return customSideboxColor; }
-    public void setCustomSideboxColor(String customSideboxColor) { this.customSideboxColor = customSideboxColor; }
-
-    public boolean isRepeatingMode() { return isRepeatingMode; }
-    public void setRepeatingMode(boolean repeatingMode) { this.isRepeatingMode = repeatingMode; }
-    public int getRepetitionCount() { return repetitionCount; }
-    public void setRepetitionCount(int repetitionCount) { this.repetitionCount = repetitionCount; }
+    public List<String> getInflictedDebuffIds() {
+        if (inflictedDebuffIds == null) inflictedDebuffIds = new ArrayList<>();
+        return inflictedDebuffIds;
+    }
+    public void setInflictedDebuffIds(List<String> inflictedDebuffIds) { this.inflictedDebuffIds = inflictedDebuffIds; }
 
     public Map<String, Integer> getStatRewards() {
         if (statRewards == null) statRewards = new HashMap<>();

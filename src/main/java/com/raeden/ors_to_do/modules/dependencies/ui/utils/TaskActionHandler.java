@@ -14,6 +14,40 @@ import static com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManag
 
 public class TaskActionHandler {
 
+    // --- NEW: Centralized logic for applying Debuffs triggered by a Task ---
+    public static void applyInflictedDebuffs(TaskItem task, AppStats appStats) {
+        if (task.getInflictedDebuffIds().isEmpty() || appStats.getDebuffTemplates() == null) return;
+
+        boolean changed = false;
+        for (String dId : task.getInflictedDebuffIds()) {
+            Debuff template = appStats.getDebuffTemplates().stream().filter(d -> d.getId().equals(dId)).findFirst().orElse(null);
+            if (template != null) {
+                boolean applied = false;
+                for (Debuff active : appStats.getActiveDebuffs()) {
+                    if (active.getId().equals(template.getId())) {
+                        if (template.isAllowStacking()) {
+                            if (active.getCurrentStacks() < template.getMaxStacks()) {
+                                active.setCurrentStacks(active.getCurrentStacks() + 1);
+                                applied = true;
+                                changed = true;
+                                pushNotification("Debuff Stacked!", "You gained another stack of: " + template.getName());
+                                break;
+                            }
+                        }
+                        applied = true; // Already active, no stacking allowed or max reached
+                        break;
+                    }
+                }
+                if (!applied) {
+                    appStats.getActiveDebuffs().add(template.cloneAsActive());
+                    changed = true;
+                    pushNotification("Debuff Inflicted!", "You have been afflicted with: " + template.getName());
+                }
+            }
+        }
+        if (changed) StorageManager.saveStats(appStats);
+    }
+
     public static void handleRewardPurchase(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {
         if (appStats.getGlobalScore() < task.getCostPoints()) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Not enough points! You need " + task.getCostPoints() + " but only have " + appStats.getGlobalScore() + ".");
@@ -138,7 +172,6 @@ public class TaskActionHandler {
         if (task.isCounterMode() && task.getMaxCount() > 0) task.setCurrentCount(task.getMaxCount());
         for (SubTask sub : task.getSubTasks()) sub.setFinished(true);
 
-        // --- NEW: Process Debuff Cleansing ---
         if (appStats.getActiveDebuffs() != null && !appStats.getActiveDebuffs().isEmpty() && !task.isPointsClaimed()) {
             boolean cleansed = false;
             java.util.Iterator<Debuff> it = appStats.getActiveDebuffs().iterator();
@@ -159,6 +192,9 @@ public class TaskActionHandler {
         if (hasModifiers && !task.isPointsClaimed()) {
             task.setPointsClaimed(true);
 
+            // --- Apply Inflicted Debuffs for Standard Task ---
+            applyInflictedDebuffs(task, appStats);
+
             appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
             if (config.isEnableStatsSystem()) {
                 processRPGStats(task, appStats, true);
@@ -169,7 +205,6 @@ public class TaskActionHandler {
     public static void processRPGStats(TaskItem task, AppStats appStats, boolean isCompletion) {
         if (!appStats.isGlobalStatsEnabled()) return;
 
-        // Clean expired debuffs
         if (appStats.getActiveDebuffs() != null) {
             appStats.getActiveDebuffs().removeIf(d -> d.getExpiryDate() != null && java.time.LocalDateTime.now().isAfter(d.getExpiryDate()));
         }
@@ -179,15 +214,23 @@ public class TaskActionHandler {
             int rewardAmt = getStatValue(task.getStatRewards(), stat);
             int costAmt = getStatValue(task.getStatCosts(), stat);
 
-            // --- Apply Debuff Modifiers to the calculations ---
             int effectiveCap = stat.getMaxCap();
             if (appStats.getActiveDebuffs() != null) {
                 for (Debuff d : appStats.getActiveDebuffs()) {
                     if (d.getStatGainMultipliers().containsKey(stat.getId())) {
-                        rewardAmt = (int) Math.round(rewardAmt * d.getStatGainMultipliers().get(stat.getId()));
+                        double multi = d.getStatGainMultipliers().get(stat.getId());
+                        if (d.isAllowStacking() && d.getStatGainMultiplierStackReductions().containsKey(stat.getId())) {
+                            multi -= d.getStatGainMultiplierStackReductions().get(stat.getId()) * (d.getCurrentStacks() - 1);
+                        }
+                        multi = Math.max(0.0, multi);
+                        rewardAmt = (int) Math.round(rewardAmt * multi);
                     }
                     if (d.getStatCapReductions().containsKey(stat.getId())) {
-                        effectiveCap -= d.getStatCapReductions().get(stat.getId());
+                        int reduction = d.getStatCapReductions().get(stat.getId());
+                        if (d.isAllowStacking() && d.getStatCapReductionStackIncreasers().containsKey(stat.getId())) {
+                            reduction += d.getStatCapReductionStackIncreasers().get(stat.getId()) * (d.getCurrentStacks() - 1);
+                        }
+                        effectiveCap -= reduction;
                     }
                 }
             }

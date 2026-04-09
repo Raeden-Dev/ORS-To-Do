@@ -10,6 +10,8 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.time.Duration;
@@ -31,7 +33,15 @@ public class DebuffCard extends VBox {
         Label nameLbl = new Label(debuff.getName());
         nameLbl.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
-        header.getChildren().addAll(iconLbl, nameLbl);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(iconLbl, nameLbl, spacer);
+
+        if (debuff.isAllowStacking() && debuff.getCurrentStacks() > 1) {
+            Label stackLbl = new Label("x" + debuff.getCurrentStacks());
+            stackLbl.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: 12px; -fx-background-color: #1A0000; -fx-padding: 2 6; -fx-background-radius: 5;");
+            header.getChildren().add(stackLbl);
+        }
         getChildren().add(header);
 
         if (debuff.getDescription() != null && !debuff.getDescription().isEmpty()) {
@@ -59,16 +69,23 @@ public class DebuffCard extends VBox {
         StringBuilder sb = new StringBuilder("Effects:\n");
         appStats.getCustomStats().forEach(s -> {
             if (debuff.getStatGainMultipliers().containsKey(s.getId())) {
-                sb.append("• ").append(s.getName()).append(" XP gain reduced to ").append(Math.round(debuff.getStatGainMultipliers().get(s.getId()) * 100)).append("%\n");
+                double multi = debuff.getStatGainMultipliers().get(s.getId());
+                if (debuff.isAllowStacking() && debuff.getStatGainMultiplierStackReductions().containsKey(s.getId())) {
+                    multi -= debuff.getStatGainMultiplierStackReductions().get(s.getId()) * (debuff.getCurrentStacks() - 1);
+                }
+                sb.append("• ").append(s.getName()).append(" XP gain reduced to ").append(Math.max(0, Math.round(multi * 100))).append("%\n");
             }
             if (debuff.getStatCapReductions().containsKey(s.getId())) {
-                sb.append("• ").append(s.getName()).append(" Max Cap lowered by ").append(debuff.getStatCapReductions().get(s.getId())).append("\n");
+                int reduction = debuff.getStatCapReductions().get(s.getId());
+                if (debuff.isAllowStacking() && debuff.getStatCapReductionStackIncreasers().containsKey(s.getId())) {
+                    reduction += debuff.getStatCapReductionStackIncreasers().get(s.getId()) * (debuff.getCurrentStacks() - 1);
+                }
+                sb.append("• ").append(s.getName()).append(" Max Cap lowered by ").append(reduction).append("\n");
             }
         });
         t.setText(sb.toString().trim());
         Tooltip.install(this, t);
 
-        // --- FIXED: Right-Click Removal Confirmation Dialog ---
         this.setOnMouseClicked(e -> {
             if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to manually remove the '" + debuff.getName() + "' debuff early?", ButtonType.YES, ButtonType.NO);

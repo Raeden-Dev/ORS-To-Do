@@ -3,7 +3,6 @@ package com.raeden.ors_to_do.modules.dependencies.ui.dialogs;
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import com.raeden.ors_to_do.dependencies.models.Debuff;
-import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -20,13 +19,14 @@ public class DebuffEditDialog {
 
         GridPane grid = new GridPane();
         grid.setHgap(15); grid.setVgap(12);
-        grid.getColumnConstraints().addAll(new ColumnConstraints(150), new ColumnConstraints(250));
+        grid.getColumnConstraints().addAll(new ColumnConstraints(150), new ColumnConstraints(400));
 
         int r = 0;
         TextField nameF = new TextField(template != null ? template.getName() : "");
         grid.add(new Label("Debuff Name:"), 0, r); grid.add(nameF, 1, r++);
 
-        TextField descF = new TextField(template != null ? template.getDescription() : "");
+        TextArea descF = new TextArea(template != null ? template.getDescription() : "");
+        descF.setPrefRowCount(3); descF.setWrapText(true);
         grid.add(new Label("Description:"), 0, r); grid.add(descF, 1, r++);
 
         ComboBox<String> iconBox = new ComboBox<>();
@@ -35,6 +35,20 @@ public class DebuffEditDialog {
         ColorPicker colorPicker = new ColorPicker(Color.web(template != null ? template.getColorHex() : "#8B0000"));
         HBox iconRow = new HBox(10, iconBox, colorPicker);
         grid.add(new Label("Icon & Color:"), 0, r); grid.add(iconRow, 1, r++);
+
+        grid.add(new Separator(), 0, r++, 2, 1);
+
+        CheckBox stackingCheck = new CheckBox("Allow Stacking?");
+        stackingCheck.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        stackingCheck.setSelected(template != null && template.isAllowStacking());
+
+        Spinner<Integer> maxStacksSp = new Spinner<>(2, 99, template != null ? template.getMaxStacks() : 5);
+        maxStacksSp.setEditable(true); maxStacksSp.setPrefWidth(80);
+        maxStacksSp.setDisable(!stackingCheck.isSelected());
+        stackingCheck.setOnAction(e -> maxStacksSp.setDisable(!stackingCheck.isSelected()));
+
+        grid.add(stackingCheck, 0, r);
+        grid.add(new HBox(10, new Label("Max Stacks:"), maxStacksSp), 1, r++);
 
         grid.add(new Separator(), 0, r++, 2, 1);
 
@@ -47,15 +61,20 @@ public class DebuffEditDialog {
         grid.add(new Label("Hours to Auto-Expire (0=Never):"), 0, r); grid.add(hoursSp, 1, r++);
 
         grid.add(new Separator(), 0, r++, 2, 1);
-        Label modL = new Label("Stat Penalties (While Active):"); modL.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
+        Label modL = new Label("Stat Penalties (Base vs Per Stack):"); modL.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
         grid.add(modL, 0, r++, 2, 1);
 
         Map<String, TextField> multiFields = new HashMap<>();
+        Map<String, TextField> stackMultiFields = new HashMap<>();
         Map<String, TextField> capFields = new HashMap<>();
+        Map<String, TextField> stackCapFields = new HashMap<>();
 
         GridPane statGrid = new GridPane();
         statGrid.setHgap(10); statGrid.setVgap(10);
-        statGrid.add(new Label("Gain Multiplier %"), 1, 0); statGrid.add(new Label("- Max Cap"), 2, 0);
+        statGrid.add(new Label("Gain Multiplier %"), 1, 0);
+        statGrid.add(new Label("Stack Gain Penalty %"), 2, 0);
+        statGrid.add(new Label("- Max Cap"), 3, 0);
+        statGrid.add(new Label("Stack - Max Cap"), 4, 0);
 
         int sr = 1;
         for (CustomStat stat : appStats.getCustomStats()) {
@@ -68,18 +87,30 @@ public class DebuffEditDialog {
             } else multi.setText("100");
             multiFields.put(stat.getId(), multi); statGrid.add(multi, 1, sr);
 
+            TextField stackMulti = new TextField(); stackMulti.setPrefWidth(60);
+            if (template != null && template.getStatGainMultiplierStackReductions().containsKey(stat.getId())) {
+                stackMulti.setText(String.valueOf(Math.round(template.getStatGainMultiplierStackReductions().get(stat.getId()) * 100)));
+            } else stackMulti.setText("0");
+            stackMultiFields.put(stat.getId(), stackMulti); statGrid.add(stackMulti, 2, sr);
+
             TextField cap = new TextField(); cap.setPrefWidth(60);
             if (template != null && template.getStatCapReductions().containsKey(stat.getId())) {
                 cap.setText(String.valueOf(template.getStatCapReductions().get(stat.getId())));
             } else cap.setText("0");
-            capFields.put(stat.getId(), cap); statGrid.add(cap, 2, sr);
+            capFields.put(stat.getId(), cap); statGrid.add(cap, 3, sr);
+
+            TextField stackCap = new TextField(); stackCap.setPrefWidth(60);
+            if (template != null && template.getStatCapReductionStackIncreasers().containsKey(stat.getId())) {
+                stackCap.setText(String.valueOf(template.getStatCapReductionStackIncreasers().get(stat.getId())));
+            } else stackCap.setText("0");
+            stackCapFields.put(stat.getId(), stackCap); statGrid.add(stackCap, 4, sr);
 
             sr++;
         }
         grid.add(statGrid, 0, r++, 2, 1);
 
         ScrollPane scroll = new ScrollPane(grid);
-        scroll.setFitToWidth(true); scroll.setPrefSize(450, 500);
+        scroll.setFitToWidth(true); scroll.setPrefSize(650, 600);
         scroll.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
         dialog.getDialogPane().setContent(scroll);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -93,14 +124,23 @@ public class DebuffEditDialog {
                 d.setColorHex(TaskDialogs.toHexString(colorPicker.getValue()));
                 d.setRequiredTaskCompletions(tasksSp.getValue());
                 d.setDurationHours(hoursSp.getValue());
+                d.setAllowStacking(stackingCheck.isSelected());
+                d.setMaxStacks(maxStacksSp.getValue());
 
                 Map<String, Double> m = new HashMap<>();
+                Map<String, Double> sm = new HashMap<>();
                 Map<String, Integer> c = new HashMap<>();
+                Map<String, Integer> sc = new HashMap<>();
                 for (CustomStat s : appStats.getCustomStats()) {
                     try { double p = Double.parseDouble(multiFields.get(s.getId()).getText().trim()) / 100.0; if (p >= 0 && p < 1.0) m.put(s.getId(), p); } catch(Exception ignore){}
+                    try { double p = Double.parseDouble(stackMultiFields.get(s.getId()).getText().trim()) / 100.0; if (p > 0) sm.put(s.getId(), p); } catch(Exception ignore){}
                     try { int v = Integer.parseInt(capFields.get(s.getId()).getText().trim()); if (v > 0) c.put(s.getId(), v); } catch(Exception ignore){}
+                    try { int v = Integer.parseInt(stackCapFields.get(s.getId()).getText().trim()); if (v > 0) sc.put(s.getId(), v); } catch(Exception ignore){}
                 }
-                d.setStatGainMultipliers(m); d.setStatCapReductions(c);
+                d.setStatGainMultipliers(m);
+                d.setStatGainMultiplierStackReductions(sm);
+                d.setStatCapReductions(c);
+                d.setStatCapReductionStackIncreasers(sc);
 
                 if (template == null) appStats.getDebuffTemplates().add(d);
                 onSave.run();

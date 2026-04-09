@@ -10,22 +10,26 @@ public class TaskItem implements Serializable {
     private String id;
     private String textContent;
     private CustomPriority priority;
+
     private boolean isFinished;
+    private boolean isArchived = false;
+    private boolean isFavorite = false;
+    private boolean isOptional = false;
+    private boolean isPinned = false;
+
     private LocalDateTime dateCreated;
     private LocalDateTime dateCompleted;
-    private String colorHex;
-    private String prefix;
     private LocalDateTime startDate;
     private LocalDateTime deadline;
 
-    private boolean isArchived = false;
-    private boolean isFavorite = false;
-    private String taskType = "";
-    private int timeSpentSeconds = 0;
-
-    private List<SubTask> subTasks = new ArrayList<>();
-    private boolean isExpanded = false;
+    private String colorHex;
+    private String customOutlineColor = null;
+    private String customSideboxColor = null;
+    private String prefix;
     private String prefixColor;
+    private String iconSymbol;
+    private String iconColor;
+    private String taskType = "";
 
     private OriginModule originModule;
     private String sectionId;
@@ -33,115 +37,51 @@ public class TaskItem implements Serializable {
     private boolean isCounterMode = false;
     private int currentCount = 0;
     private int maxCount = 0;
-
-    // --- NEW: Perma Lock Flag for Counters ---
     private boolean isPermaLock = false;
-    public boolean isPermaLock() { return isPermaLock; }
-    public void setPermaLock(boolean permaLock) { isPermaLock = permaLock; }
+
+    private boolean isRepeatingMode = false;
+    private int repetitionCount = 0;
+
+    private int timeSpentSeconds = 0;
+    private int targetTimeMinutes = 0;
 
     private int rewardPoints = 0;
     private int penaltyPoints = 0;
+    private int costPoints = 0;
     private boolean pointsClaimed = false;
     private boolean penaltyApplied = false;
 
+    private boolean isLinkCard;
+    private String linkActionPath;
+
+    private boolean isChallengeCard = false;
+    private int perkLevel = 0;
+    private int weeksMaintained = 0;
+    private String perkDescription = "";
+    private LocalDateTime perkUnlockedDate;
+    private LocalDateTime perkLostDate;
+
+    private boolean isExpanded = false;
     private boolean statsExpanded = false;
-
-    private List<String> links = new ArrayList<>();
-    private List<TaskLink> taskLinks = new ArrayList<>();
-
-    private Map<String, Integer> statRewards = new HashMap<>();
-    private Map<String, Integer> statPenalties = new HashMap<>();
-
-    // --- NEW: Optional Task Flag ---
-    private boolean isOptional = false;
-    public boolean isOptional() { return isOptional; }
-    public void setOptional(boolean optional) { isOptional = optional; }
-
-    public boolean isStatsExpanded() { return statsExpanded; }
-    public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
 
     private boolean notified24h = false;
     private boolean notified12h = false;
     private boolean notified4h = false;
     private boolean notified2h = false;
 
-    public boolean isNotified24h() { return notified24h; }
-    public void setNotified24h(boolean v) { this.notified24h = v; }
-    public boolean isNotified12h() { return notified12h; }
-    public void setNotified12h(boolean v) { this.notified12h = v; }
-    public boolean isNotified4h() { return notified4h; }
-    public void setNotified4h(boolean v) { this.notified4h = v; }
-    public boolean isNotified2h() { return notified2h; }
-    public void setNotified2h(boolean v) { this.notified2h = v; }
+    private List<SubTask> subTasks = new ArrayList<>();
+    private List<String> links = new ArrayList<>();
+    private List<TaskLink> taskLinks = new ArrayList<>();
+    private List<String> dependsOnTaskIds = new ArrayList<>();
 
-    // --- PHASE 4: PERK SYSTEM FIELDS ---
+    // --- NEW: Debuffs inflicted upon completion ---
+    private List<String> inflictedDebuffIds = new ArrayList<>();
+
+    private Map<String, Integer> statRewards = new HashMap<>();
+    private Map<String, Integer> statCapRewards = new HashMap<>();
+    private Map<String, Integer> statCosts = new HashMap<>();
+    private Map<String, Integer> statPenalties = new HashMap<>();
     private Map<String, Integer> statRequirements = new HashMap<>();
-    private int perkLevel = 0; // 0 to 5
-    private int weeksMaintained = 0;
-    private String perkDescription = "";
-
-    public Map<String, Integer> getStatRequirements() {
-        if (statRequirements == null) statRequirements = new HashMap<>();
-        return statRequirements;
-    }
-    public void setStatRequirements(Map<String, Integer> statRequirements) { this.statRequirements = statRequirements; }
-
-    public int getPerkLevel() { return perkLevel; }
-    public void setPerkLevel(int perkLevel) { this.perkLevel = perkLevel; }
-
-    public int getWeeksMaintained() { return weeksMaintained; }
-    public void setWeeksMaintained(int weeksMaintained) { this.weeksMaintained = weeksMaintained; }
-
-    public String getPerkDescription() { return perkDescription; }
-    public void setPerkDescription(String perkDescription) { this.perkDescription = perkDescription; }
-
-    // --- NEW: Link Card Properties ---
-    private boolean isLinkCard;
-    private String linkActionPath;
-
-    public boolean isLinkCard() { return isLinkCard; }
-    public void setLinkCard(boolean linkCard) { this.isLinkCard = linkCard; }
-
-    public String getLinkActionPath() { return linkActionPath; }
-    public void setLinkActionPath(String linkActionPath) { this.linkActionPath = linkActionPath; }
-
-    // --- NEW: NOTES Specific Variables ---
-    private boolean isPinned = false;
-    private String customOutlineColor = null;
-    private String customSideboxColor = null;
-
-    public boolean isPinned() { return isPinned; }
-    public void setPinned(boolean pinned) { isPinned = pinned; }
-
-    public String getCustomOutlineColor() { return customOutlineColor; }
-    public void setCustomOutlineColor(String color) { this.customOutlineColor = color; }
-
-    public String getCustomSideboxColor() { return customSideboxColor; }
-    public void setCustomSideboxColor(String color) { this.customSideboxColor = color; }
-
-    private int costPoints = 0;
-    public int getCostPoints() { return costPoints; }
-    public void setCostPoints(int costPoints) { this.costPoints = costPoints; }
-
-    private String iconSymbol;
-    private String iconColor;
-
-    public String getIconSymbol() { return iconSymbol; }
-    public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
-    public String getIconColor() { return iconColor; }
-    public void setIconColor(String iconColor) { this.iconColor = iconColor; }
-
-    public Map<String, Integer> getStatRewards() {
-        if (statRewards == null) statRewards = new HashMap<>();
-        return statRewards;
-    }
-    public void setStatRewards(Map<String, Integer> statRewards) { this.statRewards = statRewards; }
-
-    public Map<String, Integer> getStatPenalties() {
-        if (statPenalties == null) statPenalties = new HashMap<>();
-        return statPenalties;
-    }
-    public void setStatPenalties(Map<String, Integer> statPenalties) { this.statPenalties = statPenalties; }
 
     public TaskItem(String textContent, CustomPriority priority, OriginModule legacyModule) {
         this.id = UUID.randomUUID().toString();
@@ -162,9 +102,170 @@ public class TaskItem implements Serializable {
         this.dateCreated = LocalDateTime.now();
     }
 
+    public String getId() { return id; }
+
+    public String getTextContent() { return textContent; }
+    public void setTextContent(String textContent) { this.textContent = textContent; }
+
+    public CustomPriority getPriority() { return priority; }
+    public void setPriority(CustomPriority priority) { this.priority = priority; }
+
+    public boolean isFinished() { return isFinished; }
+    public void setFinished(boolean finished) {
+        this.isFinished = finished;
+        this.dateCompleted = finished ? LocalDateTime.now() : null;
+    }
+
+    public boolean isArchived() { return isArchived; }
+    public void setArchived(boolean archived) { this.isArchived = archived; }
+
+    public boolean isFavorite() { return isFavorite; }
+    public void setFavorite(boolean favorite) { this.isFavorite = favorite; }
+
+    public boolean isOptional() { return isOptional; }
+    public void setOptional(boolean optional) { this.isOptional = optional; }
+
+    public boolean isPinned() { return isPinned; }
+    public void setPinned(boolean pinned) { this.isPinned = pinned; }
+
+    public LocalDateTime getDateCreated() { return dateCreated; }
+
+    public LocalDateTime getDateCompleted() { return dateCompleted; }
+
+    public LocalDateTime getStartDate() { return startDate; }
+    public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
+
+    public LocalDateTime getDeadline() { return deadline; }
+    public void setDeadline(LocalDateTime deadline) {
+        this.deadline = deadline;
+        this.notified24h = false;
+        this.notified12h = false;
+        this.notified4h = false;
+        this.notified2h = false;
+    }
+
+    public String getColorHex() { return colorHex; }
+    public void setColorHex(String colorHex) { this.colorHex = colorHex; }
+
+    public String getCustomOutlineColor() { return customOutlineColor; }
+    public void setCustomOutlineColor(String color) { this.customOutlineColor = color; }
+
+    public String getCustomSideboxColor() { return customSideboxColor; }
+    public void setCustomSideboxColor(String color) { this.customSideboxColor = color; }
+
+    public String getPrefix() { return prefix; }
+    public void setPrefix(String prefix) { this.prefix = prefix; }
+
+    public String getPrefixColor() { return prefixColor; }
+    public void setPrefixColor(String prefixColor) { this.prefixColor = prefixColor; }
+
+    public String getIconSymbol() { return iconSymbol; }
+    public void setIconSymbol(String iconSymbol) { this.iconSymbol = iconSymbol; }
+
+    public String getIconColor() { return iconColor; }
+    public void setIconColor(String iconColor) { this.iconColor = iconColor; }
+
+    public String getTaskType() { return taskType; }
+    public void setTaskType(String taskType) { this.taskType = taskType; }
+
+    public String getSectionId() { return sectionId; }
+    public void setSectionId(String sectionId) { this.sectionId = sectionId; }
+
+    public OriginModule getLegacyOriginModule() { return originModule; }
+    public OriginModule getOriginModule() {
+        if (originModule != null) return originModule;
+        try { return OriginModule.valueOf(sectionId); } catch (Exception e) { return null; }
+    }
+
+    public boolean isCounterMode() { return isCounterMode; }
+    public void setCounterMode(boolean counterMode) { this.isCounterMode = counterMode; }
+
+    public int getCurrentCount() { return currentCount; }
+    public void setCurrentCount(int currentCount) { this.currentCount = currentCount; }
+
+    public int getMaxCount() { return maxCount; }
+    public void setMaxCount(int maxCount) { this.maxCount = maxCount; }
+
+    public boolean isPermaLock() { return isPermaLock; }
+    public void setPermaLock(boolean permaLock) { this.isPermaLock = permaLock; }
+
+    public boolean isRepeatingMode() { return isRepeatingMode; }
+    public void setRepeatingMode(boolean repeatingMode) { this.isRepeatingMode = repeatingMode; }
+
+    public int getRepetitionCount() { return repetitionCount; }
+    public void setRepetitionCount(int repetitionCount) { this.repetitionCount = repetitionCount; }
+
+    public int getTimeSpentSeconds() { return timeSpentSeconds; }
+    public void setTimeSpentSeconds(int timeSpentSeconds) { this.timeSpentSeconds = timeSpentSeconds; }
+    public void addTimeSpent(int seconds) { this.timeSpentSeconds += seconds; }
+
+    public int getTargetTimeMinutes() { return targetTimeMinutes; }
+    public void setTargetTimeMinutes(int targetTimeMinutes) { this.targetTimeMinutes = targetTimeMinutes; }
+
+    public int getRewardPoints() { return rewardPoints; }
+    public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
+
+    public int getPenaltyPoints() { return penaltyPoints; }
+    public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
+
+    public int getCostPoints() { return costPoints; }
+    public void setCostPoints(int costPoints) { this.costPoints = costPoints; }
+
+    public boolean isPointsClaimed() { return pointsClaimed; }
+    public void setPointsClaimed(boolean pointsClaimed) { this.pointsClaimed = pointsClaimed; }
+
+    public boolean isPenaltyApplied() { return penaltyApplied; }
+    public void setPenaltyApplied(boolean penaltyApplied) { this.penaltyApplied = penaltyApplied; }
+
+    public boolean isLinkCard() { return isLinkCard; }
+    public void setLinkCard(boolean linkCard) { this.isLinkCard = linkCard; }
+
+    public String getLinkActionPath() { return linkActionPath; }
+    public void setLinkActionPath(String linkActionPath) { this.linkActionPath = linkActionPath; }
+
+    public boolean isChallengeCard() { return isChallengeCard; }
+    public void setChallengeCard(boolean challengeCard) { this.isChallengeCard = challengeCard; }
+
+    public int getPerkLevel() { return perkLevel; }
+    public void setPerkLevel(int perkLevel) { this.perkLevel = perkLevel; }
+
+    public int getWeeksMaintained() { return weeksMaintained; }
+    public void setWeeksMaintained(int weeksMaintained) { this.weeksMaintained = weeksMaintained; }
+
+    public String getPerkDescription() { return perkDescription; }
+    public void setPerkDescription(String perkDescription) { this.perkDescription = perkDescription; }
+
+    public LocalDateTime getPerkUnlockedDate() { return perkUnlockedDate; }
+    public void setPerkUnlockedDate(LocalDateTime perkUnlockedDate) { this.perkUnlockedDate = perkUnlockedDate; }
+
+    public LocalDateTime getPerkLostDate() { return perkLostDate; }
+    public void setPerkLostDate(LocalDateTime perkLostDate) { this.perkLostDate = perkLostDate; }
+
+    public boolean isExpanded() { return isExpanded; }
+    public void setExpanded(boolean expanded) { this.isExpanded = expanded; }
+
+    public boolean isStatsExpanded() { return statsExpanded; }
+    public void setStatsExpanded(boolean statsExpanded) { this.statsExpanded = statsExpanded; }
+
+    public boolean isNotified24h() { return notified24h; }
+    public void setNotified24h(boolean v) { this.notified24h = v; }
+
+    public boolean isNotified12h() { return notified12h; }
+    public void setNotified12h(boolean v) { this.notified12h = v; }
+
+    public boolean isNotified4h() { return notified4h; }
+    public void setNotified4h(boolean v) { this.notified4h = v; }
+
+    public boolean isNotified2h() { return notified2h; }
+    public void setNotified2h(boolean v) { this.notified2h = v; }
+
+    public List<SubTask> getSubTasks() {
+        if (subTasks == null) subTasks = new ArrayList<>();
+        return subTasks;
+    }
+
     public List<TaskLink> getTaskLinks() {
         if (taskLinks == null) taskLinks = new ArrayList<>();
-
         if (links != null && !links.isEmpty()) {
             for (String oldLink : links) {
                 taskLinks.add(new TaskLink(oldLink, oldLink));
@@ -174,133 +275,45 @@ public class TaskItem implements Serializable {
         return taskLinks;
     }
 
-    private Map<String, Integer> statCosts = new HashMap<>();
-
-    public Map<String, Integer> getStatCosts() {
-        if (statCosts == null) statCosts = new HashMap<>();
-        return statCosts;
-    }
-
-    public void setStatCosts(Map<String, Integer> statCosts) {
-        this.statCosts = statCosts;
-    }
-
-    private List<String> dependsOnTaskIds = new ArrayList<>();
-
     public List<String> getDependsOnTaskIds() {
         if (dependsOnTaskIds == null) dependsOnTaskIds = new ArrayList<>();
         return dependsOnTaskIds;
     }
     public void setDependsOnTaskIds(List<String> dependsOnTaskIds) { this.dependsOnTaskIds = dependsOnTaskIds; }
 
-    private Map<String, Integer> statCapRewards = new HashMap<>();
+    public List<String> getInflictedDebuffIds() {
+        if (inflictedDebuffIds == null) inflictedDebuffIds = new ArrayList<>();
+        return inflictedDebuffIds;
+    }
+    public void setInflictedDebuffIds(List<String> inflictedDebuffIds) { this.inflictedDebuffIds = inflictedDebuffIds; }
+
+    public Map<String, Integer> getStatRewards() {
+        if (statRewards == null) statRewards = new HashMap<>();
+        return statRewards;
+    }
+    public void setStatRewards(Map<String, Integer> statRewards) { this.statRewards = statRewards; }
 
     public Map<String, Integer> getStatCapRewards() {
         if (statCapRewards == null) statCapRewards = new HashMap<>();
         return statCapRewards;
     }
+    public void setStatCapRewards(Map<String, Integer> statCapRewards) { this.statCapRewards = statCapRewards; }
 
-    public void setStatCapRewards(Map<String, Integer> statCapRewards) {
-        this.statCapRewards = statCapRewards;
+    public Map<String, Integer> getStatCosts() {
+        if (statCosts == null) statCosts = new HashMap<>();
+        return statCosts;
     }
+    public void setStatCosts(Map<String, Integer> statCosts) { this.statCosts = statCosts; }
 
-    // --- NEW: Repeating Task Properties ---
-    private boolean isRepeatingMode = false;
-    private int repetitionCount = 0;
-
-    public boolean isRepeatingMode() { return isRepeatingMode; }
-    public void setRepeatingMode(boolean repeatingMode) { isRepeatingMode = repeatingMode; }
-
-    public int getRepetitionCount() { return repetitionCount; }
-    public void setRepetitionCount(int repetitionCount) { this.repetitionCount = repetitionCount; }
-
-    // --- NEW: Timed Task Target ---
-    private int targetTimeMinutes = 0;
-
-    public int getTargetTimeMinutes() { return targetTimeMinutes; }
-    public void setTargetTimeMinutes(int targetTimeMinutes) { this.targetTimeMinutes = targetTimeMinutes; }
-
-    // --- NEW: Perk Date Tracking ---
-    private LocalDateTime perkUnlockedDate;
-    private LocalDateTime perkLostDate;
-
-    // --- NEW: Challenge Card Flag ---
-    private boolean isChallengeCard = false;
-
-    public boolean isChallengeCard() { return isChallengeCard; }
-    public void setChallengeCard(boolean challengeCard) { isChallengeCard = challengeCard; }
-
-    public LocalDateTime getPerkUnlockedDate() { return perkUnlockedDate; }
-    public void setPerkUnlockedDate(LocalDateTime perkUnlockedDate) { this.perkUnlockedDate = perkUnlockedDate; }
-
-    public LocalDateTime getPerkLostDate() { return perkLostDate; }
-    public void setPerkLostDate(LocalDateTime perkLostDate) { this.perkLostDate = perkLostDate; }
-
-    public boolean isCounterMode() { return isCounterMode; }
-    public void setCounterMode(boolean counterMode) { isCounterMode = counterMode; }
-    public int getCurrentCount() { return currentCount; }
-    public void setCurrentCount(int currentCount) { this.currentCount = currentCount; }
-    public int getMaxCount() { return maxCount; }
-    public void setMaxCount(int maxCount) { this.maxCount = maxCount; }
-
-    public int getRewardPoints() { return rewardPoints; }
-    public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
-    public int getPenaltyPoints() { return penaltyPoints; }
-    public void setPenaltyPoints(int penaltyPoints) { this.penaltyPoints = penaltyPoints; }
-    public boolean isPointsClaimed() { return pointsClaimed; }
-    public void setPointsClaimed(boolean pointsClaimed) { this.pointsClaimed = pointsClaimed; }
-    public boolean isPenaltyApplied() { return penaltyApplied; }
-    public void setPenaltyApplied(boolean penaltyApplied) { this.penaltyApplied = penaltyApplied; }
-
-    public String getSectionId() { return sectionId; }
-    public void setSectionId(String sectionId) { this.sectionId = sectionId; }
-    public OriginModule getLegacyOriginModule() { return originModule; }
-    public OriginModule getOriginModule() {
-        if (originModule != null) return originModule;
-        try { return OriginModule.valueOf(sectionId); } catch (Exception e) { return null; }
+    public Map<String, Integer> getStatPenalties() {
+        if (statPenalties == null) statPenalties = new HashMap<>();
+        return statPenalties;
     }
+    public void setStatPenalties(Map<String, Integer> statPenalties) { this.statPenalties = statPenalties; }
 
-    public String getPrefixColor() { return prefixColor; }
-    public void setPrefixColor(String prefixColor) { this.prefixColor = prefixColor; }
-    public List<SubTask> getSubTasks() {
-        if (subTasks == null) subTasks = new ArrayList<>();
-        return subTasks;
+    public Map<String, Integer> getStatRequirements() {
+        if (statRequirements == null) statRequirements = new HashMap<>();
+        return statRequirements;
     }
-    public boolean isExpanded() { return isExpanded; }
-    public void setExpanded(boolean expanded) { this.isExpanded = expanded; }
-    public int getTimeSpentSeconds() { return timeSpentSeconds; }
-    public void setTimeSpentSeconds(int timeSpentSeconds) { this.timeSpentSeconds = timeSpentSeconds; }
-    public void addTimeSpent(int seconds) { this.timeSpentSeconds += seconds; }
-    public boolean isFavorite() { return isFavorite; }
-    public void setFavorite(boolean favorite) { this.isFavorite = favorite; }
-    public String getTaskType() { return taskType; }
-    public void setTaskType(String taskType) { this.taskType = taskType; }
-    public String getId() { return id; }
-    public String getTextContent() { return textContent; }
-    public void setTextContent(String textContent) { this.textContent = textContent; }
-    public CustomPriority getPriority() { return priority; }
-    public void setPriority(CustomPriority priority) { this.priority = priority; }
-    public boolean isFinished() { return isFinished; }
-    public void setFinished(boolean finished) {
-        this.isFinished = finished;
-        this.dateCompleted = finished ? LocalDateTime.now() : null;
-    }
-    public LocalDateTime getDateCreated() { return dateCreated; }
-    public LocalDateTime getDateCompleted() { return dateCompleted; }
-    public String getColorHex() { return colorHex; }
-    public void setColorHex(String colorHex) { this.colorHex = colorHex; }
-    public String getPrefix() { return prefix; }
-    public void setPrefix(String prefix) { this.prefix = prefix; }
-    public LocalDateTime getStartDate() { return startDate; }
-    public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
-    public LocalDateTime getDeadline() { return deadline; }
-    public void setDeadline(LocalDateTime deadline) {
-        this.deadline = deadline;
-        this.notified24h = false;
-        this.notified12h = false;
-        this.notified4h = false;
-        this.notified2h = false;
-    }
-    public boolean isArchived() { return isArchived; }
-    public void setArchived(boolean archived) { this.isArchived = archived; }
+    public void setStatRequirements(Map<String, Integer> statRequirements) { this.statRequirements = statRequirements; }
 }

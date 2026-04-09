@@ -20,11 +20,21 @@ public class Debuff implements Serializable {
     private int durationHours = 0;
     private LocalDateTime expiryDate = null;
 
+    // --- NEW: Stacking Properties ---
+    private boolean allowStacking = false;
+    private int maxStacks = 1;
+    private int currentStacks = 1;
+
     private Map<String, Double> statGainMultipliers = new HashMap<>();
     private Map<String, Integer> statCapReductions = new HashMap<>();
 
+    // Incremental penalties applied per stack (after the first)
+    private Map<String, Double> statGainMultiplierStackReductions = new HashMap<>();
+    private Map<String, Integer> statCapReductionStackIncreasers = new HashMap<>();
+
     public Debuff cloneAsActive() {
         Debuff d = new Debuff();
+        d.id = this.id; // Keep ID same to track stacking
         d.name = this.name;
         d.description = this.description;
         d.iconSymbol = this.iconSymbol;
@@ -33,8 +43,15 @@ public class Debuff implements Serializable {
         d.currentTaskCompletions = 0;
         d.durationHours = this.durationHours;
         if (this.durationHours > 0) d.expiryDate = LocalDateTime.now().plusHours(this.durationHours);
+
+        d.allowStacking = this.allowStacking;
+        d.maxStacks = this.maxStacks;
+        d.currentStacks = 1;
+
         d.statGainMultipliers = new HashMap<>(this.statGainMultipliers);
         d.statCapReductions = new HashMap<>(this.statCapReductions);
+        d.statGainMultiplierStackReductions = new HashMap<>(this.statGainMultiplierStackReductions);
+        d.statCapReductionStackIncreasers = new HashMap<>(this.statCapReductionStackIncreasers);
         return d;
     }
 
@@ -57,6 +74,13 @@ public class Debuff implements Serializable {
     public LocalDateTime getExpiryDate() { return expiryDate; }
     public void setExpiryDate(LocalDateTime expiryDate) { this.expiryDate = expiryDate; }
 
+    public boolean isAllowStacking() { return allowStacking; }
+    public void setAllowStacking(boolean allowStacking) { this.allowStacking = allowStacking; }
+    public int getMaxStacks() { return maxStacks; }
+    public void setMaxStacks(int maxStacks) { this.maxStacks = maxStacks; }
+    public int getCurrentStacks() { return currentStacks; }
+    public void setCurrentStacks(int currentStacks) { this.currentStacks = currentStacks; }
+
     public Map<String, Double> getStatGainMultipliers() {
         if (statGainMultipliers == null) statGainMultipliers = new HashMap<>();
         return statGainMultipliers;
@@ -68,4 +92,16 @@ public class Debuff implements Serializable {
         return statCapReductions;
     }
     public void setStatCapReductions(Map<String, Integer> statCapReductions) { this.statCapReductions = statCapReductions; }
+
+    public Map<String, Double> getStatGainMultiplierStackReductions() {
+        if (statGainMultiplierStackReductions == null) statGainMultiplierStackReductions = new HashMap<>();
+        return statGainMultiplierStackReductions;
+    }
+    public void setStatGainMultiplierStackReductions(Map<String, Double> statGainMultiplierStackReductions) { this.statGainMultiplierStackReductions = statGainMultiplierStackReductions; }
+
+    public Map<String, Integer> getStatCapReductionStackIncreasers() {
+        if (statCapReductionStackIncreasers == null) statCapReductionStackIncreasers = new HashMap<>();
+        return statCapReductionStackIncreasers;
+    }
+    public void setStatCapReductionStackIncreasers(Map<String, Integer> statCapReductionStackIncreasers) { this.statCapReductionStackIncreasers = statCapReductionStackIncreasers; }
 }

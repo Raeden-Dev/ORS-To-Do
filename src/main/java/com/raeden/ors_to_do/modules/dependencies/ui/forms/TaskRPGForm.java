@@ -2,30 +2,33 @@ package com.raeden.ors_to_do.modules.dependencies.ui.forms;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
+import com.raeden.ors_to_do.dependencies.models.Debuff;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import javafx.geometry.Pos;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TaskRPGForm {
     private TextField maxCountField, costField, rewardField, penaltyField;
-    // --- NEW: Perma Lock Checkbox ---
     private CheckBox permaLockCheck;
+    private MenuButton debuffMenuBtn; // --- NEW: For selecting inflicted debuffs
 
     private Map<String, TextField> statRewardFields = new HashMap<>();
-
-    // --- NEW: Cap Reward Fields ---
     private Map<String, TextField> statCapRewardFields = new HashMap<>();
-
     private Map<String, TextField> statCostFields = new HashMap<>();
     private Map<String, TextField> statPenaltyFields = new HashMap<>();
 
@@ -58,13 +61,11 @@ public class TaskRPGForm {
         maxCountField = new TextField(task.getMaxCount() > 0 ? String.valueOf(task.getMaxCount()) : "");
         maxCountField.setPromptText("Target Count (Optional)");
 
-        // --- NEW: Perma Lock Setup ---
         permaLockCheck = new CheckBox("Perma Lock");
         permaLockCheck.setStyle("-fx-text-fill: white;");
         permaLockCheck.setSelected(task.isPermaLock());
-
-        // Only enable if counter mode has a value > 0
         permaLockCheck.setDisable(!task.isCounterMode());
+
         maxCountField.textProperty().addListener((obs, oldVal, newVal) -> {
             try {
                 permaLockCheck.setDisable(Integer.parseInt(newVal.trim()) <= 0);
@@ -80,65 +81,79 @@ public class TaskRPGForm {
         grid.add(new Label("Counter Mode:"), 0, rowIdx.get());
         grid.add(counterRow, 1, rowIdx.getAndIncrement());
 
-        if (config != null && config.isEnableStatsSystem() && appStats.isGlobalStatsEnabled() && !appStats.getCustomStats().isEmpty()) {
+        if (config != null && config.isEnableStatsSystem() && appStats.isGlobalStatsEnabled()) {
             grid.add(new Separator(), 0, rowIdx.get(), 2, 1); rowIdx.getAndIncrement();
 
-            Label statsHeader = new Label("RPG Stat Modifiers");
-            statsHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
-            grid.add(statsHeader, 0, rowIdx.get(), 2, 1); rowIdx.getAndIncrement();
-
-            HBox headers = new HBox(10);
-            headers.setAlignment(Pos.CENTER_LEFT);
-            Label rLbl = new Label("+ Reward"); rLbl.setPrefWidth(60); rLbl.setStyle("-fx-text-fill: #4EC9B0;");
-
-            // --- NEW: Added Max Cap Label ---
-            Label cpLbl = new Label("+ Max Cap"); cpLbl.setPrefWidth(65); cpLbl.setStyle("-fx-text-fill: #C586C0;");
-
-            Label cLbl = new Label("- Cost"); cLbl.setPrefWidth(60); cLbl.setStyle("-fx-text-fill: #FF8C00;");
-            Label pLbl = new Label("- Penalty"); pLbl.setPrefWidth(60); pLbl.setStyle("-fx-text-fill: #E06666;");
-            headers.getChildren().addAll(rLbl, cpLbl, cLbl, pLbl);
-            grid.add(headers, 1, rowIdx.getAndIncrement());
-
-            for (CustomStat stat : appStats.getCustomStats()) {
-                Label statLabel = new Label(stat.getName() + ":");
-                statLabel.setStyle("-fx-text-fill: " + (stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF") + ";");
-                grid.add(statLabel, 0, rowIdx.get());
-
-                HBox fieldBox = new HBox(10);
-                fieldBox.setAlignment(Pos.CENTER_LEFT);
-
-                TextField rField = new TextField();
-                rField.setPrefWidth(60);
-                if (task.getStatRewards() != null && task.getStatRewards().containsKey(stat.getId())) {
-                    rField.setText(String.valueOf(task.getStatRewards().get(stat.getId())));
+            // --- NEW: Debuff Infliction Dropdown ---
+            if (appStats.getDebuffTemplates() != null && !appStats.getDebuffTemplates().isEmpty()) {
+                debuffMenuBtn = new MenuButton("Select Debuffs to Inflict");
+                debuffMenuBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+                for (Debuff d : appStats.getDebuffTemplates()) {
+                    CheckMenuItem cmi = new CheckMenuItem(d.getName());
+                    cmi.setUserData(d.getId());
+                    if (task.getInflictedDebuffIds().contains(d.getId())) {
+                        cmi.setSelected(true);
+                    }
+                    debuffMenuBtn.getItems().add(cmi);
                 }
+                grid.add(new Label("Inflict Debuffs:"), 0, rowIdx.get());
+                grid.add(debuffMenuBtn, 1, rowIdx.getAndIncrement());
+            }
 
-                // --- NEW: Cap Field ---
-                TextField cpField = new TextField();
-                cpField.setPrefWidth(65);
-                if (task.getStatCapRewards() != null && task.getStatCapRewards().containsKey(stat.getId())) {
-                    cpField.setText(String.valueOf(task.getStatCapRewards().get(stat.getId())));
+            if (!appStats.getCustomStats().isEmpty()) {
+                Label statsHeader = new Label("RPG Stat Modifiers");
+                statsHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: #B5CEA8;");
+                grid.add(statsHeader, 0, rowIdx.get(), 2, 1); rowIdx.getAndIncrement();
+
+                HBox headers = new HBox(10);
+                headers.setAlignment(Pos.CENTER_LEFT);
+                Label rLbl = new Label("+ Reward"); rLbl.setPrefWidth(60); rLbl.setStyle("-fx-text-fill: #4EC9B0;");
+                Label cpLbl = new Label("+ Max Cap"); cpLbl.setPrefWidth(65); cpLbl.setStyle("-fx-text-fill: #C586C0;");
+                Label cLbl = new Label("- Cost"); cLbl.setPrefWidth(60); cLbl.setStyle("-fx-text-fill: #FF8C00;");
+                Label pLbl = new Label("- Penalty"); pLbl.setPrefWidth(60); pLbl.setStyle("-fx-text-fill: #E06666;");
+                headers.getChildren().addAll(rLbl, cpLbl, cLbl, pLbl);
+                grid.add(headers, 1, rowIdx.getAndIncrement());
+
+                for (CustomStat stat : appStats.getCustomStats()) {
+                    Label statLabel = new Label(stat.getName() + ":");
+                    statLabel.setStyle("-fx-text-fill: " + (stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF") + ";");
+                    grid.add(statLabel, 0, rowIdx.get());
+
+                    HBox fieldBox = new HBox(10);
+                    fieldBox.setAlignment(Pos.CENTER_LEFT);
+
+                    TextField rField = new TextField();
+                    rField.setPrefWidth(60);
+                    if (task.getStatRewards() != null && task.getStatRewards().containsKey(stat.getId())) {
+                        rField.setText(String.valueOf(task.getStatRewards().get(stat.getId())));
+                    }
+
+                    TextField cpField = new TextField();
+                    cpField.setPrefWidth(65);
+                    if (task.getStatCapRewards() != null && task.getStatCapRewards().containsKey(stat.getId())) {
+                        cpField.setText(String.valueOf(task.getStatCapRewards().get(stat.getId())));
+                    }
+
+                    TextField cField = new TextField();
+                    cField.setPrefWidth(60);
+                    if (task.getStatCosts() != null && task.getStatCosts().containsKey(stat.getId())) {
+                        cField.setText(String.valueOf(task.getStatCosts().get(stat.getId())));
+                    }
+
+                    TextField pField = new TextField();
+                    pField.setPrefWidth(60);
+                    if (task.getStatPenalties() != null && task.getStatPenalties().containsKey(stat.getId())) {
+                        pField.setText(String.valueOf(task.getStatPenalties().get(stat.getId())));
+                    }
+
+                    statRewardFields.put(stat.getId(), rField);
+                    statCapRewardFields.put(stat.getId(), cpField);
+                    statCostFields.put(stat.getId(), cField);
+                    statPenaltyFields.put(stat.getId(), pField);
+
+                    fieldBox.getChildren().addAll(rField, cpField, cField, pField);
+                    grid.add(fieldBox, 1, rowIdx.getAndIncrement());
                 }
-
-                TextField cField = new TextField();
-                cField.setPrefWidth(60);
-                if (task.getStatCosts() != null && task.getStatCosts().containsKey(stat.getId())) {
-                    cField.setText(String.valueOf(task.getStatCosts().get(stat.getId())));
-                }
-
-                TextField pField = new TextField();
-                pField.setPrefWidth(60);
-                if (task.getStatPenalties() != null && task.getStatPenalties().containsKey(stat.getId())) {
-                    pField.setText(String.valueOf(task.getStatPenalties().get(stat.getId())));
-                }
-
-                statRewardFields.put(stat.getId(), rField);
-                statCapRewardFields.put(stat.getId(), cpField);
-                statCostFields.put(stat.getId(), cField);
-                statPenaltyFields.put(stat.getId(), pField);
-
-                fieldBox.getChildren().addAll(rField, cpField, cField, pField);
-                grid.add(fieldBox, 1, rowIdx.getAndIncrement());
             }
         }
     }
@@ -154,7 +169,6 @@ public class TaskRPGForm {
             try { task.setCostPoints(Math.max(0, Integer.parseInt(costField.getText().trim()))); } catch (Exception ignore) {}
         }
 
-        // --- NEW: Extract and save Perma Lock ---
         if (maxCountField != null) {
             try {
                 int max = Integer.parseInt(maxCountField.getText().trim());
@@ -169,6 +183,17 @@ public class TaskRPGForm {
                 task.setCounterMode(false);
                 if (permaLockCheck != null) task.setPermaLock(false);
             }
+        }
+
+        // --- NEW: Save Debuffs ---
+        if (debuffMenuBtn != null) {
+            List<String> selectedDebuffs = new ArrayList<>();
+            for (MenuItem item : debuffMenuBtn.getItems()) {
+                if (item instanceof CheckMenuItem && ((CheckMenuItem)item).isSelected()) {
+                    selectedDebuffs.add((String) item.getUserData());
+                }
+            }
+            task.setInflictedDebuffIds(selectedDebuffs);
         }
 
         Map<String, Integer> rewards = new HashMap<>();

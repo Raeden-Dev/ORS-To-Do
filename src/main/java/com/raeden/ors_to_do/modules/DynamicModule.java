@@ -14,7 +14,6 @@ import com.raeden.ors_to_do.modules.dependencies.ui.cards.StatCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.cards.TaskCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.components.DynamicInputPanel;
 import com.raeden.ors_to_do.modules.dependencies.ui.components.FilterSortHeader;
-import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.DebuffManagerDialog;
 import com.raeden.ors_to_do.modules.dependencies.ui.layout.ZenModeOverlay;
 import com.raeden.ors_to_do.modules.dependencies.ui.menus.DynamicContextMenu;
 import com.raeden.ors_to_do.modules.dependencies.ui.utils.DynamicSortHelper;
@@ -190,41 +189,36 @@ public class DynamicModule extends StackPane {
     }
 
     private void loadStatPage() {
-        // Clear expired debuffs
         boolean changed = appStats.getActiveDebuffs().removeIf(d -> d.getExpiryDate() != null && java.time.LocalDateTime.now().isAfter(d.getExpiryDate()));
         if (changed) StorageManager.saveStats(appStats);
 
-        HBox headerBox = new HBox(10);
-        headerBox.setAlignment(Pos.CENTER_LEFT);
+        // --- FIXED: Removed the Debuff Manager button from here since it's now in the header ---
         Label debuffLabel = new Label("Active Debuffs");
-        debuffLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #FF6666;");
+        debuffLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #FF6666; -fx-padding: 0 0 5 0;");
+        listContainer.getChildren().add(debuffLabel);
 
-        // --- FIXED: Renamed Button to "Debuff Manager" ---
-        Button manageDebuffsBtn = new Button("⚙ Debuff Manager");
-        manageDebuffsBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 4 10; -fx-border-radius: 3; -fx-background-radius: 3;");
-        manageDebuffsBtn.setOnAction(e -> {
-            DebuffManagerDialog.show(appStats, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); });
-        });
-
-        // The spacer pushes the Debuff Manager button to the far right.
-        // If you ever add a "History" button, just place it in the addAll() list right before manageDebuffsBtn.
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        headerBox.getChildren().addAll(debuffLabel, spacer, manageDebuffsBtn);
-
-        listContainer.getChildren().add(headerBox);
-
-        FlowPane debuffPane = new FlowPane(10, 10);
+        HBox debuffBox = new HBox(10);
         for (Debuff d : appStats.getActiveDebuffs()) {
-            debuffPane.getChildren().add(new DebuffCard(d, appStats, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); }));
+            debuffBox.getChildren().add(new DebuffCard(d, appStats, () -> { refreshList(); if (syncCallback != null) syncCallback.run(); }));
         }
 
         if (appStats.getActiveDebuffs().isEmpty()) {
             Label noDebuffs = new Label("You are completely healthy.");
             noDebuffs.setStyle("-fx-text-fill: #858585; -fx-font-style: italic;");
-            debuffPane.getChildren().add(noDebuffs);
+            debuffBox.getChildren().add(noDebuffs);
         }
-        listContainer.getChildren().addAll(debuffPane, new Separator());
+
+        ScrollPane debuffScroll = new ScrollPane(debuffBox);
+        debuffScroll.setFitToHeight(true);
+        debuffScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        debuffScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        debuffScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        debuffScroll.setBorder(Border.EMPTY);
+
+        String scrollCss = ".scroll-pane { -fx-background-color: transparent; } .scroll-pane > .viewport { -fx-background-color: transparent; } .scroll-bar:horizontal { -fx-background-color: transparent; -fx-pref-height: 5; } .scroll-bar:horizontal .thumb { -fx-background-color: #3E3E42; -fx-background-radius: 5; } .scroll-bar:horizontal .thumb:hover { -fx-background-color: #555555; }";
+        debuffScroll.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(scrollCss.getBytes()));
+
+        listContainer.getChildren().addAll(debuffScroll, new Separator());
 
         if (!appStats.isGlobalStatsEnabled() || appStats.getCustomStats().isEmpty()) {
             Label emptyMsg = new Label("No custom stats available. Go to Settings to create them.");
