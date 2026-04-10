@@ -32,6 +32,9 @@ public class SidebarManager extends BorderPane {
 
     private boolean isStaticExpanded = true;
 
+    // --- FIXED: Make ScrollPane a permanent class variable ---
+    private ScrollPane dynamicScrollPane;
+
     public SidebarManager(AppStats appStats, List<TaskItem> globalDatabase, GlobalSearchBar searchBar, Consumer<String> onNavigate) {
         this.appStats = appStats;
         this.searchBar = searchBar;
@@ -41,12 +44,28 @@ public class SidebarManager extends BorderPane {
         getStyleClass().add("sidebar");
         setPrefWidth(220);
 
+        // Initialize the ScrollPane once
+        dynamicScrollPane = new ScrollPane();
+        dynamicScrollPane.setFitToWidth(true);
+        dynamicScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        dynamicScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        dynamicScrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        String scrollCss = ".scroll-pane { -fx-background-color: transparent; -fx-padding: 0; } " +
+                ".scroll-pane > .viewport { -fx-background-color: transparent; } " +
+                ".scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 5; } " +
+                ".scroll-bar:vertical .thumb { -fx-background-color: #3E3E42; -fx-background-radius: 5; } " +
+                ".scroll-bar:vertical .thumb:hover { -fx-background-color: #555555; }";
+        dynamicScrollPane.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(scrollCss.getBytes()));
+
         refreshSidebar();
     }
 
     public void refreshSidebar() {
+        // --- FIXED: Capture current scroll position before rebuilding ---
+        double currentScrollPos = dynamicScrollPane.getVvalue();
+
         setTop(null);
-        setCenter(null);
         setBottom(null);
 
         VBox topBox = new VBox();
@@ -67,11 +86,8 @@ public class SidebarManager extends BorderPane {
                 if (config.getName() != null && !config.getName().isEmpty()) {
                     Label sepName = new Label(config.getName().toUpperCase());
                     sepName.setStyle("-fx-text-fill: #858585; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1.5px;");
-
-                    // --- FIXED: Forces the Label to fill horizontal space and center align the text ---
                     sepName.setMaxWidth(Double.MAX_VALUE);
                     sepName.setAlignment(Pos.CENTER);
-
                     sepBox.getChildren().add(sepName);
                 }
 
@@ -96,20 +112,12 @@ public class SidebarManager extends BorderPane {
             dynamicSectionsBox.getChildren().add(createSidebarButton(config.getName(), config.getId(), config.getSidebarColor(), activeTaskCount));
         }
 
-        ScrollPane scrollPane = new ScrollPane(dynamicSectionsBox);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        // Apply new content to existing ScrollPane
+        dynamicScrollPane.setContent(dynamicSectionsBox);
+        setCenter(dynamicScrollPane);
 
-        String scrollCss = ".scroll-pane { -fx-background-color: transparent; -fx-padding: 0; } " +
-                ".scroll-pane > .viewport { -fx-background-color: transparent; } " +
-                ".scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 5; } " +
-                ".scroll-bar:vertical .thumb { -fx-background-color: #3E3E42; -fx-background-radius: 5; } " +
-                ".scroll-bar:vertical .thumb:hover { -fx-background-color: #555555; }";
-        scrollPane.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(scrollCss.getBytes()));
-
-        setCenter(scrollPane);
+        // Restore scroll position after the JavaFX UI thread updates the content height
+        javafx.application.Platform.runLater(() -> dynamicScrollPane.setVvalue(currentScrollPos));
 
         VBox bottomBox = new VBox();
         bottomBox.setStyle("-fx-background-color: transparent;");

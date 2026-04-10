@@ -7,14 +7,62 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.raeden.ors_to_do.modules.dependencies.services.SystemTrayManager.pushNotification;
 
 public class TaskActionHandler {
 
-    // --- NEW: Centralized logic for applying Debuffs triggered by a Task ---
+    // --- NEW: Dynamic Aura Threshold Evaluator ---
+    public static void evaluateThresholdDebuffs(AppStats appStats) {
+        if (appStats.getCustomStats() == null || appStats.getDebuffTemplates() == null) return;
+
+        Set<String> requiredAuraDebuffIds = new HashSet<>();
+
+        // 1. Identify all Debuffs that SHOULD be active based on thresholds
+        for (CustomStat stat : appStats.getCustomStats()) {
+            for (StatThreshold t : stat.getThresholds()) {
+                boolean conditionMet = t.isUpperThreshold()
+                        ? stat.getCurrentAmount() >= t.getThresholdValue()
+                        : stat.getCurrentAmount() <= t.getThresholdValue();
+
+                if (conditionMet) {
+                    requiredAuraDebuffIds.add(t.getDebuffId());
+                }
+            }
+        }
+
+        boolean changed = false;
+
+        // 2. Remove Auras that are no longer required (stat was fixed)
+        if (appStats.getActiveDebuffs().removeIf(d -> d.isAura() && !requiredAuraDebuffIds.contains(d.getId()))) {
+            changed = true;
+            pushNotification("Stat Improved!", "A stat threshold aura has been lifted.");
+        }
+
+        // 3. Inflict Auras that are newly required
+        for (String reqId : requiredAuraDebuffIds) {
+            boolean active = appStats.getActiveDebuffs().stream().anyMatch(d -> d.getId().equals(reqId) && d.isAura());
+            if (!active) {
+                Debuff template = appStats.getDebuffTemplates().stream().filter(d -> d.getId().equals(reqId)).findFirst().orElse(null);
+                if (template != null) {
+                    Debuff aura = template.cloneAsActive();
+                    aura.setAura(true);
+                    aura.setRequiredTaskCompletions(0); // Can't be cleansed
+                    aura.setDurationHours(0); // Can't expire
+                    appStats.getActiveDebuffs().add(aura);
+                    changed = true;
+                    pushNotification("Stat Threshold Reached!", "Afflicted with permanent Aura: " + aura.getName());
+                }
+            }
+        }
+
+        if (changed) StorageManager.saveStats(appStats);
+    }
+
     public static void applyInflictedDebuffs(TaskItem task, AppStats appStats) {
         if (task.getInflictedDebuffIds().isEmpty() || appStats.getDebuffTemplates() == null) return;
 
@@ -24,7 +72,7 @@ public class TaskActionHandler {
             if (template != null) {
                 boolean applied = false;
                 for (Debuff active : appStats.getActiveDebuffs()) {
-                    if (active.getId().equals(template.getId())) {
+                    if (active.getId().equals(template.getId()) && !active.isAura()) { // Don't stack into Auras
                         if (template.isAllowStacking()) {
                             if (active.getCurrentStacks() < template.getMaxStacks()) {
                                 active.setCurrentStacks(active.getCurrentStacks() + 1);
@@ -34,7 +82,7 @@ public class TaskActionHandler {
                                 break;
                             }
                         }
-                        applied = true; // Already active, no stacking allowed or max reached
+                        applied = true;
                         break;
                     }
                 }
@@ -177,7 +225,7 @@ public class TaskActionHandler {
             java.util.Iterator<Debuff> it = appStats.getActiveDebuffs().iterator();
             while (it.hasNext()) {
                 Debuff d = it.next();
-                if (d.getRequiredTaskCompletions() > 0) {
+                if (!d.isAura() && d.getRequiredTaskCompletions() > 0) { // Can't cleanse Auras with tasks
                     d.setCurrentTaskCompletions(d.getCurrentTaskCompletions() + 1);
                     if (d.getCurrentTaskCompletions() >= d.getRequiredTaskCompletions()) {
                         it.remove();
@@ -192,7 +240,6 @@ public class TaskActionHandler {
         if (hasModifiers && !task.isPointsClaimed()) {
             task.setPointsClaimed(true);
 
-            // --- Apply Inflicted Debuffs for Standard Task ---
             applyInflictedDebuffs(task, appStats);
 
             appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
@@ -284,6 +331,9 @@ public class TaskActionHandler {
                 }
             }
         }
+
+        // --- NEW: Trigger Aura Check after XP changes ---
+        evaluateThresholdDebuffs(appStats);
     }
 
     private static int getStatValue(Map<String, Integer> map, CustomStat stat) {

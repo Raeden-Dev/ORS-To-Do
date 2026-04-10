@@ -24,11 +24,13 @@ public class TaskContextMenu {
     public static ContextMenu build(TaskItem task, SectionConfig config, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate, Consumer<TaskItem> onGoToPage) {
         ContextMenu contextMenu = new ContextMenu();
         boolean isNoteMode = config != null && config.isNotesPage();
+        boolean isRewardMode = config != null && config.isRewardsPage();
 
         boolean allowStyling = config != null && (config.isNotesPage() || config.isEnableTaskStyling());
         boolean isLinkCard = task.isLinkCard();
 
         MenuItem editItem = new MenuItem(isNoteMode ? "Edit Note" : "Edit Task");
+        String baseEditText = editItem.getText();
         editItem.setOnAction(e -> showEditDialog(task, config, appStats, globalDatabase, onUpdate));
 
         MenuItem pinItem = null;
@@ -132,14 +134,25 @@ public class TaskContextMenu {
             copy.setPenaltyPoints(task.getPenaltyPoints());
             copy.setCounterMode(task.isCounterMode());
             copy.setMaxCount(task.getMaxCount());
+
+            // --- FIXED: Ensures colors, flags, and expanded RPG parameters perfectly clone ---
             copy.setCustomOutlineColor(task.getCustomOutlineColor());
             copy.setCustomSideboxColor(task.getCustomSideboxColor());
+            copy.setOptional(task.isOptional());
+            copy.setFavorite(task.isFavorite());
 
             copy.setLinkCard(task.isLinkCard());
             copy.setLinkActionPath(task.getLinkActionPath());
 
-            if (task.getStatRewards() != null) copy.getStatRewards().putAll(task.getStatRewards());
-            if (task.getStatPenalties() != null) copy.getStatPenalties().putAll(task.getStatPenalties());
+            if (task.getStatRewards() != null) copy.setStatRewards(new java.util.HashMap<>(task.getStatRewards()));
+            if (task.getStatCapRewards() != null) copy.setStatCapRewards(new java.util.HashMap<>(task.getStatCapRewards()));
+            if (task.getStatCosts() != null) copy.setStatCosts(new java.util.HashMap<>(task.getStatCosts()));
+            if (task.getStatPenalties() != null) copy.setStatPenalties(new java.util.HashMap<>(task.getStatPenalties()));
+            if (task.getStatRequirements() != null) copy.setStatRequirements(new java.util.HashMap<>(task.getStatRequirements()));
+            if (task.getInflictedDebuffIds() != null) copy.setInflictedDebuffIds(new java.util.ArrayList<>(task.getInflictedDebuffIds()));
+
+            copy.setRepeatingMode(task.isRepeatingMode());
+            copy.setRepetitionCount(task.getRepetitionCount());
 
             for (SubTask sub : task.getSubTasks()) {
                 copy.getSubTasks().add(new SubTask(sub.getTextContent()));
@@ -150,7 +163,7 @@ public class TaskContextMenu {
                 }
             }
 
-            globalDatabase.add(copy);
+            globalDatabase.add(globalDatabase.indexOf(task) + 1, copy);
             StorageManager.saveTasks(globalDatabase);
             onUpdate.run();
         });
@@ -204,7 +217,6 @@ public class TaskContextMenu {
             onUpdate.run();
         });
 
-        // --- FIXED: Removed 'config == null' so it correctly shows on Search/Dashboard pages ---
         MenuItem focusLinkItem = null;
         if (onGoToPage != null && !task.isArchived()) {
             focusLinkItem = new MenuItem("Go to Original Page ↗");
@@ -263,6 +275,19 @@ public class TaskContextMenu {
                 archiveItem,
                 deleteItem
         );
+
+        contextMenu.setOnShowing(e -> {
+            int lockHours = appStats.getPreventEditingHours();
+            boolean isTimeLocked = !(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours));
+
+            if (isTimeLocked) {
+                editItem.setDisable(true);
+                editItem.setText(baseEditText + " (Locked)");
+            } else {
+                editItem.setDisable(false);
+                editItem.setText(baseEditText);
+            }
+        });
 
         return contextMenu;
     }

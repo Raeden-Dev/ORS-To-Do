@@ -1,6 +1,8 @@
 package com.raeden.ors_to_do.dependencies.models;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class CustomStat implements Serializable {
@@ -20,6 +22,9 @@ public class CustomStat implements Serializable {
     private int lifetimeLost = 0;
     private int maxLevelReached = 0;
 
+    // --- NEW: Holds the thresholds ---
+    private List<StatThreshold> thresholds = new ArrayList<>();
+
     public CustomStat() {
         this.id = UUID.randomUUID().toString();
     }
@@ -32,7 +37,6 @@ public class CustomStat implements Serializable {
         this.textColor = textColor;
     }
 
-    // --- FIXED: Calculates lowered cap using Stacks for UI rendering ---
     public int getEffectiveMaxCap(java.util.List<Debuff> activeDebuffs) {
         int cap = maxCap;
         if (activeDebuffs != null) {
@@ -73,4 +77,10 @@ public class CustomStat implements Serializable {
     public void setLifetimeLost(int lifetimeLost) { this.lifetimeLost = lifetimeLost; }
     public int getMaxLevelReached() { return maxLevelReached; }
     public void setMaxLevelReached(int maxLevelReached) { this.maxLevelReached = maxLevelReached; }
+
+    public List<StatThreshold> getThresholds() {
+        if (thresholds == null) thresholds = new ArrayList<>();
+        return thresholds;
+    }
+    public void setThresholds(List<StatThreshold> thresholds) { this.thresholds = thresholds; }
 }

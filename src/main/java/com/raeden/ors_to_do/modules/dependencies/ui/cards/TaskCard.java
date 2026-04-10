@@ -36,7 +36,8 @@ public class TaskCard extends VBox {
 
         int baseFontSize = appStats.getTaskFontSize();
         int metaFontSize = Math.max(10, baseFontSize - 2);
-        boolean isNoteMode = config.isNotesPage();
+        boolean isNoteMode = config != null && config.isNotesPage();
+        boolean isRewardMode = config != null && config.isRewardsPage();
 
         // 1. Calculate Lock State
         List<String> blockingTaskNames = new ArrayList<>();
@@ -63,7 +64,8 @@ public class TaskCard extends VBox {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 int lockHours = appStats.getPreventEditingHours();
 
-                if (lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
+                // --- FIXED: Bypass edit lock for Notes and Rewards ---
+                if (!(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
                     Alert alert = new Alert(Alert.AlertType.WARNING, "This task was created over " + lockHours + " hour(s) ago and is locked from editing.");
                     alert.setHeaderText("Editing Locked");
                     TaskDialogs.styleDialog(alert);
@@ -113,7 +115,6 @@ public class TaskCard extends VBox {
             actionControls.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
         }
 
-        // --- FIXED: Inject elements into the row in the exact requested order ---
         if (deadlineLbl != null) mainRow.getChildren().add(deadlineLbl);
         if (eyeBtn != null) mainRow.getChildren().add(eyeBtn);
         if (actionControls != null) mainRow.getChildren().add(actionControls);
@@ -128,43 +129,6 @@ public class TaskCard extends VBox {
         // 8. Context Menu
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, onGoToPage);
 
-        MenuItem duplicateItem = new MenuItem("Duplicate Task");
-        duplicateItem.setOnAction(e -> {
-            TaskItem cloneTask = new TaskItem(task.getTextContent() + " (Copy)", task.getPriority(), task.getSectionId());
-            cloneTask.setTaskType(task.getTaskType());
-            cloneTask.setRewardPoints(task.getRewardPoints());
-            cloneTask.setPenaltyPoints(task.getPenaltyPoints());
-            cloneTask.setIconSymbol(task.getIconSymbol());
-            cloneTask.setIconColor(task.getIconColor());
-            cloneTask.setColorHex(task.getColorHex());
-            cloneTask.setCustomOutlineColor(task.getCustomOutlineColor());
-            cloneTask.setOptional(task.isOptional());
-            cloneTask.setPrefix(task.getPrefix());
-            cloneTask.setPrefixColor(task.getPrefixColor());
-            cloneTask.setLinkCard(task.isLinkCard());
-            cloneTask.setLinkActionPath(task.getLinkActionPath());
-
-            if (task.getStatRewards() != null) cloneTask.setStatRewards(new java.util.HashMap<>(task.getStatRewards()));
-            if (task.getStatCapRewards() != null) cloneTask.setStatCapRewards(new java.util.HashMap<>(task.getStatCapRewards()));
-            if (task.getStatCosts() != null) cloneTask.setStatCosts(new java.util.HashMap<>(task.getStatCosts()));
-            if (task.getStatPenalties() != null) cloneTask.setStatPenalties(new java.util.HashMap<>(task.getStatPenalties()));
-            if (task.getStatRequirements() != null) cloneTask.setStatRequirements(new java.util.HashMap<>(task.getStatRequirements()));
-
-            cloneTask.setRepeatingMode(task.isRepeatingMode());
-            cloneTask.setRepetitionCount(task.getRepetitionCount());
-
-            for (com.raeden.ors_to_do.dependencies.models.SubTask st : task.getSubTasks()) {
-                cloneTask.getSubTasks().add(new com.raeden.ors_to_do.dependencies.models.SubTask(st.getTextContent()));
-            }
-
-            globalDatabase.add(globalDatabase.indexOf(task) + 1, cloneTask);
-            StorageManager.saveTasks(globalDatabase);
-            onUpdate.run();
-        });
-
-        contextMenu.getItems().removeIf(item -> "Duplicate Task".equals(item.getText()));
-        contextMenu.getItems().add(1, duplicateItem);
-
         this.setOnContextMenuRequested(e -> {
             contextMenu.show(this, e.getScreenX(), e.getScreenY());
             e.consume();
@@ -175,8 +139,8 @@ public class TaskCard extends VBox {
         HBox metaBox = new HBox(7);
         metaBox.setAlignment(Pos.CENTER_LEFT);
 
-        boolean hasLinks = config.isEnableLinks() && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty();
-        boolean hasSubTasks = config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
+        boolean hasLinks = config != null && config.isEnableLinks() && task.getTaskLinks() != null && !task.getTaskLinks().isEmpty();
+        boolean hasSubTasks = config != null && config.isEnableSubTasks() && !task.getSubTasks().isEmpty();
         Button expandBtn = new Button(task.isExpanded() ? "▼" : "▶");
         expandBtn.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
         expandBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AAAAAA; -fx-font-weight: bold; -fx-padding: 0 5 0 0; -fx-cursor: hand; -fx-font-size: " + metaFontSize + "px;");
@@ -196,12 +160,12 @@ public class TaskCard extends VBox {
             if (isNoteMode) sideRect.setPrefHeight(30); else { sideRect.setPrefHeight(25); sideRect.setMaxHeight(25); }
 
             String fillColor = "#FFFFFF";
-            if ((isNoteMode || config.isEnableTaskStyling()) && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) fillColor = task.getCustomSideboxColor();
-            else if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) fillColor = task.getPriority().getColorHex();
-            else if (config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) fillColor = task.getPrefixColor();
+            if ((isNoteMode || (config != null && config.isEnableTaskStyling())) && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) fillColor = task.getCustomSideboxColor();
+            else if (config != null && config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) fillColor = task.getPriority().getColorHex();
+            else if (config != null && config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) fillColor = task.getPrefixColor();
             sideRect.setStyle("-fx-background-color: " + fillColor + "; -fx-background-radius: 3;");
 
-            if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
+            if (config != null && config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
                 Label icon = new Label(task.getIconSymbol());
                 icon.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 icon.setStyle("-fx-text-fill: " + (task.getIconColor() != null ? task.getIconColor() : "#FFFFFF") + "; -fx-font-size: " + (baseFontSize + 2) + "px;");
@@ -209,25 +173,25 @@ public class TaskCard extends VBox {
             }
             metaBox.getChildren().add(sideRect);
 
-            if (config.isAllowFavorite() && task.isFavorite() && !isNoteMode) {
+            if (config != null && config.isAllowFavorite() && task.isFavorite() && !isNoteMode) {
                 Label star = new Label("[⭐]");
                 star.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 star.setStyle("-fx-text-fill: #FFD700; -fx-font-size: " + baseFontSize + "px; -fx-font-weight: bold;");
                 metaBox.getChildren().add(star);
             }
-            if (config.isShowDate() && !isNoteMode && !task.isLinkCard()) {
+            if (config != null && config.isShowDate() && !isNoteMode && !task.isLinkCard()) {
                 Label dLabel = new Label("[" + task.getDateCreated().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + "]");
                 dLabel.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 dLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: " + metaFontSize + "px;");
                 metaBox.getChildren().add(dLabel);
             }
-            if (config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
+            if (config != null && config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
                 Label pLabel = new Label(task.getPrefix());
                 pLabel.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 pLabel.setStyle("-fx-text-fill: " + (task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0") + "; -fx-font-size: " + baseFontSize + "px;");
                 metaBox.getChildren().add(pLabel);
             }
-            if (config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty() && !isNoteMode) {
+            if (config != null && config.isShowTaskType() && task.getTaskType() != null && !task.getTaskType().isEmpty() && !isNoteMode) {
                 Label tLabel = new Label("[" + task.getTaskType() + "]");
                 tLabel.setMinWidth(Region.USE_PREF_SIZE); // Protect from squishing
                 tLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: " + metaFontSize + "px;");

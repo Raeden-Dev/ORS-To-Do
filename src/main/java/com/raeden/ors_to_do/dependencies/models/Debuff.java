@@ -20,21 +20,21 @@ public class Debuff implements Serializable {
     private int durationHours = 0;
     private LocalDateTime expiryDate = null;
 
-    // --- NEW: Stacking Properties ---
     private boolean allowStacking = false;
     private int maxStacks = 1;
     private int currentStacks = 1;
 
+    // --- NEW: Aura Flag for Threshold Debuffs ---
+    private boolean isAura = false;
+
     private Map<String, Double> statGainMultipliers = new HashMap<>();
     private Map<String, Integer> statCapReductions = new HashMap<>();
-
-    // Incremental penalties applied per stack (after the first)
     private Map<String, Double> statGainMultiplierStackReductions = new HashMap<>();
     private Map<String, Integer> statCapReductionStackIncreasers = new HashMap<>();
 
     public Debuff cloneAsActive() {
         Debuff d = new Debuff();
-        d.id = this.id; // Keep ID same to track stacking
+        d.id = this.id;
         d.name = this.name;
         d.description = this.description;
         d.iconSymbol = this.iconSymbol;
@@ -47,6 +47,7 @@ public class Debuff implements Serializable {
         d.allowStacking = this.allowStacking;
         d.maxStacks = this.maxStacks;
         d.currentStacks = 1;
+        d.isAura = false; // Default to false, handler sets true if needed
 
         d.statGainMultipliers = new HashMap<>(this.statGainMultipliers);
         d.statCapReductions = new HashMap<>(this.statCapReductions);
@@ -80,6 +81,9 @@ public class Debuff implements Serializable {
     public void setMaxStacks(int maxStacks) { this.maxStacks = maxStacks; }
     public int getCurrentStacks() { return currentStacks; }
     public void setCurrentStacks(int currentStacks) { this.currentStacks = currentStacks; }
+
+    public boolean isAura() { return isAura; }
+    public void setAura(boolean aura) { this.isAura = aura; }
 
     public Map<String, Double> getStatGainMultipliers() {
         if (statGainMultipliers == null) statGainMultipliers = new HashMap<>();

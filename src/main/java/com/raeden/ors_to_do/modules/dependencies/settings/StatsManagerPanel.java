@@ -2,6 +2,8 @@ package com.raeden.ors_to_do.modules.dependencies.settings;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
+import com.raeden.ors_to_do.dependencies.models.Debuff;
+import com.raeden.ors_to_do.dependencies.models.StatThreshold;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import javafx.geometry.Insets;
@@ -9,7 +11,10 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class StatsManagerPanel extends VBox {
     private VBox existingStatsBox;
@@ -126,9 +131,11 @@ public class StatsManagerPanel extends VBox {
         dialog.setTitle(isNew ? "Create Custom Stat" : "Edit Stat: " + stat.getName());
         TaskDialogs.styleDialog(dialog);
 
+        VBox mainContent = new VBox(15);
+        mainContent.setPadding(new Insets(10));
+
         GridPane grid = new GridPane();
         grid.setHgap(15); grid.setVgap(15);
-        grid.setPadding(new Insets(10));
 
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPrefWidth(120);
@@ -167,14 +174,12 @@ public class StatsManagerPanel extends VBox {
         grid.add(atrophyLabel, 0, rowIdx);
         grid.add(atrophySpinner, 1, rowIdx++);
 
-        // --- NEW: Starting XP Amount Spinner ---
         Spinner<Integer> startingAmountSpinner = new Spinner<>(0, 999999, isNew ? 0 : stat.getCurrentAmount());
         startingAmountSpinner.setEditable(true);
         startingAmountSpinner.setMaxWidth(Double.MAX_VALUE);
         Label startingAmountLabel = new Label("Current XP / \nStarting Amount:");
         grid.add(startingAmountLabel, 0, rowIdx);
         grid.add(startingAmountSpinner, 1, rowIdx++);
-        // ---------------------------------------
 
         ComboBox<String> iconBox = new ComboBox<>();
         iconBox.getItems().addAll(TaskDialogs.ICON_LIST);
@@ -204,7 +209,116 @@ public class StatsManagerPanel extends VBox {
         });
         grid.add(randomBtn, 1, rowIdx++);
 
-        dialog.getDialogPane().setContent(grid);
+        mainContent.getChildren().add(grid);
+
+        // ==========================================
+        // NEW: AURA THRESHOLDS (PERMANENT DEBUFFS)
+        // ==========================================
+        mainContent.getChildren().add(new Separator());
+        Label thresholdHeader = new Label("Aura Thresholds (Permanent Debuffs)");
+        thresholdHeader.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
+        mainContent.getChildren().add(thresholdHeader);
+
+        List<StatThreshold> tempThresholds = new ArrayList<>();
+        if (!isNew && stat.getThresholds() != null) {
+            tempThresholds.addAll(stat.getThresholds());
+        }
+
+        VBox thresholdsList = new VBox(5);
+        Runnable renderThresholds = () -> {
+            thresholdsList.getChildren().clear();
+            for (StatThreshold t : tempThresholds) {
+                HBox tRow = new HBox(10);
+                tRow.setAlignment(Pos.CENTER_LEFT);
+                String condition = t.isUpperThreshold() ? ">= " : "<= ";
+
+                Debuff d = null;
+                if (appStats.getDebuffTemplates() != null) {
+                    d = appStats.getDebuffTemplates().stream().filter(db -> db.getId().equals(t.getDebuffId())).findFirst().orElse(null);
+                }
+                String dName = d != null ? d.getName() : "Unknown Debuff";
+
+                Label lbl = new Label("If stat " + condition + t.getThresholdValue() + "  ➔  Inflict " + dName);
+                lbl.setStyle("-fx-text-fill: white; -fx-background-color: #2D2D30; -fx-padding: 4 8; -fx-background-radius: 3; -fx-border-color: #3E3E42; -fx-border-radius: 3;");
+
+                Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                Button delBtn = new Button("❌");
+                delBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #FF6666; -fx-cursor: hand;");
+                delBtn.setOnAction(e -> {
+                    tempThresholds.remove(t);
+                    // Also trigger a refresh logic trick via java variable scoping
+                });
+
+                // Real lambda capture trick
+                Button finalDelBtn = delBtn;
+                finalDelBtn.setOnAction(e -> {
+                    tempThresholds.remove(t);
+                    thresholdsList.getChildren().remove(tRow);
+                });
+
+                tRow.getChildren().addAll(lbl, spacer, finalDelBtn);
+                thresholdsList.getChildren().add(tRow);
+            }
+        };
+        renderThresholds.run();
+
+        HBox addThreshBox = new HBox(10);
+        addThreshBox.setAlignment(Pos.CENTER_LEFT);
+
+        ComboBox<String> conditionBox = new ComboBox<>();
+        conditionBox.getItems().addAll(">=", "<=");
+        conditionBox.setValue(">=");
+        conditionBox.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white;");
+
+        Spinner<Integer> valSpinner = new Spinner<>(-99999, 99999, 0);
+        valSpinner.setEditable(true);
+        valSpinner.setPrefWidth(90);
+
+        ComboBox<Debuff> debuffBox = new ComboBox<>();
+        if (appStats.getDebuffTemplates() != null) debuffBox.getItems().addAll(appStats.getDebuffTemplates());
+        debuffBox.setPromptText("Select Aura...");
+        debuffBox.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white;");
+        debuffBox.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(Debuff item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "" : item.getName());
+            }
+        });
+        debuffBox.setButtonCell(debuffBox.getCellFactory().call(null));
+
+        Button addThreshBtn = new Button("Add");
+        addThreshBtn.setStyle("-fx-background-color: #0E639C; -fx-text-fill: white; -fx-font-weight: bold;");
+        addThreshBtn.setOnAction(e -> {
+            if (debuffBox.getValue() != null) {
+                boolean isUpper = conditionBox.getValue().equals(">=");
+                StatThreshold newT = new StatThreshold(valSpinner.getValue(), isUpper, debuffBox.getValue().getId());
+                tempThresholds.add(newT);
+                renderThresholds.run();
+            } else {
+                Alert a = new Alert(Alert.AlertType.WARNING, "Please select a Debuff Template to inflict as an Aura.");
+                TaskDialogs.styleDialog(a); a.show();
+            }
+        });
+
+        Label ifLbl = new Label("If stat"); ifLbl.setStyle("-fx-text-fill: #AAAAAA;");
+        Label arrowLbl = new Label("➔"); arrowLbl.setStyle("-fx-text-fill: #AAAAAA;");
+        addThreshBox.getChildren().addAll(ifLbl, conditionBox, valSpinner, arrowLbl, debuffBox, addThreshBtn);
+
+        mainContent.getChildren().addAll(thresholdsList, addThreshBox);
+
+        ScrollPane scrollPane = new ScrollPane(mainContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefSize(580, 600);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
+        scrollPane.setBorder(Border.EMPTY);
+
+        String scrollCss = ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
+                ".scroll-bar:vertical .track, .scroll-bar:horizontal .track { -fx-background-color: #1E1E1E; -fx-border-color: transparent; } " +
+                ".scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb { -fx-background-color: #555555; -fx-background-radius: 5; }";
+        scrollPane.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(scrollCss.getBytes()));
+
+        dialog.getDialogPane().setContent(scrollPane);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         dialog.showAndWait().ifPresent(res -> {
@@ -218,12 +332,11 @@ public class StatsManagerPanel extends VBox {
                 target.setDescription(descArea.getText().trim());
                 target.setMaxCap(capSpinner.getValue());
                 target.setAtrophyDays(atrophySpinner.getValue());
+                target.setThresholds(new ArrayList<>(tempThresholds)); // Save Thresholds!
 
-                // --- NEW: Apply Starting/Current Amount ---
                 int startingAmt = startingAmountSpinner.getValue();
                 target.setCurrentAmount(startingAmt);
 
-                // If this is a brand new stat being created, initialize the lifetime stats as well!
                 if (isNew) {
                     target.setLifetimeEarned(startingAmt);
                     target.setMaxLevelReached(startingAmt);
@@ -232,6 +345,9 @@ public class StatsManagerPanel extends VBox {
 
                 StorageManager.saveStats(appStats);
                 renderExistingStats();
+
+                // Immediately evaluate thresholds just in case the starting value triggers an Aura
+                com.raeden.ors_to_do.modules.dependencies.ui.utils.TaskActionHandler.evaluateThresholdDebuffs(appStats);
             }
         });
     }

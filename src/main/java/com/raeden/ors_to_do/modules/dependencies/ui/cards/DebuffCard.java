@@ -37,7 +37,11 @@ public class DebuffCard extends VBox {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         header.getChildren().addAll(iconLbl, nameLbl, spacer);
 
-        if (debuff.isAllowStacking() && debuff.getCurrentStacks() > 1) {
+        if (debuff.isAura()) {
+            Label auraLbl = new Label("AURA");
+            auraLbl.setStyle("-fx-text-fill: #C586C0; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-color: #331A33; -fx-padding: 2 6; -fx-background-radius: 5; -fx-border-color: #C586C0; -fx-border-radius: 5;");
+            header.getChildren().add(auraLbl);
+        } else if (debuff.isAllowStacking() && debuff.getCurrentStacks() > 1) {
             Label stackLbl = new Label("x" + debuff.getCurrentStacks());
             stackLbl.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-font-size: 12px; -fx-background-color: #1A0000; -fx-padding: 2 6; -fx-background-radius: 5;");
             header.getChildren().add(stackLbl);
@@ -51,18 +55,20 @@ public class DebuffCard extends VBox {
             getChildren().add(descLbl);
         }
 
-        if (debuff.getRequiredTaskCompletions() > 0) {
-            Label reqLbl = new Label("Tasks: " + debuff.getCurrentTaskCompletions() + " / " + debuff.getRequiredTaskCompletions());
-            reqLbl.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 11px; -fx-font-weight: bold;");
-            getChildren().add(reqLbl);
-        }
+        if (!debuff.isAura()) {
+            if (debuff.getRequiredTaskCompletions() > 0) {
+                Label reqLbl = new Label("Tasks: " + debuff.getCurrentTaskCompletions() + " / " + debuff.getRequiredTaskCompletions());
+                reqLbl.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 11px; -fx-font-weight: bold;");
+                getChildren().add(reqLbl);
+            }
 
-        if (debuff.getExpiryDate() != null) {
-            Duration d = Duration.between(LocalDateTime.now(), debuff.getExpiryDate());
-            long hours = d.toHours();
-            Label timeLbl = new Label("Expires in: " + (hours > 0 ? hours + "h" : d.toMinutes() + "m"));
-            timeLbl.setStyle("-fx-text-fill: #569CD6; -fx-font-size: 11px; -fx-font-weight: bold;");
-            getChildren().add(timeLbl);
+            if (debuff.getExpiryDate() != null) {
+                Duration d = Duration.between(LocalDateTime.now(), debuff.getExpiryDate());
+                long hours = d.toHours();
+                Label timeLbl = new Label("Expires in: " + (hours > 0 ? hours + "h" : d.toMinutes() + "m"));
+                timeLbl.setStyle("-fx-text-fill: #569CD6; -fx-font-size: 11px; -fx-font-weight: bold;");
+                getChildren().add(timeLbl);
+            }
         }
 
         Tooltip t = new Tooltip();
@@ -83,11 +89,22 @@ public class DebuffCard extends VBox {
                 sb.append("• ").append(s.getName()).append(" Max Cap lowered by ").append(reduction).append("\n");
             }
         });
+        if (debuff.isAura()) {
+            sb.append("\n[This is an Aura. It can only be removed by improving the associated Stat.]");
+        }
         t.setText(sb.toString().trim());
         Tooltip.install(this, t);
 
         this.setOnMouseClicked(e -> {
             if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
+                if (debuff.isAura()) {
+                    Alert a = new Alert(Alert.AlertType.WARNING, "This debuff is an Aura bound to a Stat Threshold.\n\nYou cannot remove it manually. You must improve the corresponding stat to break the Aura.");
+                    a.setHeaderText("Aura Locked");
+                    TaskDialogs.styleDialog(a);
+                    a.show();
+                    return;
+                }
+
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to manually remove the '" + debuff.getName() + "' debuff early?", ButtonType.YES, ButtonType.NO);
                 confirm.setHeaderText("Remove Debuff");
                 TaskDialogs.styleDialog(confirm);
