@@ -24,8 +24,8 @@ public class AgeCountdownCard extends AnalyticsHeroCard {
         super("⏳ Life & Time", "You are 0 years old", "Double-click to set up", "#FF6666");
         this.appStats = appStats;
 
+        // Reset the hardcoded HeroCard sizing so this can stretch
         setPrefSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
-        setMaxWidth(Double.MAX_VALUE);
         setPadding(new Insets(12, 20, 12, 20));
         setStyle("-fx-background-color: #331A1A; -fx-border-color: #FF6666; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;");
 
@@ -64,7 +64,6 @@ public class AgeCountdownCard extends AnalyticsHeroCard {
         double yearsLived = millisLived / (1000.0 * 60 * 60 * 24 * 365.2425);
         int currentAge = (int) yearsLived;
 
-        // --- FIXED: Cast the float to an integer so it just shows the whole number ---
         setValue(String.format("You are %d years old", currentAge));
 
         LocalDateTime targetTime = birthTime.plusYears(appStats.getUserTargetAge());

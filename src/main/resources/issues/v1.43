@@ -15,7 +15,6 @@
     - Some stats can be negative, I get permanent debuff if I reach a certain threshold (I can add multiple thresholds) of these stats. Debuff isn't removed unless I reduce the stat
     - Some positive stats can give me debuff if I fall a certain threshold
 > Although you brought back old style of stat info, the text of description gets cut off. Fix that.
-
 > General issues:
     - Editing lock shows when I double click a task but I can still edit it by clicking "Edit Task" through context menu, I shouldnt be able to edit through context menu as well if the task gets locked
     - I can still edit challenge even after they've passed the edit time lock, I shouldnt be able to edit it anymore, the small settings icon will be removed if the editing time has passed
@@ -36,4 +35,8 @@
     - The width of RPG Character Sheet is too much, it should be limited to the end of the last analytic card in a row (Global score, highest streak, lifetime tasks etc...)
     - The width of Section breakdown card is too much, it should be limited to the end of the last analytic card in a row (Global score, highest streak, lifetime tasks etc...)
     - Color of progress bar of rpg character sheet should be same color as the text color. Change background color of card similar to how the progress bar color is right now, Outlines will be bright like the text color
+
 > If a note gets too long like over 200 words, I can expand or contract it Ofcourse the first will say the starting description and then [see more...]
+> Need repeatable cards to show the stat reward and whatever, right now it doesnt show the icon to display the stat reward mini card even if it has some stat hooked to it. Stat mini cards should also show debuffs I get from the card.
+> The "Edit Task" of repeatable task card should show total selected debuffs beside the dropdown. Also, the debuff should show its original icon and color (for outline and bg).
+  I can still edit repeatable cards by double clicking it but the edit task is locked in context menu

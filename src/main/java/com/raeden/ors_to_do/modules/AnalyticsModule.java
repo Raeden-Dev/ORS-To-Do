@@ -131,11 +131,7 @@ public class AnalyticsModule extends BorderPane {
 
         // 3. Render Widgets
 
-        // --- FIXED: Render Age Countdown completely outside the FlowPane on its own row ---
-        AgeCountdownCard ageCard = new AgeCountdownCard(appStats, this::refreshData);
-        dashboardContent.getChildren().add(ageCard);
-
-        FlowPane heroFlow = new FlowPane(15, 15); // Tighter spacing for the smaller cards
+        FlowPane heroFlow = new FlowPane(15, 15);
         heroFlow.setAlignment(Pos.CENTER_LEFT);
 
         heroFlow.getChildren().addAll(
@@ -156,8 +152,18 @@ public class AnalyticsModule extends BorderPane {
                 new AnalyticsHeroCard("⚡ Avg Task Time", avgTimeStr, "#CE9178")
         );
 
+        // --- FIXED: Bind all full-width cards to exactly match the width of the Hero FlowPane ---
+        AgeCountdownCard ageCard = new AgeCountdownCard(appStats, this::refreshData);
+        AnalyticsRPGSheet rpgSheet = new AnalyticsRPGSheet(appStats);
+        AnalyticsSectionBreakdown secBreakdown = new AnalyticsSectionBreakdown(appStats, sectionTasksMap, sectionTimeMap);
+
+        ageCard.maxWidthProperty().bind(heroFlow.widthProperty());
+        rpgSheet.maxWidthProperty().bind(heroFlow.widthProperty());
+        secBreakdown.maxWidthProperty().bind(heroFlow.widthProperty());
+
+        dashboardContent.getChildren().add(ageCard);
         dashboardContent.getChildren().add(heroFlow);
-        if (appStats.isGlobalStatsEnabled()) dashboardContent.getChildren().add(new AnalyticsRPGSheet(appStats));
-        dashboardContent.getChildren().add(new AnalyticsSectionBreakdown(appStats, sectionTasksMap, sectionTimeMap));
+        if (appStats.isGlobalStatsEnabled()) dashboardContent.getChildren().add(rpgSheet);
+        dashboardContent.getChildren().add(secBreakdown);
     }
 }

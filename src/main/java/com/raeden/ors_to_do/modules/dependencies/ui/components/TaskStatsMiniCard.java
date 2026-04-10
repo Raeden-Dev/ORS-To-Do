@@ -2,6 +2,7 @@ package com.raeden.ors_to_do.modules.dependencies.ui.components;
 
 import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
+import com.raeden.ors_to_do.dependencies.models.Debuff;
 import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import javafx.geometry.Insets;
@@ -24,7 +25,7 @@ public class TaskStatsMiniCard extends FlowPane {
 
         String baseLabelStyle = "-fx-font-size: 11px; -fx-padding: 2 6; -fx-background-radius: 10; -fx-border-radius: 10; -fx-font-weight: bold;";
 
-        // --- NEW: Render Global Points FIRST (so they appear at the beginning) ---
+        // 1. Render Global Points
         if (config != null && config.isEnableScore()) {
             if (task.getRewardPoints() > 0) {
                 containsStats = true;
@@ -40,7 +41,7 @@ public class TaskStatsMiniCard extends FlowPane {
             }
         }
 
-        // --- Render Custom RPG Stats ---
+        // 2. Render Custom RPG Stats
         if (config != null && config.isEnableStatsSystem() && appStats.isGlobalStatsEnabled()) {
             boolean isExpandedMode = appStats.isExpandStatMiniCards();
 
@@ -65,7 +66,7 @@ public class TaskStatsMiniCard extends FlowPane {
                     String costStyle = "-fx-text-fill: #FF8C00; -fx-border-color: #FF8C00; " + commonStyle;
                     String penaltyStyle = "-fx-text-fill: #E06666; -fx-border-color: #E06666; " + commonStyle;
 
-                    // 1. Render Cap Reward
+                    // Cap Reward
                     if (hasCapReward) {
                         Label lbl;
                         if (isExpandedMode) {
@@ -77,7 +78,7 @@ public class TaskStatsMiniCard extends FlowPane {
                         getChildren().add(lbl);
                     }
 
-                    // 2. Render Reward
+                    // Reward
                     if (hasReward) {
                         Label lbl;
                         if (isExpandedMode) {
@@ -89,7 +90,7 @@ public class TaskStatsMiniCard extends FlowPane {
                         getChildren().add(lbl);
                     }
 
-                    // 3. Render Cost
+                    // Cost
                     if (hasCost) {
                         Label lbl;
                         if (isExpandedMode) {
@@ -101,7 +102,7 @@ public class TaskStatsMiniCard extends FlowPane {
                         getChildren().add(lbl);
                     }
 
-                    // 4. Render Penalty
+                    // Penalty
                     if (hasPenalty) {
                         Label lbl;
                         if (isExpandedMode) {
@@ -111,6 +112,19 @@ public class TaskStatsMiniCard extends FlowPane {
                         }
                         lbl.setStyle(penaltyStyle);
                         getChildren().add(lbl);
+                    }
+                }
+            }
+
+            // --- FIXED: Render Inflicted Debuffs ---
+            if (task.getInflictedDebuffIds() != null && !task.getInflictedDebuffIds().isEmpty() && appStats.getDebuffTemplates() != null) {
+                for (String dId : task.getInflictedDebuffIds()) {
+                    Debuff template = appStats.getDebuffTemplates().stream().filter(d -> d.getId().equals(dId)).findFirst().orElse(null);
+                    if (template != null) {
+                        containsStats = true;
+                        Label debuffLbl = new Label("⚠ " + template.getName());
+                        debuffLbl.setStyle("-fx-text-fill: #FF4444; -fx-border-color: #FF4444; -fx-background-color: #331A1A; " + baseLabelStyle);
+                        getChildren().add(debuffLbl);
                     }
                 }
             }

@@ -25,6 +25,7 @@ public class AnalyticsSectionBreakdown extends VBox {
         getChildren().add(breakdownLabel);
 
         VBox breakdownList = new VBox(10);
+        breakdownList.setMaxWidth(Double.MAX_VALUE);
 
         for (SectionConfig config : appStats.getSections()) {
             int tasks = sectionTasksMap.getOrDefault(config.getId(), 0);
@@ -54,6 +55,7 @@ public class AnalyticsSectionBreakdown extends VBox {
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(15));
         row.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #3E3E42; -fx-border-radius: 5; -fx-background-radius: 5;");
+        row.setMaxWidth(Double.MAX_VALUE);
 
         Rectangle colorRect = new Rectangle(12, 12);
         colorRect.setArcWidth(3); colorRect.setArcHeight(3);

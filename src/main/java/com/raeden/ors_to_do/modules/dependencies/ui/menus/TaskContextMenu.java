@@ -26,6 +26,9 @@ public class TaskContextMenu {
         boolean isNoteMode = config != null && config.isNotesPage();
         boolean isRewardMode = config != null && config.isRewardsPage();
 
+        // --- NEW: Evaluate the Section's Completion Lock ---
+        boolean isCompletionLocked = config != null && config.isLockCompletedTasks() && task.isFinished();
+
         boolean allowStyling = config != null && (config.isNotesPage() || config.isEnableTaskStyling());
         boolean isLinkCard = task.isLinkCard();
 
@@ -55,9 +58,8 @@ public class TaskContextMenu {
             addSubTaskItem = new MenuItem("Add Sub-tasks");
             addSubTaskItem.setOnAction(e -> showAddSubTaskDialog(task, globalDatabase, onUpdate));
 
-            if (isLinkCard) {
+            if (isLinkCard || isCompletionLocked) {
                 addSubTaskItem.setDisable(true);
-                addSubTaskItem.setText("Add Sub-tasks (Disabled on Link Cards)");
             }
         }
 
@@ -65,6 +67,7 @@ public class TaskContextMenu {
         if ((config == null || config.isEnableLinks()) && !isNoteMode && !isLinkCard) {
             addLinkItem = new MenuItem("Add External Link");
             addLinkItem.setOnAction(e -> showLinkDialog(task, null, globalDatabase, onUpdate));
+            if (isCompletionLocked) addLinkItem.setDisable(true);
         }
 
         Menu linksMenu = null;
@@ -99,6 +102,7 @@ public class TaskContextMenu {
 
                 MenuItem editSpecificLinkItem = new MenuItem("Edit");
                 editSpecificLinkItem.setOnAction(e -> showLinkDialog(task, link, globalDatabase, onUpdate));
+                if (isCompletionLocked) editSpecificLinkItem.setDisable(true);
 
                 MenuItem copyLinkItem = new MenuItem("Copy Link");
                 copyLinkItem.setOnAction(e -> {
@@ -113,6 +117,7 @@ public class TaskContextMenu {
                     StorageManager.saveTasks(globalDatabase);
                     onUpdate.run();
                 });
+                if (isCompletionLocked) deleteLinkItem.setDisable(true);
 
                 singleLinkMenu.getItems().addAll(openLinkItem, editSpecificLinkItem, copyLinkItem, deleteLinkItem);
                 linksMenu.getItems().add(singleLinkMenu);
@@ -134,8 +139,6 @@ public class TaskContextMenu {
             copy.setPenaltyPoints(task.getPenaltyPoints());
             copy.setCounterMode(task.isCounterMode());
             copy.setMaxCount(task.getMaxCount());
-
-            // --- FIXED: Ensures colors, flags, and expanded RPG parameters perfectly clone ---
             copy.setCustomOutlineColor(task.getCustomOutlineColor());
             copy.setCustomSideboxColor(task.getCustomSideboxColor());
             copy.setOptional(task.isOptional());
@@ -280,12 +283,20 @@ public class TaskContextMenu {
             int lockHours = appStats.getPreventEditingHours();
             boolean isTimeLocked = !(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours));
 
-            if (isTimeLocked) {
+            // Apply lock if time expired OR if the task is completed and the section enforces completion locks
+            if (isTimeLocked || isCompletionLocked) {
                 editItem.setDisable(true);
                 editItem.setText(baseEditText + " (Locked)");
+
+                // Block unarchiving if it's completed and locked
+                if (isCompletionLocked && task.isArchived()) {
+                    archiveItem.setDisable(true);
+                    archiveItem.setText("Unarchive (Locked)");
+                }
             } else {
                 editItem.setDisable(false);
                 editItem.setText(baseEditText);
+                archiveItem.setDisable(false);
             }
         });
 

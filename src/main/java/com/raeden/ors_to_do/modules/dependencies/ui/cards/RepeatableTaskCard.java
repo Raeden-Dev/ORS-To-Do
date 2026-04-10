@@ -6,6 +6,7 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import com.raeden.ors_to_do.modules.dependencies.ui.components.SubTaskRenderer;
+import com.raeden.ors_to_do.modules.dependencies.ui.components.TaskStatsMiniCard;
 import com.raeden.ors_to_do.modules.dependencies.ui.dialogs.TaskDialogs;
 import com.raeden.ors_to_do.modules.dependencies.ui.menus.TaskContextMenu;
 import com.raeden.ors_to_do.modules.dependencies.ui.utils.TaskActionHandler;
@@ -41,16 +42,28 @@ public class RepeatableTaskCard extends VBox {
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
+        // --- FIXED: Apply Time Lock check to Double Click ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
-                TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
+                int lockHours = appStats.getPreventEditingHours();
+                boolean isNoteMode = config != null && config.isNotesPage();
+                boolean isRewardMode = config != null && config.isRewardsPage();
+
+                if (!(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "This repeatable task was created over " + lockHours + " hour(s) ago and is locked from editing.");
+                    alert.setHeaderText("Editing Locked");
+                    TaskDialogs.styleDialog(alert);
+                    alert.show();
+                } else {
+                    TaskDialogs.showEditDialog(task, config, appStats, globalDatabase, onUpdate);
+                }
             }
         });
 
         HBox metaBox = new HBox(7);
         metaBox.setAlignment(Pos.CENTER_LEFT);
 
-        if (config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
+        if (config != null && config.isEnableIcons() && task.getIconSymbol() != null && !task.getIconSymbol().equals("None")) {
             Label icon = new Label(task.getIconSymbol());
             icon.setMinWidth(Region.USE_PREF_SIZE);
             icon.setStyle("-fx-text-fill: " + (task.getIconColor() != null ? task.getIconColor() : "#FFFFFF") + "; -fx-font-size: " + (baseFontSize + 2) + "px;");
@@ -62,9 +75,9 @@ public class RepeatableTaskCard extends VBox {
         sideRect.setPrefHeight(25); sideRect.setMaxHeight(25);
 
         String fillColor = "#FFFFFF";
-        if (config.isEnableTaskStyling() && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) fillColor = task.getCustomSideboxColor();
-        else if (config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) fillColor = task.getPriority().getColorHex();
-        else if (config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) fillColor = task.getPrefixColor();
+        if (config != null && config.isEnableTaskStyling() && task.getCustomSideboxColor() != null && !task.getCustomSideboxColor().equals("transparent")) fillColor = task.getCustomSideboxColor();
+        else if (config != null && config.isShowPriority() && task.getPriority() != null && task.getPriority().getColorHex() != null) fillColor = task.getPriority().getColorHex();
+        else if (config != null && config.isShowPrefix() && appStats.isMatchDailyRectColor() && task.getPrefixColor() != null) fillColor = task.getPrefixColor();
 
         sideRect.setStyle("-fx-background-color: " + fillColor + "; -fx-background-radius: 3;");
         metaBox.getChildren().add(sideRect);
@@ -81,6 +94,23 @@ public class RepeatableTaskCard extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        TaskStatsMiniCard statsMiniCard = new TaskStatsMiniCard(task, config, appStats, false);
+        Button eyeBtn = null;
+        if (statsMiniCard.hasAnyStats()) {
+            eyeBtn = new Button("✦");
+            eyeBtn.setMinWidth(Region.USE_PREF_SIZE);
+            eyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -fx-padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
+
+            Button finalEyeBtn = eyeBtn;
+            eyeBtn.setOnAction(e -> {
+                task.setStatsExpanded(!task.isStatsExpanded());
+                statsMiniCard.setVisible(task.isStatsExpanded());
+                statsMiniCard.setManaged(task.isStatsExpanded());
+                finalEyeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: " + baseFontSize + "px; -padding: 0 10 0 0; -fx-text-fill: " + (task.isStatsExpanded() ? "#569CD6" : "#AAAAAA") + ";");
+                StorageManager.saveTasks(globalDatabase);
+            });
+        }
+
         Label counterLbl = new Label(String.valueOf(task.getCurrentCount()));
         counterLbl.setMinWidth(Region.USE_PREF_SIZE);
         counterLbl.setStyle("-fx-text-fill: #4EC9B0; -fx-font-size: " + metaFontSize + "px; -fx-font-weight: bold; -fx-background-color: #1A332E; -fx-padding: 3 8; -fx-background-radius: 5;");
@@ -96,10 +126,8 @@ public class RepeatableTaskCard extends VBox {
         incBtn.setOnAction(e -> {
             task.setCurrentCount(task.getCurrentCount() + 1);
 
-            // --- NEW: Apply Inflicted Debuffs ---
             TaskActionHandler.applyInflictedDebuffs(task, appStats);
 
-            // Process Cleansing
             if (appStats.getActiveDebuffs() != null && !appStats.getActiveDebuffs().isEmpty()) {
                 boolean cleansed = false;
                 java.util.Iterator<Debuff> it = appStats.getActiveDebuffs().iterator();
@@ -117,8 +145,7 @@ public class RepeatableTaskCard extends VBox {
                 if (cleansed) StorageManager.saveStats(appStats);
             }
 
-            // Process Standard Rewards
-            if (config.isEnableStatsSystem() && (task.getRewardPoints() > 0 || !task.getStatRewards().isEmpty() || !task.getStatCapRewards().isEmpty() || !task.getStatCosts().isEmpty())) {
+            if (config != null && config.isEnableStatsSystem() && (task.getRewardPoints() > 0 || !task.getStatRewards().isEmpty() || !task.getStatCapRewards().isEmpty() || !task.getStatCosts().isEmpty())) {
                 TaskActionHandler.processRPGStats(task, appStats, true);
                 appStats.setGlobalScore(appStats.getGlobalScore() + task.getRewardPoints());
             }
@@ -128,12 +155,14 @@ public class RepeatableTaskCard extends VBox {
             onUpdate.run();
         });
 
-        mainRow.getChildren().addAll(metaBox, textLabel, spacer, counterLbl, repeatIcon, incBtn);
+        mainRow.getChildren().addAll(metaBox, textLabel, spacer);
+        if (eyeBtn != null) mainRow.getChildren().add(eyeBtn);
+        mainRow.getChildren().addAll(counterLbl, repeatIcon, incBtn);
 
         SubTaskRenderer subTaskBox = new SubTaskRenderer(task, config, appStats, globalDatabase, onUpdate);
 
         primaryCard.getChildren().addAll(mainRow, subTaskBox);
-        getChildren().add(primaryCard);
+        getChildren().addAll(primaryCard, statsMiniCard);
 
         ContextMenu contextMenu = TaskContextMenu.build(task, config, appStats, globalDatabase, onUpdate, null);
 

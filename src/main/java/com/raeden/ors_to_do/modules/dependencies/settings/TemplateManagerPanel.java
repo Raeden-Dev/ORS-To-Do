@@ -12,6 +12,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -110,13 +111,19 @@ public class TemplateManagerPanel extends VBox {
         for (DailyTemplate template : selected.getAutoAddTemplates()) {
             TaskItem newTask = new TaskItem(template.getText(), fallbackPrio, selected.getId());
 
+            // --- FIXED: Formats prefix with brackets and safely injects properties ---
             if (selected.isEnableIcons() && template.getIconSymbol() != null && !template.getIconSymbol().equals("None")) {
                 newTask.setIconSymbol(template.getIconSymbol());
                 newTask.setIconColor(template.getIconColor());
             }
             if (selected.isShowPrefix() && template.getPrefix() != null && !template.getPrefix().isEmpty()) {
-                newTask.setPrefix(template.getPrefix());
-                newTask.setPrefixColor(template.getPrefixColor());
+                String pText = template.getPrefix().trim();
+                if (!pText.isEmpty()) {
+                    if (!pText.startsWith("[")) pText = "[" + pText;
+                    if (!pText.endsWith("]")) pText = pText + "]";
+                    newTask.setPrefix(pText.toUpperCase());
+                    newTask.setPrefixColor(template.getPrefixColor());
+                }
             }
             if (selected.isShowPriority() && template.getPriorityName() != null && !template.isOptional()) {
                 appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
@@ -132,14 +139,12 @@ public class TemplateManagerPanel extends VBox {
                 }
             }
 
-            // --- FIXED: Apply All Styling and Repetition Properties ---
             if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
             if (template.getCustomOutlineColor() != null) newTask.setCustomOutlineColor(template.getCustomOutlineColor());
             if (template.getCustomSideboxColor() != null) newTask.setCustomSideboxColor(template.getCustomSideboxColor());
 
             newTask.setRepeatingMode(template.isRepeatingMode());
             newTask.setRepetitionCount(template.getRepetitionCount());
-
             newTask.setOptional(template.isOptional());
 
             if (selected.isEnableStatsSystem()) {
@@ -148,6 +153,7 @@ public class TemplateManagerPanel extends VBox {
                 if (template.getStatCosts() != null) newTask.setStatCosts(new HashMap<>(template.getStatCosts()));
                 if (template.getStatPenalties() != null) newTask.setStatPenalties(new HashMap<>(template.getStatPenalties()));
                 if (template.getStatRequirements() != null) newTask.setStatRequirements(new HashMap<>(template.getStatRequirements()));
+                if (template.getInflictedDebuffIds() != null) newTask.setInflictedDebuffIds(new ArrayList<>(template.getInflictedDebuffIds()));
             }
 
             globalDatabase.add(newTask);

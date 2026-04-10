@@ -6,6 +6,8 @@ import com.raeden.ors_to_do.dependencies.storage.StorageManager;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,42 +30,32 @@ public class DailyRolloverManager {
                     int completedDaily = 0;
 
                     for (TaskItem task : taskDatabase) {
-                        // Ignore optional tasks so they don't penalize your streak
                         if (section.getId().equals(task.getSectionId()) && !task.isArchived() && !task.isOptional()) {
                             totalDaily++;
                             if (task.isFinished()) completedDaily++;
                         }
                     }
 
-                    // --- NEW: Independent Page Streak Logic ---
                     if (section.isHasStreak() && totalDaily > 0) {
                         double percentComplete = (double) completedDaily / totalDaily;
-
-                        // We still log this to global history for the Analytics chart
                         appStats.addHistoryRecord(lastOpened, percentComplete);
                         appStats.getAdvancedHistoryLog().put(lastOpened, new int[]{totalDaily, completedDaily});
 
                         double requiredFraction = appStats.getMinDailyCompletionPercent() / 100.0;
 
                         if (daysMissed > 1) {
-                            // Break the streak if they didn't open the app for a whole day
                             section.setCurrentStreak(0);
                         } else if (percentComplete >= (requiredFraction - 0.001)) {
-                            // Increment this specific section's streak
                             section.setCurrentStreak(section.getCurrentStreak() + 1);
-
-                            // Check if this section just broke the global all-time record!
                             if (section.getCurrentStreak() > appStats.getHighestStreak()) {
                                 appStats.setHighestStreak(section.getCurrentStreak());
                                 appStats.setHighestStreakSection(section.getName());
                             }
                         } else {
-                            // Failed to meet the completion threshold
                             section.setCurrentStreak(0);
                         }
                     }
 
-                    // Archive old tasks for the new day
                     for (TaskItem task : taskDatabase) {
                         if (section.getId().equals(task.getSectionId()) && !task.isArchived()) {
                             task.setArchived(true);
@@ -71,7 +63,6 @@ public class DailyRolloverManager {
                         }
                     }
 
-                    // Generate new templates
                     CustomPriority fallbackPrio = appStats.getCustomPriorities().isEmpty() ? null : appStats.getCustomPriorities().get(0);
 
                     for (DailyTemplate template : section.getAutoAddTemplates()) {
@@ -81,9 +72,19 @@ public class DailyRolloverManager {
 
                         TaskItem newTask = new TaskItem(template.getText(), fallbackPrio, section.getId());
 
+                        // --- FIXED: Formats prefix with brackets and safely injects properties ---
+                        if (section.isEnableIcons() && template.getIconSymbol() != null && !template.getIconSymbol().equals("None")) {
+                            newTask.setIconSymbol(template.getIconSymbol());
+                            newTask.setIconColor(template.getIconColor());
+                        }
                         if (section.isShowPrefix() && template.getPrefix() != null && !template.getPrefix().isEmpty()) {
-                            newTask.setPrefix(template.getPrefix());
-                            newTask.setPrefixColor(template.getPrefixColor());
+                            String pText = template.getPrefix().trim();
+                            if (!pText.isEmpty()) {
+                                if (!pText.startsWith("[")) pText = "[" + pText;
+                                if (!pText.endsWith("]")) pText = pText + "]";
+                                newTask.setPrefix(pText.toUpperCase());
+                                newTask.setPrefixColor(template.getPrefixColor());
+                            }
                         }
                         if (section.isShowPriority() && template.getPriorityName() != null && !template.isOptional()) {
                             appStats.getCustomPriorities().stream().filter(p -> p.getName().equals(template.getPriorityName())).findFirst().ifPresent(newTask::setPriority);
@@ -98,15 +99,29 @@ public class DailyRolloverManager {
                                 if (!st.trim().isEmpty()) newTask.getSubTasks().add(new SubTask(st.trim()));
                             }
                         }
+
                         if (template.getBgColor() != null) newTask.setColorHex(template.getBgColor());
+                        if (template.getCustomOutlineColor() != null) newTask.setCustomOutlineColor(template.getCustomOutlineColor());
+                        if (template.getCustomSideboxColor() != null) newTask.setCustomSideboxColor(template.getCustomSideboxColor());
+
+                        newTask.setRepeatingMode(template.isRepeatingMode());
+                        newTask.setRepetitionCount(template.getRepetitionCount());
                         newTask.setOptional(template.isOptional());
+
+                        if (section.isEnableStatsSystem()) {
+                            if (template.getStatRewards() != null) newTask.setStatRewards(new HashMap<>(template.getStatRewards()));
+                            if (template.getStatCapRewards() != null) newTask.setStatCapRewards(new HashMap<>(template.getStatCapRewards()));
+                            if (template.getStatCosts() != null) newTask.setStatCosts(new HashMap<>(template.getStatCosts()));
+                            if (template.getStatPenalties() != null) newTask.setStatPenalties(new HashMap<>(template.getStatPenalties()));
+                            if (template.getStatRequirements() != null) newTask.setStatRequirements(new HashMap<>(template.getStatRequirements()));
+                            if (template.getInflictedDebuffIds() != null) newTask.setInflictedDebuffIds(new ArrayList<>(template.getInflictedDebuffIds()));
+                        }
 
                         taskDatabase.add(newTask);
                     }
                 }
             }
 
-            // Trigger RPG Gamification Engine
             processRPGRollover(appStats, taskDatabase);
 
             appStats.setLastOpenedDate(today);
@@ -130,7 +145,6 @@ public class DailyRolloverManager {
         }
     }
 
-    // --- PHASE 5: RPG ATROPHY AND PERK ENGINE ---
     public static void processRPGRollover(AppStats appStats, List<TaskItem> globalDatabase) {
         if (!appStats.isGlobalStatsEnabled()) return;
 
@@ -138,12 +152,8 @@ public class DailyRolloverManager {
         boolean statsChanged = false;
         boolean perksChanged = false;
 
-        // ==========================================
-        // 1. STAT ATROPHY ENGINE
-        // ==========================================
         for (CustomStat stat : appStats.getCustomStats()) {
             if (stat.getAtrophyDays() > 0 && stat.getCurrentAmount() > 0) {
-
                 LocalDate lastGain = appStats.getLastStatGainDates().getOrDefault(stat.getId(), today);
                 long daysSinceGain = ChronoUnit.DAYS.between(lastGain, today);
 
@@ -162,9 +172,6 @@ public class DailyRolloverManager {
             }
         }
 
-        // ==========================================
-        // 2. PERK LEVELING & UPKEEP ENGINE
-        // ==========================================
         boolean isLevelUpDay = (today.getDayOfWeek() == DayOfWeek.MONDAY);
 
         for (TaskItem task : globalDatabase) {

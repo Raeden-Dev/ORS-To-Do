@@ -129,12 +129,21 @@ public class FilterSortHeader extends VBox {
 
             long totalMinutes = java.time.Duration.between(startOfDay, now).toMinutes();
             long intervalMins = intervalHours * 60;
-            long minsIntoBlock = totalMinutes % intervalMins;
             long nextBoundaryMins = ((totalMinutes / intervalMins) + 1) * intervalMins;
-
             java.time.Duration duration = java.time.Duration.between(now, startOfDay.plusMinutes(nextBoundaryMins));
 
-            if (minsIntoBlock < 10) {
+            // --- FIXED: Scan the database to see if we have tasks to determine text ---
+            boolean hasTasks = false;
+            if (globalDatabase != null) {
+                for (TaskItem t : globalDatabase) {
+                    if (config.getId().equals(t.getSectionId()) && !t.isArchived()) {
+                        hasTasks = true;
+                        break;
+                    }
+                }
+            }
+
+            if (hasTasks) {
                 countdownLabel.setText(String.format("Resets in: %02d:%02d:%02d", duration.toHours(), duration.toMinutesPart(), duration.toSecondsPart()));
                 countdownLabel.setStyle("-fx-text-fill: #AAAAAA; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-background-color: #1E1E1E; -fx-padding: 5 10; -fx-background-radius: 15; -fx-border-color: #555555; -fx-border-radius: 15;");
             } else {
@@ -165,7 +174,6 @@ public class FilterSortHeader extends VBox {
         filterSortRow.getChildren().add(filterSpacer);
 
         if (config.isStatPage()) {
-            // --- FIXED: Placed Debuff Manager next to History ---
             Button manageDebuffsBtn = new Button("⚙ Debuff Manager");
             manageDebuffsBtn.setStyle("-fx-background-color: #331A1A; -fx-border-color: #8B0000; -fx-border-radius: 3; -fx-background-radius: 3; -fx-text-fill: #FF6666; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 5 15;");
             manageDebuffsBtn.setOnAction(e -> DebuffManagerDialog.show(appStats, onFilterSortChanged));

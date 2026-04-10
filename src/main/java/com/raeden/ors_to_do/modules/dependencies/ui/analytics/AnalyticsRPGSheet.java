@@ -15,6 +15,7 @@ public class AnalyticsRPGSheet extends VBox {
     public AnalyticsRPGSheet(AppStats appStats) {
         super(15);
         setStyle("-fx-background-color: #252526; -fx-padding: 20; -fx-background-radius: 8; -fx-border-color: #3E3E42; -fx-border-radius: 8;");
+
         Label title = new Label("RPG Character Sheet");
         title.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 20px; -fx-font-weight: bold;");
         getChildren().add(title);
@@ -29,22 +30,24 @@ public class AnalyticsRPGSheet extends VBox {
         FlowPane statsGrid = new FlowPane(15, 15);
         for (CustomStat stat : appStats.getCustomStats()) {
             VBox statCard = new VBox(10);
+
+            // --- FIXED: Flipped the color hierarchy ---
+            // Background is the dark tinted color (with 33 opacity added). Text and Outlines are the bright text color.
             String bgColor = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
             String txtColor = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
 
-            statCard.setStyle("-fx-background-color: #2D2D30; -fx-padding: 15; -fx-background-radius: 5; -fx-border-color: " + bgColor + "; -fx-border-width: 2; -fx-border-radius: 5;");
+            statCard.setStyle("-fx-background-color: " + bgColor + "33; -fx-padding: 15; -fx-background-radius: 5; -fx-border-color: " + txtColor + "; -fx-border-width: 2; -fx-border-radius: 5;");
             statCard.setPrefWidth(300);
 
             String icon = (stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None")) ? stat.getIconSymbol() + " " : "";
             Label nameLbl = new Label(icon + stat.getName());
             nameLbl.setStyle("-fx-text-fill: " + txtColor + "; -fx-font-size: 16px; -fx-font-weight: bold;");
 
-            // --- FIXED: Progress bar and labels now check the Stacks ---
             int effectiveMax = stat.getEffectiveMaxCap(appStats.getActiveDebuffs());
             String capText = effectiveMax > 0 ? " / " + effectiveMax : "";
 
             Label amountLbl = new Label(stat.getCurrentAmount() + capText);
-            amountLbl.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px; -fx-font-weight: bold;");
+            amountLbl.setStyle("-fx-text-fill: " + txtColor + "; -fx-font-size: 14px; -fx-font-weight: bold;");
 
             HBox header = new HBox(nameLbl, new Region(), amountLbl);
             HBox.setHgrow(header.getChildren().get(1), Priority.ALWAYS);
@@ -52,7 +55,8 @@ public class AnalyticsRPGSheet extends VBox {
             ProgressBar pBar = new ProgressBar();
             pBar.setProgress(effectiveMax > 0 ? (double) stat.getCurrentAmount() / effectiveMax : 1.0);
             pBar.setPrefWidth(Double.MAX_VALUE);
-            pBar.setStyle("-fx-accent: " + bgColor + "; -fx-control-inner-background: #1E1E1E; -fx-background-radius: 3;");
+            // Progress bar matches text color
+            pBar.setStyle("-fx-accent: " + txtColor + "; -fx-control-inner-background: #1E1E1E; -fx-background-radius: 3;");
 
             HBox lifetimeBox = new HBox(15);
             Label earned = new Label("▲ " + stat.getLifetimeEarned() + " Earned");

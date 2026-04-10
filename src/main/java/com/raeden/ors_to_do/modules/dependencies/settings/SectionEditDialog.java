@@ -101,8 +101,10 @@ public class SectionEditDialog {
         CheckBox enableIconsCheck = new CheckBox("Enable Task Icons"); enableIconsCheck.setSelected(config.isEnableIcons());
         CheckBox enableOptionalTasksCheck = new CheckBox("Enable Optional Tasks"); enableOptionalTasksCheck.setSelected(config.isEnableOptionalTasks());
         CheckBox enableLinkCardsCheck = new CheckBox("Enable Link Cards"); enableLinkCardsCheck.setSelected(config.isEnableLinkCards());
-        // --- NEW: Toggle for repeating tasks ---
         CheckBox allowRepeatingTasksCheck = new CheckBox("Allow Repeating Tasks"); allowRepeatingTasksCheck.setSelected(config.isAllowRepeatingTasks());
+
+        // --- NEW: Lock Task Checkbox ---
+        CheckBox lockCompletedCheck = new CheckBox("Lock Task After Completion"); lockCompletedCheck.setSelected(config.isLockCompletedTasks());
 
         featuresGrid.add(createToggle(allowManualArchiveCheck, "Enables right-click to send tasks to Archive."), 0, 0);
         featuresGrid.add(createToggle(enableSubTasksCheck, "Allows creating nested to-do items inside a card."), 0, 1);
@@ -115,6 +117,7 @@ public class SectionEditDialog {
         featuresGrid.add(createToggle(enableZenModeCheck, "Adds a focus mode button that unlocks when threshold is met."), 0, 8);
         featuresGrid.add(createToggle(enableTaskStylingCheck, "Allows custom background and outline colors for individual tasks."), 0, 9);
         featuresGrid.add(createToggle(enableTimedTasksCheck, "Tasks require specific focus time to complete."), 0, 10);
+        featuresGrid.add(createToggle(lockCompletedCheck, "Disables un-checking or editing tasks once completed."), 0, 11);
 
         featuresGrid.add(createToggle(streakCheck, "Tracks consecutive completions. Requires a reset interval."), 1, 0);
         featuresGrid.add(createToggle(autoArchiveCheck, "Tasks are sent to archive the moment they are checked off."), 1, 1);
@@ -127,6 +130,7 @@ public class SectionEditDialog {
         featuresGrid.add(createToggle(enableOptionalTasksCheck, "Allows tasks that grant bonus points but do not count to totals."), 1, 8);
         featuresGrid.add(createToggle(enableLinkCardsCheck, "Allows creating tasks that act purely as clickable shortcuts."), 1, 9);
         featuresGrid.add(createToggle(allowRepeatingTasksCheck, "Turns cards into unlimited clickers to farm stats/points."), 1, 10);
+
         content.getChildren().addAll(featuresGrid, new Separator());
 
         // --- Special Modes Box ---
@@ -211,6 +215,10 @@ public class SectionEditDialog {
                 enableOptionalTasksCheck.setSelected(p.isEnableOptionalTasks()); enableTaskStylingCheck.setSelected(p.isEnableTaskStyling());
                 enableTimedTasksCheck.setSelected(p.isEnableTimedTasks());
                 allowRepeatingTasksCheck.setSelected(p.isAllowRepeatingTasks());
+
+                // --- NEW: Load preset lock state ---
+                lockCompletedCheck.setSelected(p.isLockCompletedTasks());
+
                 updateUIState.run();
             }
         });
@@ -237,13 +245,28 @@ public class SectionEditDialog {
                 newPreset.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
                 newPreset.setAllowRepeatingTasks(allowRepeatingTasksCheck.isSelected());
 
+                // --- NEW: Save preset lock state ---
+                newPreset.setLockCompletedTasks(lockCompletedCheck.isSelected());
+
                 appStats.getSectionPresets().add(newPreset); presetBox.getItems().add(newPreset); presetBox.setValue(newPreset);
                 StorageManager.saveStats(appStats);
             });
         });
 
         updateUIState.run();
-        dialog.getDialogPane().setContent(content);
+
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefSize(720, 600);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #1E1E1E;");
+        scrollPane.setBorder(Border.EMPTY);
+
+        String scrollCss = ".scroll-bar:vertical, .scroll-bar:horizontal { -fx-background-color: transparent; } " +
+                ".scroll-bar:vertical .track, .scroll-bar:horizontal .track { -fx-background-color: #1E1E1E; -fx-border-color: transparent; } " +
+                ".scroll-bar:vertical .thumb, .scroll-bar:horizontal .thumb { -fx-background-color: #555555; -fx-background-radius: 5; }";
+        scrollPane.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(scrollCss.getBytes()));
+
+        dialog.getDialogPane().setContent(scrollPane);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         dialog.showAndWait().ifPresent(res -> {
@@ -267,6 +290,9 @@ public class SectionEditDialog {
                 config.setNotesPage(notesPageCheck.isSelected()); config.setEnableOptionalTasks(enableOptionalTasksCheck.isSelected());
                 config.setEnableTaskStyling(enableTaskStylingCheck.isSelected()); config.setEnableTimedTasks(enableTimedTasksCheck.isSelected());
                 config.setAllowRepeatingTasks(allowRepeatingTasksCheck.isSelected());
+
+                // --- NEW: Save Lock State ---
+                config.setLockCompletedTasks(lockCompletedCheck.isSelected());
 
                 if (isNew) appStats.getSections().add(config);
                 onSave.run();

@@ -56,7 +56,8 @@ public class GeneralSettingsPanel extends VBox {
         behaviorHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
         VBox.setMargin(behaviorHeader, new Insets(10, 0, 0, 0));
 
-        VBox behaviorList = new VBox(15);
+        // --- FIXED: Reduced vertical gap between rows to 8 (was 15) ---
+        VBox behaviorList = new VBox(8);
 
         Spinner<Integer> fontSizeSpinner = new Spinner<>(10, 36, appStats.getTaskFontSize());
         fontSizeSpinner.setEditable(true);
@@ -98,7 +99,6 @@ public class GeneralSettingsPanel extends VBox {
         Spinner<Integer> zenSpinner = new Spinner<>(5, 100, appStats.getZenModeThreshold());
         zenSpinner.setEditable(true);
 
-        // --- FIXED: Explicitly set text-fill to white to override any generic label/button CSS ---
         Button urgeSettingsBtn = new Button("Configure Urge Surfing...");
         urgeSettingsBtn.setStyle("-fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; -fx-cursor: hand; -fx-text-fill: white; -fx-font-weight: bold;");
         urgeSettingsBtn.setOnAction(e -> {
@@ -223,7 +223,8 @@ public class GeneralSettingsPanel extends VBox {
         navHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #AAAAAA;");
         VBox.setMargin(navHeader, new Insets(10, 0, 0, 0));
 
-        VBox navList = new VBox(15);
+        // --- FIXED: Reduced vertical gap between rows to 8 (was 15) ---
+        VBox navList = new VBox(8);
 
         TextField focusNavField = new TextField(appStats.getNavFocusText());
         TextField analyticsNavField = new TextField(appStats.getNavAnalyticsText());
@@ -323,7 +324,8 @@ public class GeneralSettingsPanel extends VBox {
     }
 
     private HBox createSettingRow(String title, String desc, Node control, String colorHex) {
-        HBox row = new HBox(15);
+        // --- FIXED: Tightened row spacing ---
+        HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
 
         Rectangle rect = new Rectangle(5, 20, Color.web(colorHex));
@@ -331,15 +333,15 @@ public class GeneralSettingsPanel extends VBox {
         rect.setArcHeight(3);
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
 
         Label descLabel = new Label(desc);
         descLabel.setStyle("-fx-text-fill: #858585; -fx-font-size: 11px;");
         descLabel.setWrapText(true);
 
-        VBox textVBox = new VBox(2, titleLabel, descLabel);
+        VBox textVBox = new VBox(0, titleLabel, descLabel);
 
-        HBox leftSide = new HBox(10, rect, textVBox);
+        HBox leftSide = new HBox(8, rect, textVBox);
         leftSide.setAlignment(Pos.CENTER_LEFT);
 
         Region spacer = new Region();
