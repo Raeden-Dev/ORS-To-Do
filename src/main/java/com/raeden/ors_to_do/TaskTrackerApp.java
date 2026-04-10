@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class TaskTrackerApp extends Application {
-    public static final String APP_VERSION = "v1.435";
+    public static final String APP_VERSION = "v1.437";
 
     private List<TaskItem> taskDatabase;
     private AppStats appStats;
@@ -154,7 +154,7 @@ public class TaskTrackerApp extends Application {
         rootLayout.setLeft(sidebarManager);
 
         // --- FIXED: Widened the base resolution of the app ---
-        Scene scene = new Scene(rootLayout, 1100, 700);
+        Scene scene = new Scene(rootLayout, 1005, 700);
 
         java.net.URL cssUrl = getClass().getResource("/styles.css");
         if (cssUrl != null) {

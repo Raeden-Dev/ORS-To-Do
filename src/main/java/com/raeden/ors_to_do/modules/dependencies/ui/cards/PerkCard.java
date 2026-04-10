@@ -170,6 +170,33 @@ public class PerkCard extends VBox {
         if (!requirementsBox.getChildren().isEmpty()) {
             getChildren().addAll(new Separator(), requirementsBox);
         }
+
+        // --- FIXED: Context Menu for Editing & Deletion ---
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem editItem = new MenuItem("Edit Perk");
+        editItem.setOnAction(e -> openPerkConfigDialog(perkTask, appStats, globalDatabase, onUpdate));
+
+        MenuItem deleteItem = new MenuItem("Permanently Delete Perk");
+        deleteItem.setStyle("-fx-text-fill: #FF6666; -fx-font-weight: bold;");
+        deleteItem.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to permanently delete '" + perkTask.getTextContent() + "'?\n\nThis cannot be undone and stats will not be revoked.", ButtonType.YES, ButtonType.NO);
+            confirm.setHeaderText("Delete Perk");
+            TaskDialogs.styleDialog(confirm);
+            confirm.showAndWait().ifPresent(res -> {
+                if (res == ButtonType.YES) {
+                    globalDatabase.remove(perkTask);
+                    StorageManager.saveTasks(globalDatabase);
+                    onUpdate.run();
+                }
+            });
+        });
+        contextMenu.getItems().addAll(editItem, new SeparatorMenuItem(), deleteItem);
+
+        this.setOnContextMenuRequested(e -> {
+            contextMenu.show(this, e.getScreenX(), e.getScreenY());
+            e.consume();
+        });
     }
 
     private void openPerkConfigDialog(TaskItem perkTask, AppStats appStats, List<TaskItem> globalDatabase, Runnable onUpdate) {

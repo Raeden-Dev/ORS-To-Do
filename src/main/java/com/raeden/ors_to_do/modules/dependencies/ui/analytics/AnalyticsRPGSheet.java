@@ -4,7 +4,8 @@ import com.raeden.ors_to_do.dependencies.models.AppStats;
 import com.raeden.ors_to_do.dependencies.models.CustomStat;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -27,17 +28,33 @@ public class AnalyticsRPGSheet extends VBox {
             return;
         }
 
-        FlowPane statsGrid = new FlowPane(15, 15);
+        // --- FIXED: Swapped FlowPane for a rigidly constrained GridPane ---
+        GridPane statsGrid = new GridPane();
+        statsGrid.setHgap(15);
+        statsGrid.setVgap(15);
+        statsGrid.setMaxWidth(Double.MAX_VALUE);
+
+        // Force exactly 2 columns that take up 50% of the available width each
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(50);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(50);
+        statsGrid.getColumnConstraints().addAll(col1, col2);
+
+        int col = 0;
+        int row = 0;
+
         for (CustomStat stat : appStats.getCustomStats()) {
             VBox statCard = new VBox(10);
 
-            // --- FIXED: Flipped the color hierarchy ---
-            // Background is the dark tinted color (with 33 opacity added). Text and Outlines are the bright text color.
             String bgColor = stat.getBackgroundColor() != null ? stat.getBackgroundColor() : "#333333";
             String txtColor = stat.getTextColor() != null ? stat.getTextColor() : "#FFFFFF";
 
             statCard.setStyle("-fx-background-color: " + bgColor + "33; -fx-padding: 15; -fx-background-radius: 5; -fx-border-color: " + txtColor + "; -fx-border-width: 2; -fx-border-radius: 5;");
-            statCard.setPrefWidth(300);
+
+            // Tell the card to expand to fill the column width
+            statCard.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setHgrow(statCard, Priority.ALWAYS);
 
             String icon = (stat.getIconSymbol() != null && !stat.getIconSymbol().equals("None")) ? stat.getIconSymbol() + " " : "";
             Label nameLbl = new Label(icon + stat.getName());
@@ -54,8 +71,8 @@ public class AnalyticsRPGSheet extends VBox {
 
             ProgressBar pBar = new ProgressBar();
             pBar.setProgress(effectiveMax > 0 ? (double) stat.getCurrentAmount() / effectiveMax : 1.0);
-            pBar.setPrefWidth(Double.MAX_VALUE);
-            // Progress bar matches text color
+            // Allow the progress bar to stretch across the new dynamic width
+            pBar.setMaxWidth(Double.MAX_VALUE);
             pBar.setStyle("-fx-accent: " + txtColor + "; -fx-control-inner-background: #1E1E1E; -fx-background-radius: 3;");
 
             HBox lifetimeBox = new HBox(15);
@@ -68,7 +85,14 @@ public class AnalyticsRPGSheet extends VBox {
             lifetimeBox.getChildren().addAll(earned, lost, peak);
 
             statCard.getChildren().addAll(header, pBar, lifetimeBox);
-            statsGrid.getChildren().add(statCard);
+
+            // Add to grid and calculate next position
+            statsGrid.add(statCard, col, row);
+            col++;
+            if (col == 2) { // Reset to next row after 2 columns
+                col = 0;
+                row++;
+            }
         }
         getChildren().add(statsGrid);
     }
