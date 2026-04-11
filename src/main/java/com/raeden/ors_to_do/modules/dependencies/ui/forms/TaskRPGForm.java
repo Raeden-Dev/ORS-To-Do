@@ -7,7 +7,7 @@ import com.raeden.ors_to_do.dependencies.models.SectionConfig;
 import com.raeden.ors_to_do.dependencies.models.TaskItem;
 import javafx.geometry.Pos;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.CustomMenuItem;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
@@ -25,12 +25,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TaskRPGForm {
     private TextField maxCountField, costField, rewardField, penaltyField;
     private CheckBox permaLockCheck;
-    private MenuButton debuffMenuBtn; // --- NEW: For selecting inflicted debuffs
+    private MenuButton debuffMenuBtn;
 
     private Map<String, TextField> statRewardFields = new HashMap<>();
     private Map<String, TextField> statCapRewardFields = new HashMap<>();
     private Map<String, TextField> statCostFields = new HashMap<>();
     private Map<String, TextField> statPenaltyFields = new HashMap<>();
+
+    // Keep track of how many debuffs are selected for the dynamic title
+    private int selectedDebuffCount = 0;
 
     public void buildUI(GridPane grid, AtomicInteger rowIdx, TaskItem task, SectionConfig config, AppStats appStats) {
 
@@ -84,18 +87,39 @@ public class TaskRPGForm {
         if (config != null && config.isEnableStatsSystem() && appStats.isGlobalStatsEnabled()) {
             grid.add(new Separator(), 0, rowIdx.get(), 2, 1); rowIdx.getAndIncrement();
 
-            // --- NEW: Debuff Infliction Dropdown ---
+            // --- FIXED: Uses Debuff's native 'colorHex' to derive styling ---
             if (appStats.getDebuffTemplates() != null && !appStats.getDebuffTemplates().isEmpty()) {
-                debuffMenuBtn = new MenuButton("Select Debuffs to Inflict");
-                debuffMenuBtn.setStyle("-fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand;");
+                debuffMenuBtn = new MenuButton();
+                debuffMenuBtn.getStyleClass().add("custom-menu-btn");
+                debuffMenuBtn.setMaxWidth(Double.MAX_VALUE);
+
                 for (Debuff d : appStats.getDebuffTemplates()) {
-                    CheckMenuItem cmi = new CheckMenuItem(d.getName());
-                    cmi.setUserData(d.getId());
-                    if (task.getInflictedDebuffIds().contains(d.getId())) {
-                        cmi.setSelected(true);
+                    String iconText = (d.getIconSymbol() != null && !d.getIconSymbol().equals("None")) ? d.getIconSymbol() + " " : "⚠ ";
+                    String mainColor = d.getColorHex() != null && !d.getColorHex().equals("transparent") ? d.getColorHex() : "#FF4444";
+
+                    CheckBox cb = new CheckBox(iconText + d.getName());
+                    // Use derive() to automatically generate a dark tinted background from the primary color
+                    cb.setStyle("-fx-text-fill: " + mainColor + "; -fx-font-weight: bold; -fx-background-color: derive(" + mainColor + ", -80%); -fx-border-color: " + mainColor + "; -fx-border-radius: 3; -fx-background-radius: 3; -fx-padding: 3 8;");
+
+                    if (task.getInflictedDebuffIds() != null && task.getInflictedDebuffIds().contains(d.getId())) {
+                        cb.setSelected(true);
+                        selectedDebuffCount++;
                     }
+
+                    cb.setOnAction(e -> {
+                        if (cb.isSelected()) selectedDebuffCount++;
+                        else selectedDebuffCount--;
+                        updateDebuffMenuText();
+                    });
+
+                    CustomMenuItem cmi = new CustomMenuItem(cb);
+                    cmi.setHideOnClick(false);
+                    cmi.setUserData(d.getId());
                     debuffMenuBtn.getItems().add(cmi);
                 }
+
+                updateDebuffMenuText();
+
                 grid.add(new Label("Inflict Debuffs:"), 0, rowIdx.get());
                 grid.add(debuffMenuBtn, 1, rowIdx.getAndIncrement());
             }
@@ -158,6 +182,13 @@ public class TaskRPGForm {
         }
     }
 
+    private void updateDebuffMenuText() {
+        if (debuffMenuBtn != null) {
+            if (selectedDebuffCount == 0) debuffMenuBtn.setText("Select Debuffs to Inflict");
+            else debuffMenuBtn.setText("Select Debuffs to Inflict (" + selectedDebuffCount + ")");
+        }
+    }
+
     public void applyTo(TaskItem task) {
         if (rewardField != null) {
             try { task.setRewardPoints(Math.max(0, Integer.parseInt(rewardField.getText().trim()))); } catch (Exception ignore) {}
@@ -185,12 +216,14 @@ public class TaskRPGForm {
             }
         }
 
-        // --- NEW: Save Debuffs ---
         if (debuffMenuBtn != null) {
             List<String> selectedDebuffs = new ArrayList<>();
             for (MenuItem item : debuffMenuBtn.getItems()) {
-                if (item instanceof CheckMenuItem && ((CheckMenuItem)item).isSelected()) {
-                    selectedDebuffs.add((String) item.getUserData());
+                if (item instanceof CustomMenuItem) {
+                    CheckBox cb = (CheckBox) ((CustomMenuItem) item).getContent();
+                    if (cb.isSelected()) {
+                        selectedDebuffs.add((String) item.getUserData());
+                    }
                 }
             }
             task.setInflictedDebuffIds(selectedDebuffs);

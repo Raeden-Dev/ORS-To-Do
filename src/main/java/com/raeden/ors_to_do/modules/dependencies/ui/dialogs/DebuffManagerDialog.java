@@ -99,6 +99,10 @@ public class DebuffManagerDialog {
                     descL.setStyle("-fx-text-fill: #AAAAAA; -fx-font-size: 12px; -fx-font-style: italic;");
                     descL.setWrapText(true);
 
+                    // --- FIXED: Explicitly constrain the width to force wrapping inside the ListCell ---
+                    descL.setPrefWidth(420);
+                    descL.setMinHeight(Region.USE_PREF_SIZE);
+
                     card.getChildren().addAll(header, descL);
 
                     setGraphic(card);

@@ -31,6 +31,9 @@ public class AppStats implements Serializable {
     private Boolean matchDailyRectColor = null;
     private boolean matchPriorityOutline = true;
 
+    // --- NEW: Compress Notes Option ---
+    private boolean compressNotes = false;
+
     private String editMenuText = "Edit Task";
     private String archiveMenuText = "Archive Task";
     private String deleteMenuText = "Delete";
@@ -73,7 +76,6 @@ public class AppStats implements Serializable {
     ));
     private List<DailyTemplate> baseDailies = new ArrayList<>();
 
-    // --- NEW: DEBUFF SYSTEM ---
     private List<Debuff> activeDebuffs = new ArrayList<>();
     private List<Debuff> debuffTemplates = new ArrayList<>();
 
@@ -114,6 +116,10 @@ public class AppStats implements Serializable {
     public void setMatchDailyRectColor(boolean matchDailyRectColor) { this.matchDailyRectColor = matchDailyRectColor; }
     public boolean isMatchPriorityOutline() { return matchPriorityOutline; }
     public void setMatchPriorityOutline(boolean matchPriorityOutline) { this.matchPriorityOutline = matchPriorityOutline; }
+
+    public boolean isCompressNotes() { return compressNotes; }
+    public void setCompressNotes(boolean compressNotes) { this.compressNotes = compressNotes; }
+
     public String getEditMenuText() { return editMenuText; }
     public void setEditMenuText(String editMenuText) { this.editMenuText = editMenuText; }
     public String getArchiveMenuText() { return archiveMenuText; }
@@ -170,7 +176,6 @@ public class AppStats implements Serializable {
     }
     public void setCustomStats(List<CustomStat> customStats) { this.customStats = customStats; }
 
-    // --- NEW: Debuff Getters ---
     public List<Debuff> getActiveDebuffs() {
         if (activeDebuffs == null) activeDebuffs = new ArrayList<>();
         return activeDebuffs;
@@ -337,6 +342,8 @@ public class AppStats implements Serializable {
         this.matchTitleColor = other.matchTitleColor;
         this.matchDailyRectColor = other.matchDailyRectColor;
         this.matchPriorityOutline = other.matchPriorityOutline;
+        this.compressNotes = other.compressNotes; // Synced!
+
         this.editMenuText = other.editMenuText;
         this.archiveMenuText = other.archiveMenuText;
         this.deleteMenuText = other.deleteMenuText;
@@ -367,7 +374,6 @@ public class AppStats implements Serializable {
         this.statXpMap = new HashMap<>(other.statXpMap);
         this.lastStatGainDates = new HashMap<>(other.lastStatGainDates);
 
-        // --- Copy Debuffs ---
         this.activeDebuffs = new ArrayList<>(other.getActiveDebuffs());
         this.debuffTemplates = new ArrayList<>(other.getDebuffTemplates());
 

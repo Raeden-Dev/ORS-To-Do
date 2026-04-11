@@ -116,14 +116,18 @@ public class TaskStatsMiniCard extends FlowPane {
                 }
             }
 
-            // --- FIXED: Render Inflicted Debuffs ---
+            // --- FIXED: Render Inflicted Debuffs with Dynamic Icons and Colors ---
             if (task.getInflictedDebuffIds() != null && !task.getInflictedDebuffIds().isEmpty() && appStats.getDebuffTemplates() != null) {
                 for (String dId : task.getInflictedDebuffIds()) {
                     Debuff template = appStats.getDebuffTemplates().stream().filter(d -> d.getId().equals(dId)).findFirst().orElse(null);
                     if (template != null) {
                         containsStats = true;
-                        Label debuffLbl = new Label("⚠ " + template.getName());
-                        debuffLbl.setStyle("-fx-text-fill: #FF4444; -fx-border-color: #FF4444; -fx-background-color: #331A1A; " + baseLabelStyle);
+
+                        String iconText = (template.getIconSymbol() != null && !template.getIconSymbol().equals("None")) ? template.getIconSymbol() + " " : "⚠ ";
+                        String mainColor = template.getColorHex() != null && !template.getColorHex().equals("transparent") ? template.getColorHex() : "#FF4444";
+
+                        Label debuffLbl = new Label(iconText + template.getName());
+                        debuffLbl.setStyle("-fx-text-fill: " + mainColor + "; -fx-border-color: " + mainColor + "; -fx-background-color: derive(" + mainColor + ", -80%); " + baseLabelStyle);
                         getChildren().add(debuffLbl);
                     }
                 }

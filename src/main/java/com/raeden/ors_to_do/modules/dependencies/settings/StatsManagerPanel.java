@@ -159,7 +159,8 @@ public class StatsManagerPanel extends VBox {
         grid.add(new Label("Description:"), 0, rowIdx);
         grid.add(descArea, 1, rowIdx++);
 
-        Spinner<Integer> capSpinner = new Spinner<>(0, 99999, isNew ? 9999 : stat.getMaxCap());
+        // --- FIXED: Increased max limit to 999,999,999 ---
+        Spinner<Integer> capSpinner = new Spinner<>(0, 999999999, isNew ? 10000000 : stat.getMaxCap());
         capSpinner.setEditable(true);
         capSpinner.setMaxWidth(Double.MAX_VALUE);
         grid.add(new Label("Max Cap\n(0 = Infinite):"), 0, rowIdx);
@@ -174,7 +175,8 @@ public class StatsManagerPanel extends VBox {
         grid.add(atrophyLabel, 0, rowIdx);
         grid.add(atrophySpinner, 1, rowIdx++);
 
-        Spinner<Integer> startingAmountSpinner = new Spinner<>(0, 999999, isNew ? 0 : stat.getCurrentAmount());
+        // --- FIXED: Increased max limit to 999,999,999 ---
+        Spinner<Integer> startingAmountSpinner = new Spinner<>(0, 999999999, isNew ? 0 : stat.getCurrentAmount());
         startingAmountSpinner.setEditable(true);
         startingAmountSpinner.setMaxWidth(Double.MAX_VALUE);
         Label startingAmountLabel = new Label("Current XP / \nStarting Amount:");
@@ -346,7 +348,6 @@ public class StatsManagerPanel extends VBox {
                 StorageManager.saveStats(appStats);
                 renderExistingStats();
 
-                // Immediately evaluate thresholds just in case the starting value triggers an Aura
                 com.raeden.ors_to_do.modules.dependencies.ui.utils.TaskActionHandler.evaluateThresholdDebuffs(appStats);
             }
         });

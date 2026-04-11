@@ -16,13 +16,15 @@ public class CustomStat implements Serializable {
 
     private int currentAmount = 0;
     private String description = "";
-    private int maxCap = 9999;
+
+    // --- FIXED: Increased default max cap to 10 Million for money tracking ---
+    private int maxCap = 10000000;
+
     private int atrophyDays = 0;
     private int lifetimeEarned = 0;
     private int lifetimeLost = 0;
     private int maxLevelReached = 0;
 
-    // --- NEW: Holds the thresholds ---
     private List<StatThreshold> thresholds = new ArrayList<>();
 
     public CustomStat() {

@@ -37,6 +37,11 @@
     - Color of progress bar of rpg character sheet should be same color as the text color. Change background color of card similar to how the progress bar color is right now, Outlines will be bright like the text color
 
 > If a note gets too long like over 200 words, I can expand or contract it Ofcourse the first will say the starting description and then [see more...]
+ - This will happen if I turn on a option called "Compress Notes" in general configuration at settings page
 > Need repeatable cards to show the stat reward and whatever, right now it doesnt show the icon to display the stat reward mini card even if it has some stat hooked to it. Stat mini cards should also show debuffs I get from the card.
 > The "Edit Task" of repeatable task card should show total selected debuffs beside the dropdown. Also, the debuff should show its original icon and color (for outline and bg).
   I can still edit repeatable cards by double clicking it but the edit task is locked in context menu
+> Debuff description shouldnt pass that red box in screenshot. I shouldnt have to horizontally scroll cause the description got too long.
+
+
+

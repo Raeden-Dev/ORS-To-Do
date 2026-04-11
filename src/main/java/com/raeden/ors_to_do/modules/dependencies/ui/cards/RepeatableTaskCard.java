@@ -42,15 +42,23 @@ public class RepeatableTaskCard extends VBox {
         mainRow.setAlignment(Pos.CENTER_LEFT);
         mainRow.setPadding(new Insets(10));
 
-        // --- FIXED: Apply Time Lock check to Double Click ---
+        // --- FIXED: Apply both Time Lock AND Section Completion Lock to double-click ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 int lockHours = appStats.getPreventEditingHours();
                 boolean isNoteMode = config != null && config.isNotesPage();
                 boolean isRewardMode = config != null && config.isRewardsPage();
 
-                if (!(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
-                    Alert alert = new Alert(Alert.AlertType.WARNING, "This repeatable task was created over " + lockHours + " hour(s) ago and is locked from editing.");
+                boolean isTimeLocked = !(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours));
+                boolean isCompletionLocked = config != null && config.isLockCompletedTasks() && task.isFinished();
+
+                if (isTimeLocked) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "This task was created over " + lockHours + " hour(s) ago and is locked from editing.");
+                    alert.setHeaderText("Editing Locked");
+                    TaskDialogs.styleDialog(alert);
+                    alert.show();
+                } else if (isCompletionLocked) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "This task has been completed and is locked from editing by the section settings.");
                     alert.setHeaderText("Editing Locked");
                     TaskDialogs.styleDialog(alert);
                     alert.show();

@@ -13,8 +13,6 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
 
 public class StatCard extends VBox {
 
@@ -89,7 +87,6 @@ public class StatCard extends VBox {
         content.setAlignment(Pos.TOP_LEFT);
         content.setStyle("-fx-background-color: " + bgColor + "; -fx-border-color: " + txtColor + "; -fx-border-width: 2; -fx-border-radius: 5; -fx-background-radius: 5;");
 
-        // --- INCREASED WIDTH HERE ---
         content.setPrefWidth(500);
         content.setMinWidth(500);
 
@@ -102,28 +99,25 @@ public class StatCard extends VBox {
         Label title = new Label(stat.getName());
         title.setStyle("-fx-text-fill: " + txtColor + "; -fx-font-size: 20px; -fx-font-weight: bold;");
         title.setWrapText(true);
-        title.setPrefWidth(410); // Widened to match new container
+        title.setPrefWidth(410);
 
         header.getChildren().addAll(icon, title);
 
-        Text descText = new Text(stat.getDescription() != null && !stat.getDescription().isEmpty() ? stat.getDescription() : "No description provided.");
-        descText.setStyle("-fx-fill: #E0E0E0; -fx-font-size: 14px;");
+        // --- BULLETPROOF TEXT WRAPPING FIX ---
+        // Using a Label and forcing its MinHeight ensures JavaFX doesn't cut it off early
+        Label descLabel = new Label(stat.getDescription() != null && !stat.getDescription().isEmpty() ? stat.getDescription() : "No description provided.");
+        descLabel.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 14px;");
+        descLabel.setWrapText(true);
+        descLabel.setPrefWidth(440);
+        descLabel.setMinHeight(Region.USE_PREF_SIZE); // Forces the label to calculate its full height
 
-        // --- INCREASED TEXT WRAPPING WIDTH HERE ---
-        // 500 (box) - 40 (padding) - 20 (buffer for scrollbar) = 440 pixels
-        descText.setWrappingWidth(440);
-
-        TextFlow descFlow = new TextFlow(descText);
-        descFlow.setMinHeight(Region.USE_PREF_SIZE);
-
-        ScrollPane descScroll = new ScrollPane(descFlow);
+        ScrollPane descScroll = new ScrollPane(descLabel);
         descScroll.setFitToWidth(true);
         descScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         descScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         descScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
         descScroll.setBorder(Border.EMPTY);
-        descScroll.setMinHeight(Region.USE_PREF_SIZE);
-        descScroll.setMaxHeight(250); // Allow it to grow a bit taller before scrolling
+        descScroll.setMaxHeight(400); // Increased so the dialog has much more vertical room before scrolling
 
         String scrollCss = ".scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 5; } " +
                 ".scroll-bar:vertical .track { -fx-background-color: transparent; -fx-border-color: transparent; } " +
@@ -149,9 +143,10 @@ public class StatCard extends VBox {
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
-        // Force the dialog pane to respect our wider width
+        // Allow the dialog pane to calculate its height automatically based on the label
         dialog.getDialogPane().setPrefWidth(500);
         dialog.getDialogPane().setMinWidth(500);
+        dialog.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
         dialog.getDialogPane().setStyle("-fx-background-color: #1E1E1E;");
         dialog.showAndWait();
     }

@@ -60,12 +60,21 @@ public class TaskCard extends VBox {
         mainRow.setPadding(new Insets(10));
         if (task.isLinkCard()) mainRow.setCursor(javafx.scene.Cursor.HAND);
 
+        // --- FIXED: Apply both Time Lock AND Section Completion Lock to double-click ---
         mainRow.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 int lockHours = appStats.getPreventEditingHours();
 
-                if (!(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours))) {
+                boolean isTimeLocked = !(isNoteMode || isRewardMode) && lockHours > 0 && java.time.LocalDateTime.now().isAfter(task.getDateCreated().plusHours(lockHours));
+                boolean isCompletionLocked = config != null && config.isLockCompletedTasks() && task.isFinished();
+
+                if (isTimeLocked) {
                     Alert alert = new Alert(Alert.AlertType.WARNING, "This task was created over " + lockHours + " hour(s) ago and is locked from editing.");
+                    alert.setHeaderText("Editing Locked");
+                    TaskDialogs.styleDialog(alert);
+                    alert.show();
+                } else if (isCompletionLocked) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "This task has been completed and is locked from editing by the section settings.");
                     alert.setHeaderText("Editing Locked");
                     TaskDialogs.styleDialog(alert);
                     alert.show();
@@ -192,7 +201,6 @@ public class TaskCard extends VBox {
             if (config != null && config.isShowPrefix() && task.getPrefix() != null && !task.getPrefix().isEmpty()) {
                 Label pLabel = new Label(task.getPrefix());
                 pLabel.setMinWidth(Region.USE_PREF_SIZE);
-                // --- FIXED: Restored Boldness to Prefix ---
                 pLabel.setStyle("-fx-text-fill: " + (task.getPrefixColor() != null ? task.getPrefixColor() : "#4EC9B0") + "; -fx-font-size: " + baseFontSize + "px; -fx-font-weight: bold;");
                 metaBox.getChildren().add(pLabel);
             }
