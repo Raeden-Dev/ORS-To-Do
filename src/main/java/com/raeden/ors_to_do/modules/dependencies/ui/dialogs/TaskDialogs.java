@@ -71,8 +71,9 @@ public class TaskDialogs {
         scroll.setFitToWidth(true);
         scroll.setPrefHeight(400);
         scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-        scroll.getStylesheets().add("data:text/css;base64," +
-                java.util.Base64.getEncoder().encodeToString(".scroll-pane > .viewport { -fx-background-color: transparent; } .scroll-bar:vertical { -fx-opacity: 0.7; }".getBytes()));
+
+        // Pulled string out into ThemeConstants
+        scroll.getStylesheets().add("data:text/css;base64," + java.util.Base64.getEncoder().encodeToString(ThemeConstants.TRANSPARENT_SCROLL_CSS.getBytes()));
 
         contentBox.getChildren().addAll(
                 createHelpCard("🏆" + " Complete Control", "You are in charge of what you want to turn this application into. Whether a simple to-do app or a full rpg game system where the game is your life.", "yellow"),
@@ -107,38 +108,12 @@ public class TaskDialogs {
     }
 
     public static void styleDialog(Dialog<?> dialog) {
-        // --- FIXED: Bind to the exact monitor the main app is on ---
         if (TaskTrackerApp.MAIN_STAGE != null) {
             dialog.initOwner(TaskTrackerApp.MAIN_STAGE);
         }
 
-        String css = ".dialog-pane { -fx-background-color: #1E1E1E; -fx-border-color: #3E3E42; -fx-border-width: 1; } " +
-                ".dialog-pane > *.content.label { -fx-text-fill: #E0E0E0; } " +
-                ".dialog-pane .header-panel { -fx-background-color: #2D2D30; -fx-border-bottom-color: #3E3E42; -fx-border-width: 0 0 1 0; } " +
-                ".dialog-pane .header-panel .label { -fx-text-fill: #569CD6; -fx-font-weight: bold; } " +
-                ".button { -fx-background-color: #3E3E42; -fx-text-fill: white; -fx-cursor: hand; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; } " +
-                ".button:hover { -fx-background-color: #569CD6; -fx-border-color: #569CD6; } " +
-                ".button:default { -fx-background-color: #0E639C; -fx-border-color: #0E639C; } " +
-                ".button:default:hover { -fx-background-color: #1177BB; } " +
-                ".text-field, .text-area, .combo-box { -fx-background-color: #2D2D30; -fx-control-inner-background: #2D2D30; -fx-text-fill: white; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; } " +
-                ".text-area .content { -fx-background-color: #2D2D30; } " +
-                ".combo-box .list-cell { -fx-text-fill: white; } " +
-                ".combo-box-popup .list-view { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
-                ".combo-box-popup .list-view .list-cell { -fx-background-color: #2D2D30; -fx-text-fill: white; } " +
-                ".combo-box-popup .list-view .list-cell:filled:hover, .combo-box-popup .list-view .list-cell:filled:selected { -fx-background-color: #569CD6; -fx-text-fill: white; } " +
-                ".color-picker { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
-                ".color-picker .label { -fx-text-fill: white; } " +
-                ".label, .check-box { -fx-text-fill: #E0E0E0; } " +
-                ".check-box .box { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
-                ".check-box:selected .mark { -fx-background-color: white; } " +
-                ".custom-menu-btn { -fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; } " +
-                ".custom-menu-btn .label { -fx-text-fill: white; } " +
-                ".context-menu { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
-                ".menu-item { -fx-background-color: #2D2D30; } " +
-                ".menu-item:hover, .menu-item:focused { -fx-background-color: #569CD6; } " +
-                ".menu-item .label { -fx-text-fill: white; }";
-
-        String b64 = java.util.Base64.getEncoder().encodeToString(css.getBytes());
+        // Pulled massive CSS string out into ThemeConstants
+        String b64 = java.util.Base64.getEncoder().encodeToString(ThemeConstants.DIALOG_BASE_CSS.getBytes());
         dialog.getDialogPane().getStylesheets().add("data:text/css;base64," + b64);
         dialog.getDialogPane().setStyle("-fx-background-color: #1E1E1E;");
 
@@ -159,15 +134,8 @@ public class TaskDialogs {
     }
 
     public static void setupPriorityBoxColors(ComboBox<CustomPriority> box) {
-        String css = ".combo-box { -fx-background-color: #2D2D30; -fx-border-color: #555555; -fx-border-radius: 3; -fx-background-radius: 3; -fx-cursor: hand; } " +
-                ".combo-box .list-cell { -fx-background-color: transparent; } " +
-                ".combo-box-popup .list-view { -fx-background-color: #2D2D30; -fx-border-color: #555555; } " +
-                ".combo-box-popup .list-view .list-cell { -fx-background-color: #2D2D30; -fx-text-fill: white; } " +
-                ".combo-box-popup .list-view .list-cell:filled:hover, .combo-box-popup .list-view .list-cell:filled:selected { -fx-background-color: #3E3E42; } " +
-                ".combo-box .arrow-button { -fx-background-color: transparent; } " +
-                ".combo-box .arrow { -fx-background-color: #AAAAAA; }";
-
-        String b64 = java.util.Base64.getEncoder().encodeToString(css.getBytes());
+        // Pulled string out into ThemeConstants
+        String b64 = java.util.Base64.getEncoder().encodeToString(ThemeConstants.PRIORITY_COMBO_CSS.getBytes());
         box.getStylesheets().add("data:text/css;base64," + b64);
 
         box.setCellFactory(lv -> new ListCell<>() {
